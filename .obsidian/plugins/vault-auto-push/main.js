@@ -9,6 +9,7 @@ const {
   requestUrl,
 } = require("obsidian");
 
+const QUEUE_SCHEMA_VERSION = 1;
 const DEFAULT_SETTINGS = {
   owner: "AnishKumar-gesgts",
   repo: "Second-Brain",
@@ -20,6 +21,7 @@ const DEFAULT_SETTINGS = {
   commitPrefix: "Obsidian auto-push",
   pendingChanged: [],
   pendingDeleted: [],
+  queueSchemaVersion: 0,
 };
 
 const MAX_FILE_BYTES = 95 * 1024 * 1024;
@@ -36,6 +38,7 @@ const IGNORED_COMPONENTS = new Set([".git", ".git-backup", "node_modules", ".tra
 module.exports = class VaultAutoPushPlugin extends Plugin {
   async onload() {
     await this.loadSettings();
+
     this.changedPaths = new Set(this.settings.pendingChanged || []);
     this.deletedPaths = new Set(this.settings.pendingDeleted || []);
     this.pushing = false;
@@ -104,6 +107,18 @@ module.exports = class VaultAutoPushPlugin extends Plugin {
   async loadSettings() {
     const saved = await this.loadData();
     this.settings = Object.assign({}, DEFAULT_SETTINGS, saved || {});
+
+    // v0.2.x populated its state by scanning the whole vault. When moving to the
+    // event-driven queue, those entries are not trustworthy as "dirty" files.
+    // Clear them exactly once, then only persist real post-upgrade file events.
+    if ((Number(this.settings.queueSchemaVersion) || 0) < QUEUE_SCHEMA_VERSION) {
+      this.settings.pendingChanged = [];
+      this.settings.pendingDeleted = [];
+      delete this.settings.fileIndex;
+      this.settings.queueSchemaVersion = QUEUE_SCHEMA_VERSION;
+      await this.saveData(this.settings);
+    }
+
     if (!Array.isArray(this.settings.pendingChanged)) this.settings.pendingChanged = [];
     if (!Array.isArray(this.settings.pendingDeleted)) this.settings.pendingDeleted = [];
   }
@@ -156,6 +171,7 @@ module.exports = class VaultAutoPushPlugin extends Plugin {
   async persistQueue() {
     this.settings.pendingChanged = [...this.changedPaths];
     this.settings.pendingDeleted = [...this.deletedPaths];
+    this.settings.queueSchemaVersion = QUEUE_SCHEMA_VERSION;
     await this.saveData(this.settings);
   }
 
