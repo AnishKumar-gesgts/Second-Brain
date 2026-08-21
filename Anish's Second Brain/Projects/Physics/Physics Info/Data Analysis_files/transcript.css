@@ -1,0 +1,108 @@
+.MathJax > nobr > span > span:last-child {
+	visibility: hidden;
+}
+
+.transcript .message {
+	margin-bottom: 1em;
+}
+
+.transcript .time {
+	font-size: 10px;
+	padding-left: 1em;
+}
+
+.transcript .sticky {
+	background-color: rgba(0, 99, 69, 0.1);
+}
+
+.transcript .moderator-message,
+.transcript .user-message {
+	padding: 5px;
+	margin-bottom: 0;
+}
+
+.transcript .moderator-message .name,
+.transcript .moderator-message .name a {
+	color: #009fad;
+	font-weight: bold;
+}
+
+.transcript .user-message .name,
+.transcript .user-message .name a {
+	color: red;
+}
+
+.transcript .moderator-message .text {
+	font-weight: bold;
+}
+
+.transcript .moderator-message .text .bold,
+.transcript .moderator-message b {
+	color: #800;
+}
+
+/* Undo the bold coloring above in motors */
+.transcript .moderator-message .motor-wrapper b {
+	color: unset;
+}
+
+.transcript .user-message .text .bold {
+	font-weight: bold;
+}
+
+.transcript .latex_image {
+	display: block;
+}
+
+.transcript .grid-transcript-row {
+	overflow: hidden;
+}
+
+.transcript #main-footer {
+	display: none;
+}
+
+.transcript #main-content {
+	margin-bottom: 24px;
+}
+
+.transcript .grid-transcript-view-count {
+	font-size: 0.9em;
+	text-align: right;
+	font-weight: normal;
+}
+
+.transcript .motor-msg.editable:hover {
+	cursor: pointer;
+	background-color: rgba(27, 54, 93, 0.15) !important;
+}
+
+/* Legacy */
+.transcript .name {
+	color: red;
+}
+
+.transcript .mod-name {
+	color: green;
+	font-weight: bold;
+}
+
+.transcript .mod-text {
+	font-weight: bold;
+}
+
+.transcript .mod-text .bold {
+	color: #800;
+}
+
+.trasnscript .text .bold {
+	font-weight: bold;
+}
+
+.transcript .icon {
+	padding-right: 6px;
+}
+
+.transcript .hidden-text {
+	display: none !important;
+}

@@ -1,0 +1,259 @@
+AoPS.Utils.initKeyChain(AoPS, "Grid", "Views");
+
+AoPS.Grid.Views = (function (Views) {
+	var ALCUMUS_TAG_ID = 98;
+
+	// There are two extra patterns in Alcumus URLs: /alcumus/set_focus/:topic_id
+	// and /alcumus/problem/:problem_id. The helpers below detect these URLs
+	// from the args array made from the URL.
+
+	var getURLFocusTopicID = function (options) {
+		for (var i = 0; i + 1 < options.args.length; i += 2) {
+			if (options.args[i] === "set_focus") {
+				return parseInt(options.args[i + 1]);
+			}
+		}
+		return 0;
+	};
+
+	var getURLProblemID = function (options) {
+		for (var i = 0; i + 1 < options.args.length; i += 2) {
+			if (options.args[i] === "problem") {
+				return parseInt(options.args[i + 1]);
+			}
+		}
+		return 0;
+	};
+
+	/**
+	 * Alcumus inside the Grid requires containers inside containers.
+	 * The GridAlcumusContainer is the thing that hosts the view from
+	 * AoPS.Alcumus.Views directly. However, GridAlcumusContainer itself
+	 * needs to be hosted inside a tab-like view.
+	 *
+	 * For the vast majority of classes, that is a GridTab.
+	 * For self-paced classes, that is a tab-like view that acts like
+	 * a fake tab. Refer to getFakeTabAlcumus in grid_views_self_play.js
+	 * for more context.
+	 */
+
+	// Non-self-paced classes use GridTabAlcumus to wrap GridAlcumusContainer.
+	Views.GridTabAlcumus = Views.GridTab.extend({
+		template_id: "#grid-tab-alcumus-tpl",
+		constructCrumbs: function () {
+			return [
+				{
+					text: "Alcumus",
+				},
+			];
+		},
+		setPageFeed: function () {
+			if (AoPS.Feed) {
+				var forum_id = this.model.get("forum_id");
+				AoPS.Feed.setPageFeed(forum_id, ALCUMUS_TAG_ID, "Alcumus");
+			}
+		},
+		onAddToPage: function (obj) {
+			if (obj.args.join("/") !== this.options.args.join("/")) {
+				this.processURL(obj);
+			}
+		},
+		onRemoveFromPage: function () {
+			if (this.innerView) {
+				this.innerView.onRemoveFromPage();
+			}
+		},
+		processURL: function (obj) {
+			this.options.args = obj.args;
+
+			var focus_topic_id = getURLFocusTopicID(obj);
+			var problem_id = getURLProblemID(obj);
+
+			if (this.innerView && problem_id) {
+				this.innerView.showProblem();
+			} else if (this.innerView && focus_topic_id) {
+				this.innerView.setFocus();
+			}
+		},
+		resetArgs: function () {
+			this.options.args = [];
+		},
+		prerenderHelper: function () {
+			this.innerView = new Views.GridAlcumusContainer({
+				model: this.model,
+				parentView: this,
+				full: true,
+			});
+		},
+		innerView: null,
+		renderHelper: function () {
+			this.$el.append(this.innerView.$el);
+		},
+	});
+
+	// Self-paced classes use GridFakeTabAlcumus to wrap GridAlcumusContainer.
+	Views.GridFakeTabAlcumus = Views.GridTabLikeView.extend({
+		template_id: "#grid-tab-alcumus-tpl",
+		setPageFeed: function () {
+			if (AoPS.Feed) {
+				var forum_id = this.model.get("forum_id");
+				AoPS.Feed.setPageFeed(forum_id, ALCUMUS_TAG_ID, "Alcumus");
+			}
+		},
+		onAddToPage: function (obj) {
+			if (obj.args.join("/") !== this.options.args.join("/")) {
+				this.processURL(obj);
+			}
+		},
+		processURL: function (obj) {
+			this.options.args = obj.args;
+
+			var problem_id = getURLProblemID(obj);
+			var focus_topic_id = getURLFocusTopicID(obj);
+
+			if (this.innerView && problem_id) {
+				this.innerView.showProblem();
+			} else if (this.innerView && focus_topic_id) {
+				this.innerView.setFocus();
+			}
+		},
+		prerenderHelper: function () {
+			this.innerView = new Views.GridAlcumusContainer({
+				model: this.model,
+				parentView: this,
+				full: false,
+			});
+		},
+		resetArgs: function () {
+			var focus_topic_id = getURLFocusTopicID(this.options);
+			this.options.args = focus_topic_id ? ["set_focus", focus_topic_id] : [];
+		},
+		innerView: null,
+		headerView: null,
+		renderHelper: function () {
+			this.$inner = $("<div />")
+				.addClass("fake-alcumus-inner")
+				.appendTo(this.$el);
+			this.$inner.append(this.innerView.$el);
+		},
+	});
+
+	/**
+	 * Must live inside a tablike view and hosts the Alcumus view.
+	 */
+	Views.GridAlcumusContainer = AoPS.View.extend({
+		className: "grid-alcumus-container",
+		initialize: function (options) {
+			this.options = options;
+			this.parentView = options.parentView;
+			this.alcUser = this.model.get("master").get("alcumus").getUser("me");
+			this.render();
+		},
+		resetArgs: function () {
+			if (_.isFunction(this.parentView.resetArgs)) {
+				this.parentView.resetArgs();
+			}
+		},
+		resetArgsAndRender: function () {
+			this.resetArgs();
+			this.render();
+		},
+		changeFocus: function (topic_id) {
+			this.alcUser.changeFocus(
+				{
+					parent_type: "class",
+					parent_id: this.model.get("class_id"),
+					topic_id: topic_id,
+				},
+				_.bind(this.resetArgs, this)
+			);
+		},
+		loadProblem: function (problem_id, topic_id) {
+			this.alcUser.loadProblemInClass(
+				problem_id,
+				this.model.get("class_id"),
+				_.bind(function () {
+					if (topic_id) {
+						this.alcUser.changeFocus(
+							{
+								parent_type: "class",
+								parent_id: this.model.get("class_id"),
+								topic_id: topic_id,
+							},
+							_.bind(this.resetArgsAndRender, this)
+						);
+					} else {
+						this.resetArgsAndRender();
+					}
+				}, this)
+			);
+		},
+		setFocus: function () {
+			var focus_topic_id = getURLFocusTopicID(this.parentView.options);
+			focus_topic_id && this.changeFocus(focus_topic_id);
+		},
+		showProblem: function () {
+			var problem_id = getURLProblemID(this.parentView.options);
+			var focus_topic_id = getURLFocusTopicID(this.parentView.options);
+			problem_id && this.loadProblem(problem_id, focus_topic_id);
+
+			if (this.alcumusView) {
+				this.alcumusView.$el.detach();
+			}
+			this.$el.empty();
+		},
+		render: function () {
+			if (this.model.get("master").get("alcumus")) {
+				this.model
+					.get("master")
+					.get("alcumus")
+					.requestLoad(
+						_.bind(function (ok, data) {
+							if (ok) {
+								var ContainerModel =
+									AoPS.Alcumus.Views[this.options.full ? "Grid" : "SPNova"]
+										.MainContainer;
+								var focus_topic_id = getURLFocusTopicID(
+									this.parentView.options
+								);
+								var problem_id = getURLProblemID(this.parentView.options);
+
+								if (this.alcumusView) {
+									this.alcumusView.$el.detach();
+								} else {
+									this.alcumusView = new ContainerModel({
+										model: this.model
+											.get("master")
+											.get("alcumus")
+											.getUser("me"),
+										full: this.options.full,
+										topic_id: focus_topic_id,
+										problem_id: problem_id,
+										class_id: this.model.get("class_id"),
+									});
+								}
+								this.$el.append(this.alcumusView.$el);
+							} else {
+								this.$el.text(
+									"Error loading Alcumus... please contact administrator."
+								);
+							}
+						}, this)
+					);
+			}
+		},
+		onRemoveFromPage: function () {
+			var alcumus_model = this.model.get("master").get("alcumus");
+			if (!alcumus_model) {
+				return;
+			}
+			var user_model = alcumus_model.getUser("me");
+			if (!user_model) {
+				return;
+			}
+			user_model.resetDisplayedSolution();
+		},
+	});
+
+	return Views;
+})(AoPS.Grid.Views);

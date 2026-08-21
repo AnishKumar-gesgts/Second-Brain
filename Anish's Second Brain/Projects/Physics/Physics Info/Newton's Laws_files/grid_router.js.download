@@ -1,0 +1,1157 @@
+AoPS.Utils.initKeyChain(AoPS, "Grid");
+
+AoPS.Grid = (function (Grid) {
+	Grid.Router = Backbone.Router.extend({
+		initialize: function (options) {
+			this.elements = {};
+			this.models = {};
+			this.models.master = options.master || new Backbone.Model();
+			this.myClass = this.models.master.get("class") || new Backbone.Model();
+			this.myPage = new AoPS.Page.constructPage("grid");
+			this.isSpNova = this.myClass.get("is_sp_nova");
+			this.ieVersion = AoPS.Grid.Utils.DetectIE();
+			this.notificationBlast = true;
+			if (this.isSpNova) {
+				this.myPage.$el.addClass("nova");
+			}
+			this.route(/(.*)/, this.routeCanvas);
+			this.route(/^feed\/([0-9]+)\/class(.*)/, this.onFeedRoute);
+			this.previous_route = {
+				class_id: 0,
+				hash: "",
+				extra: "",
+			};
+			this.on_feed_route = false;
+			this.on_initial_load = true;
+			this.listenTo(Backbone, "reset_breadcrumbs", this.setBreadcrumbs);
+			$(window).bind(
+				"beforeunload",
+				_.bind(function (e) {
+					if (this.models.master.shouldNagWhenRouting()) {
+						var nagger = this.models.master.get("nag_controller");
+						if (nagger.$scroll) {
+							AoPS.Grid.Utils.ScrollToVisible(nagger.$scroll);
+						}
+						(e || window.event).returnValue = nagger.prompt; // Gecko + IE
+						return nagger.prompt; // Webkit, Safari, Chrome
+					}
+				}, this)
+			);
+		},
+
+		/**
+		 * Called when you click on a sidenav link
+		 * @param {string} arg_string
+		 */
+		routeCanvas: function (arg_string) {
+			// This triggers the progress bar when a side nav link is clicked
+			if (AoPS.Grid.ProgressBar) {
+				AoPS.Grid.ProgressBar.init(0);
+			}
+
+			if (
+				this.myClass.get("is_self_paced") &&
+				this.ieVersion &&
+				this.ieVersion < 12
+			) {
+				// We in IE in an SP class!
+				// Don't route, just show heading.
+				this.showHeading();
+			} else if (this.isSpNova) {
+				this.loadSelfPacedDataHook(arg_string);
+			} else {
+				this.routeCanvasWhenLoaded(arg_string);
+			}
+		},
+
+		/**
+		 * Loading self paced data is slow, so we use this hook to first load display
+		 * a "Loading" message and load the data before calling the actual router.
+		 * The bright side, this is a one time load as long as the user doesn't
+		 * refresh or directly navigate to another page.
+		 *
+		 * @param {string} arg_string
+		 */
+		loadSelfPacedDataHook: function (arg_string) {
+			var user = this.myClass.get("perms").user;
+			if (user.can_access && user.sp && user.sp.started) {
+				var sp_last_updated = this.models.master.get("sp_last_updated_at");
+				if (user.is_impersonated || (!user.sp.ended && !sp_last_updated)) {
+					// Hide header while loading. You
+					var header = this.showHeading();
+					header.view.$("a").hide();
+
+					// Display loading message
+					this.myPage.showElement({
+						id: "grid-loading",
+						constructor: _.bind(function () {
+							return new AoPS.Grid.Views.GridLoading({
+								model: this.myClass,
+							});
+						}, this),
+					});
+
+					// Load all the data and then go to the next router.
+					this.models.master.loadSelfPacedData(
+						_.bind(function () {
+							this.routeCanvasWhenLoaded(arg_string);
+							header.view.$("a").show();
+							$(window).trigger("resize");
+						}, this)
+					);
+				} else {
+					this.routeCanvasWhenLoaded(arg_string);
+				}
+			} else {
+				this.routeCanvasWhenLoaded(arg_string);
+			}
+		},
+
+		/**
+		 * Another step in the routing process. Happens after any needed data
+		 * is loaded, hence the weird name. Handles some homework, alcumus
+		 * and ebook routes, then moves on to routeCanvasInner() if another
+		 * route has been requested.
+		 *
+		 * @param {string} arg_string
+		 * @returns
+		 */
+		routeCanvasWhenLoaded: function (arg_string) {
+			this.vars = {arg_string: arg_string};
+
+			// check for connected free trial progress and give option to push data
+			// only SP (for now)
+			if (
+				this.isSpNova &&
+				this.myClass.get("campus_id") === "web" &&
+				this.myClass.get("perms") &&
+				this.myClass.get("perms").me &&
+				this.myClass.get("perms").me.can_access
+			) {
+				this.myClass.checkConnectedFreeTrial();
+			}
+			if (
+				this.notificationBlast &&
+				this.myClass.get("campus_id") === "web" &&
+				this.myClass.get("perms") &&
+				this.myClass.get("perms").me &&
+				this.myClass.get("perms").me.can_access
+			) {
+				this.myClass.showNotifications();
+			}
+			this.notificationBlast = false;
+
+			if (!this.routeCanvasPrepareCommon()) {
+				return;
+			} else if (
+				this.vars.args.length > 1 &&
+				this.vars.args[1].substr(0, 2) === "hw"
+			) {
+				this.goToProblem(parseInt(this.vars.args[1].substr(2)));
+				return;
+			}
+
+			// Update progress for self paced courses
+			if (this.isSpNova) {
+				this.updateSpProgress();
+			}
+
+			if (
+				this.isSpNova &&
+				this.vars.args.length >= 4 &&
+				this.vars.args[1] === "alcumus" &&
+				this.vars.args[2] === "problem" &&
+				parseInt(this.vars.args[3])
+			) {
+				// SP classes don't have true alcumus tabs!
+				// These links are created via message board tags, and they need to work.
+				this.redirectSpAlcumusProblem(parseInt(this.vars.args[3]));
+				return;
+			} else if (this.vars.args[1] === "alcumus" && this.vars.args.length > 2) {
+				/**
+				 * If we have URLs like:
+				 * /class/3135-prealgebra1/alcumus/problem/33174
+				 * /class/3135-prealgebra1/alcumus/set_focus/361
+				 *
+				 * We want to remove the trailing bits in our history with sanitized URL
+				 * because of really odd back button bugs that will happen otherwise.
+				 */
+				Backbone.history.navigate(
+					this.myClass.get("class_string") + "/alcumus"
+				);
+			}
+
+			if (this.vars.args.length > 1) {
+				if (this.vars.args[1] === "clip") {
+					this.goToVideo(this.vars.args);
+					return;
+				} else if (this.vars.args[1] === "ebook") {
+					if (this.isSpNova) {
+						this.goToNovaEbook(this.vars.args.slice(2));
+						return;
+					} else if (
+						this.vars.args[2] &&
+						this.vars.args[2] != this.models.master.get("grid_data").ebook.sku
+					) {
+						if (
+							_.findWhere(this.myClass.get("ebooks"), {
+								sku: this.vars.args[2],
+							})
+						) {
+							window.location.replace("/class/" + this.vars.arg_string);
+							return;
+						}
+					}
+				}
+
+				if (this.lastHash === "alcumus" && this.vars.args[1] !== "alcumus") {
+					// if navigating away from Alcumus, refetch report
+					this.myClass.fetchClassProgress();
+				}
+			}
+			this.lastHash = this.vars.args[1];
+
+			/***
+			 *  We mark whether or not we need to change the toplevel
+			 *   view here.  There's almost certainly a more elegant way to
+			 *   do this.  We're doing this because we don't want to
+			 *   take a transcript or the ebook off the page and then put it
+			 *   right back on when we are navigating around the feed, since
+			 *   that rerendering causes an annoying post-click pause.
+			 **/
+			var previous = _.clone(this.previous_route.args);
+			var is_new_route = this.isNewRoute(this.vars.args);
+
+			/* Why? To support the please save first thing. */
+			if (is_new_route && this.models.master.shouldNagWhenRouting()) {
+				this.routeCanvasNagInner(
+					previous,
+					_.bind(function () {
+						this.routeCanvasInner(previous, is_new_route);
+					}, this)
+				);
+			} else {
+				this.routeCanvasInner(previous, is_new_route);
+			}
+		},
+
+		/**
+		 * Update progress on a self paced lesson
+		 */
+		updateSpProgress: function () {
+			if (this.vars.args && this.vars.args.length > 2) {
+				const sp_id = this.vars.args[2];
+
+				$.post("/m/class/ajax.php", {
+					a: "update-sp-progress",
+					sp_id: sp_id,
+					class_id: this.myClass.get("class_id"),
+				});
+			}
+		},
+
+		/**
+		 * Show heading, which is actually the buttons.
+		 *
+		 * @returns {*} A page element object. See page.js::createElement for a description.
+		 */
+		showHeading: function () {
+			var view = this.isSpNova ? "GridHeaderNova" : "GridHeader";
+			var classModel = this.models.master.get("class");
+
+			this.myPage.clearPage();
+
+			var heading = this.myPage.showElement({
+				id: "grid-header",
+				constructor: function () {
+					return new AoPS.Grid.Views[view]({model: classModel});
+				},
+			});
+
+			return heading;
+		},
+
+		routeCanvasPrepareCommon: function () {
+			var perms = this.myClass.get("perms");
+
+			this.vars.arg_string = this.vars.arg_string.replace(/\/$/, "");
+			this.vars.sanitized = this.vars.arg_string.split("#")[0].split("?")[0];
+			this.vars.args = this.vars.sanitized
+				? this.vars.sanitized.split("/")
+				: [];
+
+			// This is weird.
+			// If the user doesn't have access we show the buttons but nothing else.
+			if (!(perms && perms.me && perms.me.can_access)) {
+				this.showHeading();
+				return false;
+			}
+
+			// If class hasn't started or has ended, again just show buttons.
+			if (this.myClass.get("is_sp_nova")) {
+				var user = perms.user || {};
+				if (
+					user.sp &&
+					user.sp.started &&
+					(user.is_impersonated || !user.sp.ended)
+				) {
+					// Then we're good.
+				} else {
+					this.showHeading();
+					return false;
+				}
+			}
+
+			// This feed interception must come after permission check and before anything else
+			if (!this.routeCanvasInterceptFeed()) {
+				return false;
+			}
+
+			// Needed to control print access to ebooks
+			$("body").removeClass("ebooks");
+
+			return true;
+		},
+
+		routeCanvasInterceptFeed: function () {
+			/***
+			 * Here we are catching navigation in the feed that intends to go
+			 *  to another whole **class**, so should leave this router and
+			 *  reload the page.
+			 ***/
+
+			var class_id = parseInt(this.vars.args[0].split("-")[0]);
+
+			if (
+				this.previous_route.class_id > 0 &&
+				class_id !== this.previous_route.class_id
+			) {
+				var target_url = this.on_feed_route
+					? "/feed/" + this.feed_topic_id
+					: "";
+				window.location.replace(target_url + "/class/" + this.vars.arg_string);
+				return false;
+			} else {
+				this.previous_route.class_id = class_id;
+			}
+			return true;
+		},
+
+		routeCanvasNagInner: function (previous, goToRoute) {
+			var nagger = this.models.master.get("nag_controller");
+			var url =
+				"/" + this.vars.args.join("/") + this.models.master.get("user_string");
+			if (this.saveNagger) {
+				AoPS.Ui.Modal.removeModal(this.saveNagger);
+			}
+
+			this.setPreviousRoute(previous);
+			Backbone.history.navigate(
+				"/" + previous.join("/") + this.models.master.get("user_string"),
+				{replace: true}
+			);
+
+			var progressToNext = _.bind(function () {
+				Backbone.history.navigate(url, {
+					replace: true,
+				});
+				this.setPreviousRoute(this.vars.args);
+				this.models.master.resetNagController();
+				goToRoute();
+			}, this);
+
+			var promptToProgress = _.bind(function (leave, stay) {
+				var $nagger = $("<div />")
+					.append($("<p />").css("margin-top", "0").text(nagger.prompt))
+					.append(
+						$("<p />")
+							.css("margin-bottom", "0")
+							.text("Are you sure you want to navigate away from this screen?")
+					);
+				this.saveNagger = AoPS.Grid.Utils.CreateModalConfirm(
+					$nagger,
+					stay,
+					leave,
+					{
+						confirm_button_ok: nagger.stay,
+						confirm_button_cancel: nagger.leave,
+					}
+				);
+			}, this);
+
+			if (nagger.$scroll) {
+				var currentScroll = $(window).scrollTop();
+				AoPS.Grid.Utils.ScrollToVisible(
+					nagger.$scroll,
+					_.bind(function () {
+						promptToProgress(
+							_.bind(function () {
+								setTimeout(progressToNext, 600);
+								if (
+									Math.abs(currentScroll - $(window).scrollTop()) >
+									0.5 * $(window).height()
+								) {
+									$("html, body")
+										.first()
+										.animate({scrollTop: currentScroll}, 600);
+								}
+							}, this)
+						);
+					}, this)
+				);
+			} else {
+				promptToProgress(progressToNext);
+			}
+		},
+
+		/**
+		 * Ahh another step in the router. Hooray!
+		 * It's called Inner, but you can really consider this the main content of the display.
+		 *
+		 * @param {string[]} previous Old route
+		 * @param {boolean} is_new_route
+		 */
+		routeCanvasInner: function (previous, is_new_route) {
+			var header;
+			if (is_new_route) {
+				header = this.showHeading();
+			}
+
+			var displayed = null;
+			var selected = null;
+			var tab_parameters;
+			var is_transcript = false;
+			var inner_args = [];
+
+			if (
+				this.myClass.get("perms").user.can_access &&
+				this.ieVersion &&
+				this.ieVersion < 12 &&
+				localStorage &&
+				!localStorage.getItem(
+					"ie_nag_for_" +
+						this.myClass.get("perms").user.user_id +
+						"_" +
+						this.myClass.get("class_id")
+				)
+			) {
+				AoPS.Grid.Utils.CreateModalAlert(
+					$("<div />")
+						.append($("<h3 />").css("margin-top", "0").text("Browser Warning!"))
+						.append(
+							$("<p />").text(
+								"Our classes are optimized for recent versions of Chrome, Firefox, Safari and Edge."
+							)
+						)
+						.append(
+							$("<p />").text(
+								"Please switch to one of these browsers for a more optimal experience."
+							)
+						)
+				);
+				localStorage.setItem(
+					"ie_nag_for_" +
+						this.myClass.get("perms").user.user_id +
+						"_" +
+						this.myClass.get("class_id"),
+					1
+				);
+			}
+
+			if (!_.isUndefined(this.vars.args[1])) {
+				is_transcript =
+					this.vars.args[1] === "transcript" && this.vars.args.length > 1;
+				displayed =
+					this.myClass
+						.get("my_grid_tabs")
+						.findWhere({url: this.vars.args[1]}) ||
+					this.myClass.get("my_grid_tabs").findWhere({hash: this.vars.args[1]});
+			}
+
+			if (!displayed) {
+				displayed = this.myClass.get("my_grid_tabs").first();
+				inner_args = this.vars.args.slice(1);
+			} else {
+				inner_args = this.vars.args.slice(2);
+			}
+			if (displayed && displayed.get("caption")) {
+				selected = displayed;
+			} else {
+				selected = _.first(
+					this.myClass.get("my_grid_tabs").filter(function (tab) {
+						return tab.get("caption");
+					})
+				);
+			}
+
+			var on_forum_route =
+				displayed && displayed.get("prototype_name") === "Forum";
+
+			if (is_new_route) {
+				header.view.selectTab(displayed.get("hash"));
+			}
+
+			// Get view to display based on selected tab.
+			if (is_transcript) {
+				tab_parameters = {
+					id: "grid-tab-transcript-" + this.vars.args[2],
+					constructor: _.bind(function () {
+						return new AoPS.Grid.Views.GridTabTranscript({
+							model: this.myClass,
+							instance_id: parseInt(this.vars.args[2]),
+							headerView: header.view,
+							tab_selected: selected,
+							tab_displayed: displayed,
+							args: inner_args,
+						});
+					}, this),
+					on_add_settings: {
+						args: inner_args,
+					},
+				};
+			} else {
+				tab_parameters = {
+					id: "grid-tab-" + displayed.get("hash"),
+					constructor: _.bind(function () {
+						return new (displayed.get("prototype"))({
+							model: this.myClass,
+							headerView: header.view,
+							tab_selected: selected,
+							tab_displayed: displayed,
+							args: inner_args,
+						});
+					}, this),
+					on_add_settings: {
+						args: inner_args,
+					},
+				};
+			}
+
+			if (
+				_.isObject(header) &&
+				_.isObject(header.view) &&
+				_.isObject(header.view.options)
+			) {
+				header.view.options.tab_selected = selected;
+				header.view.options.tab_displayed = displayed;
+			}
+
+			if (on_forum_route) {
+				var url;
+				if (inner_args.length === 0) {
+					url = "";
+				} else {
+					url = inner_args[0];
+				}
+				tab_parameters.on_add_settings = {
+					url: url,
+				};
+			}
+
+			var inner;
+			if (is_new_route) {
+				// Show the page!
+				inner = this.myPage.showElement(tab_parameters);
+				this.previous_route.page_element = inner;
+			} else {
+				inner = this.previous_route.page_element;
+				if (_.isFunction(inner.view.onAddToPage)) {
+					inner.view.onAddToPage(tab_parameters.on_add_settings);
+				}
+			}
+
+			// If we're on a feed route, the feed will be set and open automatically.
+			//   I hope.
+			if (!this.on_feed_route || !this.on_initial_load) {
+				if (_.isFunction(inner.view.setPageFeed)) {
+					inner.view.setPageFeed(inner_args);
+				} else if (!on_forum_route) {
+					this.setPageFeed(displayed, inner_args);
+				} else {
+					if (is_new_route && AoPS.Feed) {
+						// Don't want the feed blinking in and out as
+						// we navigate the community.
+						AoPS.Feed.hidePageFeed();
+					}
+				}
+			}
+
+			this.on_feed_route = false;
+			this.on_initial_load = false;
+
+			this.setBreadcrumbs(displayed.get("url"));
+			if (on_forum_route || this.isSpNova) {
+				$(window).trigger("resize");
+			}
+
+			if (this.myClass.get("is_stretch")) {
+				if (_.isUndefined(this.myClass.get("enable_stretch_redirect"))) {
+					this.myClass.setIntervalRedirectStretch();
+				}
+				this.myClass.setAndCheckRedirectStretch(
+					inner.view && inner.view.allow_stretch_redirect
+				);
+			}
+
+			AoPS.Grid.Utils.RestoreAopsScrollBar();
+		},
+
+		setBreadcrumbs: function () {
+			var crumbs = [
+				{
+					text:
+						this.models.master.get("grid_data").session.campus_id == "web"
+							? "Online School"
+							: "AoPS Academy",
+					url:
+						this.models.master.get("grid_data").session.campus_id == "web"
+							? "/school/my-classes"
+							: "/my-academy",
+				},
+				{
+					text:
+						this.myClass.get("class_name") +
+						" (" +
+						this.myClass.get("class_id") +
+						")",
+					url: "/class/" + this.myClass.get("class_string") + "/overview",
+				},
+			];
+
+			var prevElemView = (this.previous_route.page_element || {}).view;
+			if (prevElemView && _.isFunction(prevElemView.constructCrumbs)) {
+				crumbs = crumbs.concat(prevElemView.constructCrumbs());
+			}
+			_.last(crumbs).url = null;
+			this.myPage.setBreadcrumbs(crumbs, AoPS.pushState_attr);
+
+			// Knock the "stay here" attribute from the My Classes crumb.  Remove this line
+			//  if we remove that crumb.
+			$("#breadcrumbs .crumb a").first().removeAttr(AoPS.pushState_attr);
+		},
+
+		onFeedRoute: function (topic_id, url) {
+			this.on_feed_route = true;
+			this.feed_topic_id = topic_id;
+			AoPS.Feed.onFeedRoute(url);
+		},
+
+		isNewRoute: function (args) {
+			if (_.isUndefined(args[1])) {
+				return true;
+			}
+
+			if (args[1] !== this.previous_route.hash) {
+				this.setPreviousRoute(args);
+				return true;
+			}
+
+			if (_.isUndefined(args[2])) {
+				if (this.previous_route.extra !== "") {
+					this.setPreviousRoute(args);
+					return true;
+				}
+			} else {
+				if (args[2] !== this.previous_route.extra) {
+					this.setPreviousRoute(args);
+					return true;
+				}
+			}
+
+			return false;
+		},
+
+		setPreviousRoute: function (args) {
+			this.previous_route.hash = args[1];
+
+			if (args[1] === "homework" || args[1] === "transcript") {
+				this.previous_route.extra = _.isUndefined(args[2]) ? "" : args[2];
+			} else {
+				this.previous_route.extra = "";
+			}
+			this.previous_route.args = _.clone(args);
+		},
+
+		goToNovaEbook: function (args) {
+			var class_string = this.models.master.get("class").get("class_string");
+			var link = args[1] || "";
+			var extra = args.slice(2).join("/");
+			if (args[0] === this.models.master.get("grid_data").ebook.sku) {
+				var item = _.find(
+					this.models.master.get("class").get("my_sp").objects,
+					_.bind(function (o) {
+						if (o.type == "reading") {
+							var match_link = o.data.link || "";
+							if (link == match_link) {
+								return true;
+							} else if (
+								link.match(/^c\d+$/) &&
+								match_link.indexOf(link) >= 0
+							) {
+								return true;
+							} else if (link === "") {
+								return true;
+							}
+						}
+						return false;
+					}, this)
+				);
+				if (item) {
+					this.routeCanvas(
+						class_string + "/go/" + item.id + (extra ? "/" + extra : "")
+					);
+					return;
+				}
+			}
+			var redirect_url =
+				window.location.href.replace(/\/class\/.*/, "/ebooks/") +
+				args.join("/");
+			if (this.previous_route && this.previous_route.hash) {
+				Backbone.history.navigate(this.previous_route.args.join("/"), {
+					trigger: true,
+				});
+				AoPS.Grid.Utils.CreateModalConfirm(
+					"Warning: You will be taken to another part of the AoPS website. Are you sure you want to proceed?",
+					function () {
+						window.location.replace(redirect_url);
+					}
+				);
+			} else {
+				window.location.replace(redirect_url);
+			}
+		},
+
+		goToProblemHelper: function (problem_id) {
+			var problem_model = this.models.master
+				.get("class")
+				.get("problems")
+				.findWhere({
+					problem_id: problem_id,
+				});
+			if (!_.isUndefined(problem_model)) {
+				this.routeCanvas(
+					this.models.master.get("class").get("class_string") +
+						"/homework/" +
+						problem_model.get("lesson")
+				);
+
+				// Note: weird stuff happens when the javascript is not allowed to cache on client.
+				//  For some reason, when my developer tools are open, the page slides down, then back up.
+				setTimeout(function () {
+					var $target = $('a[name="problem' + problem_id + '"]');
+					if ($target.length) {
+						$("html, body").animate(
+							{
+								scrollTop: $target.offset().top,
+							},
+							500
+						);
+					}
+				}, 10);
+			}
+			return problem_model;
+		},
+
+		goToProblem: function (problem_id) {
+			var class_string = this.models.master.get("class").get("class_string");
+			if (this.isSpNova) {
+				var item = _.find(
+					this.models.master.get("class").get("my_sp").objects,
+					_.bind(function (o) {
+						return (
+							o.object_type == "problem" &&
+							o.object_id == problem_id &&
+							!o.type.match(/^preview/)
+						);
+					}, this)
+				);
+				if (item) {
+					this.routeCanvas(class_string + "/go/" + item.id);
+				} else {
+					this.routeCanvas(class_string + "/home");
+				}
+			} else {
+				var problem_model = this.goToProblemHelper(problem_id);
+				if (_.isUndefined(problem_model)) {
+					this.models.master.executeWhenHomeworkLoaded(
+						{problem: problem_id, display: 1},
+						_.bind(function () {
+							problem_model = this.goToProblemHelper(problem_id);
+							if (_.isUndefined(problem_model)) {
+								this.routeCanvas(class_string + "/homework");
+							} else {
+								this.routeCanvas(
+									class_string + "/homework/" + problem_model.get("lesson")
+								);
+							}
+						}, this)
+					);
+				}
+			}
+		},
+
+		redirectSpAlcumusProblem: function (problem_id) {
+			/**
+			 * When we get a link like this:
+			 * /class/3095-prealgebra1/alcumus/problem/34497
+			 *
+			 * We need to route as though the link were this:
+			 * /class/3095-prealgebra1/go/1888/problem/34497
+			 *
+			 * However, ideally, the push state (history) should change to:
+			 * /class/3095-prealgebra1/go/1888
+			 *
+			 * Otherwise, back button makes Alcumus do wild stuff.
+			 * Kinda fragile, but this mostly does work.
+			 */
+			var class_string = this.models.master.get("class").get("class_string");
+
+			// Make sure that the problem ID corresponds to an SP object.
+			this.models.master.get("class").findSpObjectForAlcumusProblemId(
+				problem_id,
+				_.bind(function (sp_id) {
+					// Found item, so redirect.
+					this.routeCanvas(
+						class_string + "/go/" + sp_id + "/problem/" + problem_id
+					);
+
+					// Update history with sanitized URL.
+					Backbone.history.navigate(class_string + "/go/" + sp_id);
+				}, this),
+				_.bind(function () {
+					// Yo dawg, this isn't a problem ID corresponding to an SP object.
+					this.routeCanvas(class_string + "/home");
+				}, this)
+			);
+		},
+
+		goToVideo: function (args) {
+			var class_string = this.models.master.get("class").get("class_string");
+			var video_id;
+
+			if (args.length > 2) {
+				video_id = parseInt(args[2]);
+				if (this.isSpNova) {
+					var item = _.find(
+						this.models.master.get("class").get("my_sp").objects,
+						_.bind(function (o) {
+							return o.object_type == "video" && o.object_id == video_id;
+						}, this)
+					);
+					if (item) {
+						this.routeCanvas(class_string + "/go/" + item.id);
+					} else {
+						this.routeCanvas(class_string + "/home");
+					}
+				} else {
+					var video;
+					video = this.models.master.get("class").getVideoById(video_id);
+					if (!_.isNull(video)) {
+						this.routeCanvas(
+							this.models.master.get("class").get("class_string") +
+								"/video/" +
+								video.lesson +
+								"/" +
+								video_id
+						);
+					} else {
+						this.myPage.throwError({
+							error_type: "custom",
+							error_msg: "Sorry, I can't find the requested video.",
+						});
+					}
+				}
+			} else {
+				this.routeCanvas(this.models.master.get("class").get("class_string"));
+			}
+		},
+
+		initializeEbook: function (full) {
+			var book_id = parseInt(
+					_.first(AoPS.bootstrap_data.ebk_init_data.books).book_id
+				),
+				book,
+				root_url,
+				book_ctrl,
+				self = this,
+				ebooks_master;
+
+			ebooks_master = new AoPS.Ebooks.Models.Master({
+				user_id: this.models.master.get("class").get("perms").user.user_id,
+				is_embedded: true,
+			});
+
+			ebooks_master.unpack(AoPS.bootstrap_data.ebk_init_data);
+
+			book = ebooks_master.get("books").get(book_id);
+			book.set(
+				"cmty_category_id",
+				this.models.master.get("class").get("forum_id")
+			);
+
+			root_url =
+				"/class/" +
+				this.models.master.get("class").get("class_string") +
+				"/ebook/" +
+				book.get("store_sku") +
+				"/";
+			book_ctrl = new AoPS.Ebooks.BookController({
+				book_model: book,
+				root_url: root_url,
+				stay_attr: AoPS.pushState_attr,
+				full: full,
+			});
+
+			// console.log(ebooks_master);
+			this.models.master.get("class").set("ebook_controller", book_ctrl);
+
+			// Listen to a global ebk_goto_section event. This handles things like
+			// clicking the table of contents bar on the left and searching.
+			this.listenTo(
+				Backbone,
+				"ebk_goto_section",
+				function (_book, section_id, details) {
+					// Since you're only dealing with one book, the first argument (a book model)
+					// will always be the same and you can ignore it.
+					// Forward the other two arguments to BookController's getUrl.
+					book_ctrl.present_url = book_ctrl.getUrl(section_id, details);
+					// url will be null if the section does not exist, so check for that.
+					if (!book_ctrl.present_url) {
+						// Your error handling here. But this should never happen if I did my
+						// job right. Include a distinctive console.log so we can trap it
+						// in case I didn't.
+						console.log("bad ebk_goto_section call!");
+					} else {
+						// Forward the url to the controller, but also process the details.
+						// details is an object with info on searching/paragraph anchors/etc.
+						book_ctrl.processUrl(book_ctrl.present_url, details);
+						// ADD trigger to setPage here.
+
+						// Set the new URL in the browser. You might need to strip out the
+						// router_root before calling though; this should be a familiar problem.
+						// (I dodged this here since I'm doing hash URLs on the test page.)
+						this.navigate(root_url.substr(6) + book_ctrl.present_url, {
+							trigger: false,
+						});
+						Backbone.trigger("reset_ebook_page_feed");
+						self.setBreadcrumbs();
+					}
+				}
+			);
+
+			// Listen to the controller broadcasting a redirect notice and providing the
+			// new URL to show.
+			this.listenTo(book_ctrl, "replace_url", function (url) {
+				// Like with the router.navigate call in ebk_goto_section's handler,
+				// you probably need to strip out router_root here.
+
+				// May need to do the present_url magic here, too.
+				self.navigate(root_url.substr(6) + url, {
+					trigger: false,
+					replace: true,
+				});
+				if (book_ctrl.present_url === "") {
+					book_ctrl.present_url = url;
+					Backbone.trigger("reset_ebook_page_feed");
+				}
+				self.setBreadcrumbs();
+			});
+		},
+
+		setPageFeed: function (tab, args) {
+			var forum_id = this.models.master.get("class").get("forum_id");
+			if (forum_id !== 0 && AoPS.Feed) {
+				// Best to match the string in index.php FEED section
+				AoPS.Feed.setPageFeed(forum_id, 0, "All Class Messages");
+			}
+		},
+
+		resizeGridNovaToMaxHelper: function (tabView) {
+			_.each($("#grid.nova .aops-scroll-outer:visible"), function (outer) {
+				var $outer = $(outer);
+				$outer.find(".aops-scroll-content").css("max-width", $outer.width());
+			});
+			if (!_.isUndefined(tabView) && _.isFunction(tabView.onWindowResize)) {
+				tabView.onWindowResize();
+			}
+		},
+
+		resizeGridNovaToMaxInner: function () {
+			var tabView = (this.previous_route.page_element || {}).view || {};
+			var scrubEverything = false;
+
+			$("#main-content").css(
+				"height",
+				Math.max(
+					480,
+					$(window).height() -
+						$("#main-content").offset().top -
+						$("#small-footer-wrapper").height()
+				)
+			);
+
+			_.each(
+				$("#grid.nova .aops-scroll-outer.achtung:visible .aops-scroll-content"),
+				function (content) {
+					var $content = $(content);
+					if (
+						$content.prop("style").width &&
+						$content.prop("style").width !== "auto"
+					) {
+						scrubEverything = true;
+					}
+				}
+			);
+
+			if (
+				scrubEverything &&
+				this.previousGridSize &&
+				this.previousTabView &&
+				tabView &&
+				tabView.cid === this.previousTabView.cid
+			) {
+				if ($("#grid").width() === this.previousGridSize) {
+					scrubEverything = false;
+					// scrubEverything = true;
+				}
+			}
+
+			if (scrubEverything) {
+				_.each(
+					$("#grid.nova .aops-scroll-outer:visible .aops-scroll-content"),
+					function (content) {
+						var $content = $(content);
+						if ($content.prop("style").width !== "auto") {
+							$content.width("auto");
+						}
+					}
+				);
+				setTimeout(
+					_.bind(function () {
+						this.resizeGridNovaToMaxHelper(tabView);
+					}, this),
+					10
+				);
+			} else {
+				this.resizeGridNovaToMaxHelper(tabView);
+			}
+
+			this.previousTabView = tabView;
+			this.previousGridSize = $("#grid").width();
+		},
+
+		resizeGridNovaToMax: function () {
+			this.resizeGridNovaToMaxDebounced =
+				this.resizeGridNovaToMaxDebounced ||
+				_.debounce(_.bind(this.resizeGridNovaToMaxInner, this), 25);
+			this.resizeGridNovaToMaxDebounced(this);
+		},
+	});
+
+	/**
+	 * Let's get started!
+	 */
+	$(window).on("load", function () {
+		// Magical refresh
+		AoPS.refreshOnBackButtonLoadWithOldData("grid");
+
+		var grid_master = new AoPS.Grid.Models.Master();
+		var my_router;
+
+		AoPS.Grid.Debug = {Master: grid_master};
+
+		// Alcumus
+		var class_model = grid_master.get("class");
+		var tabs = class_model && class_model.get("my_grid_tabs");
+		if (
+			tabs &&
+			(tabs.findWhere({hash: "alcumus"}) || tabs.findWhere({hash: "sp-nova"}))
+		) {
+			var grid_url_prefix =
+				"/class/" + grid_master.get("class").get("class_string") + "/";
+			var grid_videos = {};
+
+			if (grid_master.get("class").has("my_videos")) {
+				_.each(grid_master.get("class").get("my_videos"), function (vid) {
+					grid_videos[parseInt(vid.video_id)] = parseInt(vid.lesson);
+				});
+			}
+			if (AoPS.Alcumus) {
+				grid_master.set(
+					"alcumus",
+					new AoPS.Alcumus.Models.Master({
+						grid_class_id: class_model.get("class_id"),
+						grid_forum_id: class_model.get("forum_id"),
+						grid_url_prefix: grid_url_prefix,
+						grid_ebook_ids: _.pluck(
+							grid_master.get("class").get("ebooks"),
+							"id"
+						),
+						grid_video_ids: grid_videos,
+						is_self_paced: class_model.get("is_sp_nova"),
+						user_id: class_model.get("perms").user.user_id,
+					})
+				);
+			}
+		}
+
+		my_router = new Grid.Router({
+			master: grid_master,
+		});
+
+		/**
+		 * In the router, we construct the myPage object that
+		 *  controls what we put on the page.  It has
+		 *  a master view whose .el element is what we manage
+		 *  to control what goes into the DOM.  Here, we add
+		 *  that master element to the main-content window.
+		 */
+		$("#main-content").prepend(my_router.myPage.el);
+		/**
+		 * And then we press go.
+		 */
+
+		AoPS.pushState_attr = "nav_grid";
+		AoPS.router_root = "class";
+
+		var my_class = my_router.models.master.get("class") || new Backbone.Model();
+
+		// I put this if block here to make the ebook happy when loading a full view
+		if (AoPS.bootstrap_data.hasOwnProperty("ebk_init_data")) {
+			var full = my_class.get("full");
+			my_router.initializeEbook(full);
+		}
+		if (
+			AoPS.Feed &&
+			my_class.get("forum_id") &&
+			my_class.get("perms").me.logged_in
+		) {
+			/** Build the feed.  This must come before you start your router. **/
+			AoPS.Feed.constructFeed(); //CMTY
+		} else {
+			/** There is no need to show no feed. **/
+			AoPS.Feed = null;
+		}
+
+		Backbone.history.start({pushState: true, root: "class"});
+
+		$(document).on("click", "a[nav_grid]", function (e) {
+			if (!e.metaKey && !e.ctrlKey) {
+				Backbone.history.navigate(
+					$(this)
+						.attr("href")
+						.replace(/^\/class\//, ""),
+					{trigger: true}
+				);
+				e.stopPropagation();
+				e.preventDefault();
+			}
+		});
+
+		if (my_router.myClass && my_router.isSpNova) {
+			$(window).resize(_.bind(my_router.resizeGridNovaToMax, my_router));
+		}
+	});
+
+	return Grid;
+})(AoPS.Grid);

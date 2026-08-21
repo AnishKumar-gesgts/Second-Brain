@@ -1,0 +1,46 @@
+Fuel mass according to the game manual is mfuel ≈(0.203 to 0.227kg) so can be used as ≈0.215 kg
+∥⃗l(x, t)∥≈1.12t −0.8t2√
+2 −1.085x
+Substituting back into y(t)
+y = ∥⃗l∥t
+√
+2 −(g −Fdrag
+m )t2
+2
+2
+√
+2y = 2t∥⃗l∥−
+√
+2t2 · (g −0.2886345 · Cd · ∥⃗l∥2
+m
+) ≈2t∥⃗l∥−
+√
+2t2 · (g −0.630968∥⃗l∥2)
+Solve for ∥⃗l(y, t)∥
+−
+√
+2t2 · (g −0.630968∥⃗l∥2) + 2t∥⃗l∥−2
+√
+2y = 0
+∥⃗l∥= −1.122
+t
++
+√4 + 10.08y + 5.04g
+1.782t
+∥⃗l(y, t)∥= −2 + √53.4424 + 10.08y
+1.782t
+Then solve for time of flight:
+−2 −
+p
+53.4424 + 10.08y = 1.782t(1.12t −0.8t2√
+2 −1.085x)
+The nature of this function means it is irreducible, even through Newton-Raphson method. However, time of flight can be
+implicitly defined as a function of x or y,
+t(x, y) = −1.4t3√
+2 −1.1x + 2t2 +
+p
+53.44 + 10.1y + 2 = 0
+When actually running, x and y would be inputted into t(x, y). This would result in a cubic, irreducible function of solely t,
+meaning Newton-Raphson method can be used to approximate the roots of the function. From there, the value t and the x
+could be substituted into ∥⃗l(x, t)∥to finally determine the exit velocity.
+3

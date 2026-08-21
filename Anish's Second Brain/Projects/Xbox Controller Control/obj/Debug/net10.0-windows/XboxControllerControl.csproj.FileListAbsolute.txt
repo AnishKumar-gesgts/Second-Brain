@@ -1,0 +1,14 @@
+C:\Users\notso\OneDrive\Documents\Workspace\Anish's Second Brain\Projects\Xbox Controller Control\bin\Debug\net10.0-windows\XboxControllerControl.exe
+C:\Users\notso\OneDrive\Documents\Workspace\Anish's Second Brain\Projects\Xbox Controller Control\bin\Debug\net10.0-windows\XboxControllerControl.deps.json
+C:\Users\notso\OneDrive\Documents\Workspace\Anish's Second Brain\Projects\Xbox Controller Control\bin\Debug\net10.0-windows\XboxControllerControl.runtimeconfig.json
+C:\Users\notso\OneDrive\Documents\Workspace\Anish's Second Brain\Projects\Xbox Controller Control\bin\Debug\net10.0-windows\XboxControllerControl.dll
+C:\Users\notso\OneDrive\Documents\Workspace\Anish's Second Brain\Projects\Xbox Controller Control\bin\Debug\net10.0-windows\XboxControllerControl.pdb
+C:\Users\notso\OneDrive\Documents\Workspace\Anish's Second Brain\Projects\Xbox Controller Control\obj\Debug\net10.0-windows\XboxControllerControl.GeneratedMSBuildEditorConfig.editorconfig
+C:\Users\notso\OneDrive\Documents\Workspace\Anish's Second Brain\Projects\Xbox Controller Control\obj\Debug\net10.0-windows\XboxControllerControl.AssemblyInfoInputs.cache
+C:\Users\notso\OneDrive\Documents\Workspace\Anish's Second Brain\Projects\Xbox Controller Control\obj\Debug\net10.0-windows\XboxControllerControl.AssemblyInfo.cs
+C:\Users\notso\OneDrive\Documents\Workspace\Anish's Second Brain\Projects\Xbox Controller Control\obj\Debug\net10.0-windows\XboxControllerControl.csproj.CoreCompileInputs.cache
+C:\Users\notso\OneDrive\Documents\Workspace\Anish's Second Brain\Projects\Xbox Controller Control\obj\Debug\net10.0-windows\XboxControllerControl.dll
+C:\Users\notso\OneDrive\Documents\Workspace\Anish's Second Brain\Projects\Xbox Controller Control\obj\Debug\net10.0-windows\refint\XboxControllerControl.dll
+C:\Users\notso\OneDrive\Documents\Workspace\Anish's Second Brain\Projects\Xbox Controller Control\obj\Debug\net10.0-windows\XboxControllerControl.pdb
+C:\Users\notso\OneDrive\Documents\Workspace\Anish's Second Brain\Projects\Xbox Controller Control\obj\Debug\net10.0-windows\XboxControllerControl.genruntimeconfig.cache
+C:\Users\notso\OneDrive\Documents\Workspace\Anish's Second Brain\Projects\Xbox Controller Control\obj\Debug\net10.0-windows\ref\XboxControllerControl.dll

@@ -1,0 +1,2475 @@
+/**
+ * This file contains many of the models used within the Grid.
+ * It does not include models for self-paces classes. See
+ * grid_models_self_paced.js for those models.
+ */
+
+AoPS.Utils.initKeyChain(AoPS, "Grid", "Models");
+
+AoPS.Grid.Models = (function (Models) {
+	Models.Master = Backbone.Model.extend({
+		// Model attributes:
+		// {string} today: Current date in YYYY-MM-DD format
+		// {boolean} isProduction
+		// {Object} grid_data
+		// {string} user_string
+		// {Backbone.Collection<Models.CryptTab>} crypt_tabs Tabs that are displayed on the header
+		// {Backbone.Collection<Models.CryptProblemType>} crypt_problem_types
+		// {Backbone.Collection<Models.CryptAnswerType>} crypt_answer_types
+		// {Backbone.Collection<Models.CryptPhysicsUnit>} crypt_physics_units
+		// {Models.GridClass} class
+		// {Object} lesson_has_homework
+		// {Object} current_problem_text
+		// {Object} nag_controller
+		// {*} bb_quiz_problem_ids
+		// {*} cs_test
+		// {*} is_badge_flyout_running
+		// {*} flown_badge_ids
+
+		initialize: function () {
+			if (moment.tz) {
+				moment.tz.setDefault("America/New_York");
+			}
+			this.set("today", moment().format("YYYY-MM-DD"));
+			if (AoPS.isProduction !== undefined) {
+				this.set("isProduction", AoPS.isProduction);
+			}
+
+			if (AoPS.bootstrap_data.grid_data !== undefined) {
+				this.set("grid_data", AoPS.bootstrap_data.grid_data);
+				if (
+					this.get("grid_data").session.logged_in_and_initialized &&
+					this.get("grid_data").class.perms.user.is_impersonated
+				) {
+					this.set(
+						"user_string",
+						"?user_id=" + this.get("grid_data").class.perms.user.user_id
+					);
+				} else {
+					this.set("user_string", "");
+				}
+			}
+
+			if (AoPS.bootstrap_data.has_shared_forum !== undefined) {
+				this.set("has_shared_forum", AoPS.bootstrap_data.has_shared_forum);
+				this.set("shared_forum_data", AoPS.bootstrap_data.shared_forum_data);
+			}
+
+			// Set up tabs, associating view with each
+			if (AoPS.bootstrap_data.crypt_tabs !== undefined) {
+				this.set(
+					"crypt_tabs",
+					new (Backbone.Collection.extend({model: Models.CryptTab}))()
+				);
+				this.get("crypt_tabs").on(
+					"add",
+					_.bind(function (object) {
+						object.set("master", this);
+						object.fetch(); // This is what actually associates the view.
+					}, this)
+				);
+				this.get("crypt_tabs").add(_.values(AoPS.bootstrap_data.crypt_tabs));
+			}
+
+			if (AoPS.bootstrap_data.crypt_problem_types !== undefined) {
+				this.set(
+					"crypt_problem_types",
+					new (Backbone.Collection.extend({
+						model: Models.CryptProblemType,
+					}))()
+				);
+				this.get("crypt_problem_types").on(
+					"add",
+					_.bind(function (object) {
+						object.set("master", this);
+						object.fetch();
+					}, this)
+				);
+				this.get("crypt_problem_types").add(
+					_.values(AoPS.bootstrap_data.crypt_problem_types)
+				);
+			}
+
+			if (AoPS.bootstrap_data.crypt_answer_types !== undefined) {
+				this.set(
+					"crypt_answer_types",
+					new (Backbone.Collection.extend({
+						model: Models.CryptAnswerType,
+					}))()
+				);
+				this.get("crypt_answer_types").on(
+					"add",
+					_.bind(function (object) {
+						object.set("master", this);
+						object.fetch();
+					}, this)
+				);
+				this.get("crypt_answer_types").add(
+					_.values(AoPS.bootstrap_data.crypt_answer_types)
+				);
+			}
+
+			if (AoPS.bootstrap_data.crypt_physics_units !== undefined) {
+				this.set(
+					"crypt_physics_units",
+					new (Backbone.Collection.extend({
+						model: Models.CryptPhysicsUnit,
+					}))()
+				);
+				this.get("crypt_physics_units").on(
+					"add",
+					_.bind(function (object) {
+						object.set("master", this);
+					}, this)
+				);
+				this.get("crypt_physics_units").add(
+					_.values(AoPS.bootstrap_data.crypt_physics_units)
+				);
+			}
+
+			if (this.get("grid_data") && this.get("grid_data").class !== undefined) {
+				this.set("class", new Models.GridClass(this.get("grid_data").class));
+				this.get("class").set("master", this);
+				this.get("class").fetch();
+			}
+
+			this.set("lesson_has_homework", {});
+			this.set("current_problem_text", {});
+			this.set("nag_controller", {});
+		},
+
+		shouldNagWhenRouting: function () {
+			return this.get("nag_controller").should_nag;
+		},
+
+		resetNagController: function () {
+			_.extend(this.get("nag_controller"), {
+				should_nag: false,
+				$scroll: null,
+				prompt: "You have unsaved work on this page.",
+				stay: "Stay on this page!",
+				leave: "Leave this screen.",
+			});
+		},
+		setNagController: function (opt) {
+			_.extend(this.get("nag_controller"), opt);
+		},
+		findCurrentProblemText: function (problem_id) {
+			if (problem_id in this.get("current_problem_text")) {
+				return this.get("current_problem_text")[problem_id];
+			} else {
+				return undefined;
+			}
+		},
+		addCurrentProblemText: function (problem_id, text) {
+			this.get("current_problem_text")[problem_id] = text;
+		},
+		updateCurrentProblemText: function (problem_id, text) {
+			if (problem_id in this.get("current_problem_text")) {
+				this.get("current_problem_text")[problem_id] = text;
+			}
+		},
+		removeCurrentProblemText: function (problem_id) {
+			if (problem_id in this.get("current_problem_text")) {
+				delete this.get("current_problem_text")[problem_id];
+			}
+		},
+		executeWhenReadingQuizLoaded: function (quiz_id, success) {
+			if (_.isUndefined(this.get("bb_quiz_problem_ids"))) {
+				this.set("bb_quiz_problem_ids", {});
+			}
+
+			if (_.isUndefined(this.get("bb_quiz_problem_ids")[quiz_id])) {
+				AoPS.Grid.Utils.ajax_runner.run(
+					"get_class_reading_quiz_problems",
+					{
+						class_id: this.get("class").get("class_id"),
+						user_id: this.get("class").get("perms").user.user_id,
+						quiz_id: quiz_id,
+					},
+					_.bind(function (ok, data) {
+						if (data.error_code) {
+							AoPS.Grid.Utils.CreateModalAlert(data.error_msg);
+						} else if (ok) {
+							if (data.response.problems) {
+								this.get("class").addOrUpdateHomeworkProblem(
+									data.response.problems
+								);
+							}
+							this.get("bb_quiz_problem_ids")[quiz_id] = _.pluck(
+								data.response.problems,
+								"problem_id"
+							);
+							if (_.isFunction(success)) {
+								success(this.get("bb_quiz_problem_ids")[quiz_id]);
+							}
+						}
+					}, this)
+				);
+			} else {
+				if (_.isFunction(success)) {
+					success(this.get("bb_quiz_problem_ids")[quiz_id]);
+				}
+			}
+		},
+		executeWhenHomeworkLoaded: function (opt, success) {
+			if (!_.isUndefined(opt.lesson) && _.isArray(opt.lesson)) {
+				opt.lesson = _.map(opt.lesson, function (l) {
+					return parseInt(l);
+				});
+			} else if (!_.isUndefined(opt.lesson) && parseInt(opt.lesson)) {
+				opt.lesson = [parseInt(opt.lesson)];
+			} else {
+				opt.lesson = [];
+			}
+
+			if (!_.isUndefined(opt.problem) && _.isArray(opt.problem)) {
+				opt.problem = _.map(opt.problem, function (l) {
+					return parseInt(l);
+				});
+			} else if (!_.isUndefined(opt.problem) && parseInt(opt.problem)) {
+				opt.problem = [parseInt(opt.problem)];
+			} else {
+				opt.problem = [];
+			}
+
+			this.getClassHomework(opt, success);
+		},
+		getClassHomework: function (opt, success) {
+			AoPS.Grid.Utils.ajax_runner.run(
+				"get_class_homework",
+				{
+					class_id: this.get("class").get("class_id"),
+					lesson: opt.lesson,
+					problem: opt.problem,
+					display: opt.display,
+					user_id: this.get("class").get("perms").user.user_id,
+					unformatted_submissions: opt.unformatted,
+				},
+				_.bind(function (ok, data) {
+					if (data.error_code) {
+						if (!opt.unformatted && data.error_code === "E_AJAX_TIMEOUT") {
+							opt.unformatted = true;
+							this.getClassHomework(opt, success);
+						} else {
+							AoPS.Grid.Utils.CreateModalAlert(data.error_msg);
+						}
+					} else if (ok) {
+						if (data.response.problems) {
+							var lessons = _.uniq(
+								_.extend(
+									[],
+									opt.lesson,
+									_.pluck(data.response.problems, "lesson")
+								)
+							);
+							_.each(
+								lessons,
+								_.bind(function (l) {
+									this.get("lesson_has_homework")[l] = opt.display ? 1 : -1;
+								}, this)
+							);
+							this.get("class").addOrUpdateHomeworkProblem(
+								data.response.problems
+							);
+							this.get("class")
+								.get("hw_lessons")
+								.each(function (lesson) {
+									if (lessons.indexOf(lesson.get("lesson")) >= 0) {
+										lesson.updateHomeworkStatus();
+									}
+								});
+							if (_.isFunction(success)) {
+								success();
+							}
+						}
+
+						if (
+							this.get("class").get("is_self_paced") &&
+							data.response.update_sp
+						) {
+							this.getPartialSelfPacedProgress();
+						}
+					}
+				}, this)
+			);
+		},
+		startCodeOlympiadTest: function (opt, success) {
+			AoPS.Grid.Utils.ajax_runner.run(
+				"start_code_olympiad_test",
+				{
+					class_id: this.get("class").get("class_id"),
+					lesson: opt.lesson,
+					user_id: this.get("class").get("perms").user.user_id,
+					difficulty: opt.difficulty,
+				},
+				_.bind(function (ok, data) {
+					if (data.error_code) {
+						AoPS.Grid.Utils.CreateModalAlert(data.error_msg);
+					} else if (ok) {
+						this.setCodeOlympiadTestData(data.response);
+						success();
+					}
+				}, this)
+			);
+		},
+		getCodeOlympiadTestData: function (opt, success) {
+			AoPS.Grid.Utils.ajax_runner.run(
+				"get_code_olympiad_test_data",
+				{
+					class_id: this.get("class").get("class_id"),
+					lesson: opt.lesson,
+					user_id: this.get("class").get("perms").user.user_id,
+				},
+				_.bind(function (ok, data) {
+					if (data.error_code) {
+						AoPS.Grid.Utils.CreateModalAlert(data.error_msg);
+					} else if (ok) {
+						this.setCodeOlympiadTestData(data.response);
+						success();
+					}
+				}, this)
+			);
+		},
+		setCodeOlympiadTestData: function (data) {
+			this.set("cs_test", data);
+
+			// Set start and end times.
+			if (this.get("cs_test").started_at) {
+				var start_time;
+				if (this.get("cs_test").started_at.date) {
+					start_time = new Date(this.get("cs_test").started_at.date);
+				} else {
+					start_time = new Date(this.get("cs_test").started_at);
+				}
+				this.get("cs_test").start_time = start_time;
+
+				this.get("cs_test").end_time = moment(
+					this.get("cs_test").should_end_at.date
+				);
+			}
+		},
+		finishCodeOlympiadTest: function (opt, success) {
+			AoPS.Grid.Utils.ajax_runner.run(
+				"finish_code_olympiad_test",
+				{
+					class_id: this.get("class").get("class_id"),
+					lesson: opt.lesson,
+					user_id: this.get("class").get("perms").user.user_id,
+					difficulty: opt.difficulty,
+				},
+				_.bind(function (ok, data) {
+					if (data.error_code) {
+						AoPS.Grid.Utils.CreateModalAlert(data.error_msg);
+					} else if (ok) {
+						this.setCodeOlympiadTestData(data.response);
+						success();
+					}
+				}, this)
+			);
+		},
+		loadTranscript: function (obj) {
+			AoPS.Grid.Utils.ajax_runner.run(
+				"get-transcript-for-grid",
+				{
+					class_id: this.get("class").get("class_id"),
+					user_id: this.get("class").get("perms").me.user_id,
+					instance_id: obj.instance_id,
+				},
+				_.bind(function (ok, data) {
+					if (data.error_code) {
+						AoPS.Grid.Utils.CreateModalAlert(data.error_msg);
+					} else if (ok) {
+						if (data.response.transcript_data) {
+							obj.onFinish(data.response);
+						}
+					}
+				}, this)
+			);
+		},
+		markTranscriptRow: function (obj) {
+			AoPS.Grid.Utils.ajax_runner.run(
+				"mark-transcript-row",
+				{
+					class_id: this.get("class").get("class_id"),
+					user_id: this.get("class").get("perms").me.user_id,
+					row_id: obj.row_id,
+					topic_id: obj.topic_id,
+					instance_id: obj.instance_id,
+				},
+				_.bind(function (ok, data) {
+					if (data.error_code) {
+						AoPS.Grid.Utils.CreateModalAlert(data.error_msg);
+					} else if (ok) {
+					}
+				}, this)
+			);
+		},
+		/**
+		 * Make a badge fly out into the grid!
+		 *
+		 * Basically, this is a recursive function that flies badges until none remain.
+		 * If a flyout is already running, it will not run.
+		 *
+		 * The optional forceDisplay will force the flyout to fly.
+		 *
+		 * Note: the following functions are here because of this
+		 * notion that one day, if we want to take badges out of the
+		 * Grid, you might want to see all the logic in one place.
+		 * It could just as easily have been at the GridClass level.
+		 **/
+		makeBadgeFlyout: function (forceDisplay) {
+			if (forceDisplay || !this.getIsBadgeFlyoutRunning()) {
+				// Return the first badge that needs to fly and haven't been flown yet.
+				var badgeToDisplay = _.find(
+					this.getMyBadges(),
+					_.bind(function (b) {
+						return b.to_fly && !this.checkIfBadgeIdHasFlown(b.badge_id);
+					}, this)
+				);
+
+				if (badgeToDisplay) {
+					// We have at least one badge to display. Tell the class we're flying out a badge.
+					this.setIsBadgeFlyoutRunning(true);
+
+					// A little bit of a timeout because it feels more satisfying?
+					setTimeout(
+						_.bind(function () {
+							// Style and display the badge.
+							var $fly = $("<div />")
+								.hide()
+								.addClass("badge-flyout")
+								.appendTo($("#grid"));
+
+							// Image portion.
+							$("<div />")
+								.addClass("lefty")
+								.append(
+									$("<img />").attr(
+										"src",
+										"/assets/images/badges/" + badgeToDisplay.badge_id + ".svg"
+									)
+								)
+								.appendTo($fly);
+
+							// Text portion.
+							$("<div />")
+								.addClass("righty")
+								.append(
+									$("<div />").addClass("status").text("You earned a badge!")
+								)
+								.append($("<div />").addClass("name").text(badgeToDisplay.name))
+								.append(
+									$("<div />")
+										.addClass("description")
+										.text(badgeToDisplay.description)
+								)
+								.appendTo($fly);
+
+							// Slide down the badge and then mark it as viewed.
+							$fly.slideDown(
+								"slow",
+								_.bind(function () {
+									AoPS.Grid.Utils.ajax_runner.run(
+										"set_class_badge_viewed",
+										{
+											class_id: this.get("class").get("class_id"),
+											user_id: this.get("class").get("perms").user.user_id,
+											id: badgeToDisplay.id,
+										},
+										_.bind(function (ok, data) {
+											// Ok, now the badge doesn't need to be flown later.
+											badgeToDisplay.to_fly = false;
+
+											// Also, let's add this badge_id to flown badges.
+											this.markBadgeIdAsFlown(badgeToDisplay.badge_id);
+
+											// Wait a little bit, then slide up the badge so it disappears.
+											setTimeout(
+												_.bind(function () {
+													$fly.slideUp(
+														"slow",
+														_.bind(function () {
+															/**
+															 * At this point, we call the same method self-recursively.
+															 * Though we could set the flyout running boolean to false and
+															 * then just run makeBadgeFlyout again, this was never particularly
+															 * reliable, probably because of all the delayed timers. So we
+															 * run with the forceDisplay set to true.
+															 **/
+															this.makeBadgeFlyout(true);
+														}, this)
+													);
+												}, this),
+												5000
+											);
+										}, this)
+									);
+								}, this)
+							);
+						}, this),
+						1000
+					);
+				} else {
+					// We are out of badges. Set the flag to false.
+					this.setIsBadgeFlyoutRunning(false);
+				}
+			}
+		},
+		// Fetch badges from the database and start flyout.
+		// Not used in SP, though it should work in SP.
+		fetchBadges: function () {
+			AoPS.Grid.Utils.ajax_runner.run(
+				"fetch_badges",
+				{
+					class_id: this.get("class").get("class_id"),
+					user_id: this.get("class").get("perms").user.user_id,
+				},
+				_.bind(function (ok, data) {
+					if (data.error_code === "E_NOACTION") {
+						return;
+					} else if (data.error_code) {
+						AoPS.Grid.Utils.CreateModalAlert(data.error_msg);
+					} else if (ok) {
+						if (data.response.badges) {
+							this.setMyBadges(data.response.badges);
+							this.makeBadgeFlyout();
+						}
+					}
+				}, this)
+			);
+		},
+		// Set locally stored badges. SP will overload this method.
+		setMyBadges: function (badges) {
+			this.get("class").set("my_badges", badges || []);
+			this.get("class").trigger("report_has_changed");
+			return this.get("class").get("my_badges");
+		},
+		// Get locally stored badges (post-fetching). SP will overload this method.
+		getMyBadges: function () {
+			return this.get("class").get("my_badges") || [];
+		},
+		// Mark whether there is currently an active flyout or not.
+		setIsBadgeFlyoutRunning: function (status) {
+			this.set("is_badge_flyout_running", status || false);
+			return this.get("is_badge_flyout_running");
+		},
+		// Check whether there is currently an active flyout or not.
+		getIsBadgeFlyoutRunning: function () {
+			return this.get("is_badge_flyout_running") || false;
+		},
+		// Add badge_id to the list of seen badge ids.
+		markBadgeIdAsFlown: function (badge_id) {
+			this.set(
+				"flown_badge_ids",
+				(this.get("flown_badge_ids") || []).concat([badge_id])
+			);
+		},
+		// Check if badge_id is in the list of seen badge ids.
+		checkIfBadgeIdHasFlown: function (badge_id) {
+			if ((this.get("flown_badge_ids") || []).indexOf(badge_id) >= 0) {
+				return true;
+			} else {
+				return false;
+			}
+		},
+	});
+
+	/**
+	 * Base model for Crypt* models.
+	 */
+	Models.CryptConstant = Backbone.Model.extend({
+		initialize: function () {},
+		fetch: function () {},
+	});
+
+	/**
+	 * Model for the blue tab buttons that appear on the header
+	 */
+	Models.CryptTab = Models.CryptConstant.extend({
+		// Properties:
+		// {Backbone.View} prototype
+
+		initialize: function () {},
+		fetch: function () {
+			var index = "GridTab" + this.get("prototype_name");
+			if (_.isUndefined(AoPS.Grid.Views[index])) {
+				this.set("prototype", AoPS.Grid.Views.GridTab);
+			} else {
+				this.set("prototype", AoPS.Grid.Views[index]);
+			}
+		},
+	});
+
+	Models.CryptProblemType = Models.CryptConstant.extend({
+		initialize: function () {},
+		fetch: function () {
+			this.set("is_" + this.get("has"), true);
+		},
+	});
+
+	Models.CryptAnswerType = Models.CryptConstant.extend({
+		initialize: function () {},
+		fetch: function () {},
+	});
+
+	Models.CryptPhysicsUnit = Models.CryptConstant.extend({
+		initialize: function () {},
+		fetch: function () {},
+	});
+
+	Models.GridClassLesson = Backbone.Model.extend({
+		initialize: function () {},
+		updateHomeworkStatus: function () {
+			var human_singular = "writing problem";
+			var human_plural = "writing problems";
+			var machine_singular = "challenge problem";
+			var machine_plural = "challenge problems";
+
+			this.set("num_answered_machine", 0);
+			this.set("num_answered_human", 0);
+			this.set("num_graded_machine", 0);
+			this.set("num_graded_human", 0);
+			this.set("num_total_machine", 0);
+			this.set("num_total_human", 0);
+			this.set("num_total_discussion", 0);
+			this.set("sum_pts_earned", 0);
+			this.set("sum_pts_possible", 0);
+
+			this.get("hw_problems").each(
+				_.bind(function (problem) {
+					var suffix = null;
+					if (problem.get("crypt_problem_type").get("is_discussion")) {
+						suffix = "discussion";
+					} else if (problem.get("crypt_problem_type").get("is_collected")) {
+						suffix = "human";
+					} else if (
+						problem.get("crypt_problem_type").get("is_free_response") ||
+						problem.get("crypt_problem_type").get("is_parsed")
+					) {
+						suffix = "machine";
+					}
+					if (suffix) {
+						this.set(
+							"num_total_" + suffix,
+							this.get("num_total_" + suffix) + 1
+						);
+						if (problem.get("answered_at")) {
+							this.set(
+								"num_answered_" + suffix,
+								this.get("num_answered_" + suffix) + 1
+							);
+						}
+						if (problem.get("graded_at")) {
+							this.set(
+								"num_graded_" + suffix,
+								this.get("num_graded_" + suffix) + 1
+							);
+							if (
+								problem.get("display_score") &&
+								problem.get("display_score").length
+							) {
+								this.set(
+									"sum_pts_earned",
+									this.get("sum_pts_earned") +
+										_.first(problem.get("display_score")).score
+								);
+							}
+						} else if (problem.get("crypt_problem_type").get("is_judged")) {
+							if (
+								problem.get("has_been_finalized") ||
+								problem.get("not_selected")
+							) {
+								if (
+									problem.get("display_score") &&
+									problem.get("display_score").length
+								) {
+									this.set(
+										"sum_pts_earned",
+										this.get("sum_pts_earned") +
+											_.first(problem.get("display_score")).score
+									);
+								}
+							} else {
+								// Get the score from the most recent judged submission
+								for (var i = problem.get("files").length - 1; i >= 0; i--) {
+									if (problem.get("files")[i].submitted_to_judge_at) {
+										this.set(
+											"sum_pts_earned",
+											this.get("sum_pts_earned") + problem.get("files")[i].score
+										);
+										break;
+									}
+								}
+							}
+						}
+						this.set(
+							"sum_pts_possible",
+							this.get("sum_pts_possible") +
+								parseFloat(problem.get("max_score"))
+						);
+					}
+				}, this)
+			);
+
+			this.set("homework_status", []);
+			var timezone = this.get("class").get("timezone"),
+				to_release_at = this.get("to_release_at"),
+				hw_release_date = false;
+			if (to_release_at) {
+				var hw_release_at =
+					to_release_at.slice(0, to_release_at.indexOf(" ")) +
+					" " +
+					this.get("dates")[0].time_start_at;
+				if (this.get("class").get("campus_id") === "web") {
+					hw_release_at = to_release_at;
+				}
+				hw_release_date = moment(hw_release_at).tz(timezone);
+			}
+			if (
+				!this.get("class").get("flavor").has_bao_bar &&
+				this.get("released_at") &&
+				(!hw_release_date || hw_release_date.unix() < moment().unix())
+			) {
+				// Regular Homework
+				if (this.get("num_total_machine")) {
+					this.get("homework_status").push(
+						"You have completed " +
+							"<b>" +
+							this.get("num_graded_machine") +
+							"</b> of <b>" +
+							this.get("num_total_machine") +
+							"</b> " +
+							(this.get("num_total_machine") > 1
+								? machine_plural
+								: machine_singular) +
+							"."
+					);
+				}
+
+				if (this.get("closed_at") && this.get("num_total_human") > 1) {
+					if (!this.get("num_answered_human")) {
+						this.get("homework_status").push(
+							"You did not submit any " + human_singular + " responses."
+						);
+					} else if (
+						this.get("num_answered_human") > this.get("num_graded_human")
+					) {
+						this.get("homework_status").push(
+							"You submitted a response for <b>" +
+								this.get("num_answered_human") +
+								"</b> " +
+								"of <b>" +
+								this.get("num_total_human") +
+								"</b> " +
+								human_plural +
+								"."
+						);
+					} else {
+						this.get("homework_status").push(
+							"Your " +
+								this.get("num_answered_human") +
+								" " +
+								human_singular +
+								" " +
+								(this.get("num_answered_human") > 1
+									? "responses have"
+									: "response has") +
+								" been graded."
+						);
+						var did_not_answer =
+							this.get("num_total_human") - this.get("num_answered_human");
+						if (did_not_answer) {
+							this.get("homework_status").push(
+								"You did not submit a response for <b>" +
+									did_not_answer +
+									"</b> " +
+									(did_not_answer > 1 ? human_plural : human_singular) +
+									"."
+							);
+						}
+					}
+				} else if (this.get("closed_at") && this.get("num_total_human")) {
+					if (this.get("num_answered_human") && this.get("num_graded_human")) {
+						this.get("homework_status").push(
+							"Your " + human_singular + " response has been graded."
+						);
+					} else if (this.get("num_answered_human")) {
+						this.get("homework_status").push(
+							"You submitted a response for the " + human_singular + "."
+						);
+					} else if (!this.get("num_graded_human")) {
+						this.get("homework_status").push(
+							"The " + human_singular + " is <b>past due</b>."
+						);
+					} else {
+						this.get("homework_status").push(
+							"You did not submit a " + human_singular + " response."
+						);
+					}
+				} else if (
+					this.get("num_total_human") - this.get("num_answered_human") >
+					0
+				) {
+					this.get("homework_status").push(
+						"You have <b>" +
+							this.get("num_total_human") +
+							"</b> " +
+							(this.get("num_total_human") > 1
+								? human_plural
+								: human_singular) +
+							" to complete."
+					);
+				} else if (this.get("num_total_human")) {
+					this.get("homework_status").push(
+						"You answered <b>" +
+							this.get("num_total_human") +
+							"</b> " +
+							(this.get("num_total_human") > 1
+								? human_plural
+								: human_singular) +
+							"."
+					);
+				}
+			} else if (!_.isNull(this.get("to_release_at"))) {
+				if (this.get("class").shouldShowDate(this.get("to_release_at"))) {
+					this.get("homework_status").push(
+						"Available <b>" + this.get("to_release_at_fmt") + "</b>."
+					);
+				} else {
+					this.get("homework_status").push("Homework is not yet available.");
+				}
+			}
+
+			if (
+				!_.isNull(this.get("due_at")) &&
+				this.get("class").shouldShowDate(this.get("due_at"))
+			) {
+				this.get("homework_status").push(
+					(this.get("closed_at") ? "Past Due" : "Due") +
+						" " +
+						"<b>" +
+						this.get("due_at_fmt") +
+						"</b>."
+				);
+			}
+
+			if (
+				this.get("released_at") &&
+				!this.get("num_total_human") &&
+				!this.get("num_total_machine") &&
+				this.get("num_total_discussion")
+			) {
+				if (
+					!_.isNull(this.get("due_at")) &&
+					this.get("class").shouldShowDate(this.get("due_at"))
+				) {
+					this.get("homework_status").push(
+						"Solution" +
+							(this.get("num_total_human") + this.get("num_total_machine") > 1
+								? "s"
+								: "") +
+							" available <b>" +
+							this.get("due_at_fmt") +
+							"</b>."
+					);
+				}
+			} else if (
+				!this.get("class").get("flavor").has_bao_bar &&
+				this.get("released_at") &&
+				hw_release_date &&
+				hw_release_date.unix() < moment().unix() &&
+				!this.get("num_total_human") &&
+				!this.get("num_total_machine")
+			) {
+				if (this.get("class").get("flavor").is_accel_2pw) {
+					this.get("homework_status").push(
+						"This meeting's homework is listed under the previous meeting."
+					);
+				} else {
+					this.get("homework_status").push(
+						"There are no " +
+							this.get("class").get("flavor").hw_counting_unit +
+							"s for this lesson."
+					);
+				}
+			}
+			if (
+				_.contains(
+					this.get("class").get("extensible_lessons"),
+					this.get("lesson")
+				)
+			) {
+				this.set("is_extensible", true);
+			} else {
+				this.set("is_extensible", false);
+			}
+		},
+		markAsViewed: function () {
+			AoPS.Grid.Utils.ajax_runner.run("mark_lesson_as_viewed", {
+				class_id: this.get("class").get("class_id"),
+				user_id: this.get("class").get("perms").user.user_id,
+				lesson: this.get("lesson"),
+			});
+		},
+		fetch: function () {
+			this.set("videos", []);
+			this.set(
+				"sp_sections",
+				new (Backbone.Collection.extend({
+					model: Models.GridSPSection,
+				}))()
+			);
+			this.set(
+				"handouts",
+				new (Backbone.Collection.extend({
+					model: Models.GridClassHandout,
+				}))()
+			);
+			this.set(
+				"hw_problems",
+				new (Backbone.Collection.extend({
+					model: Models.GridClassHomeworkProblem,
+				}))()
+			);
+
+			if (this.get("topic") && this.get("topic").substring(0, 3) == "[!]") {
+				this.set("topic", this.get("topic").substring(3));
+				this.set("display_lesson", null);
+			} else {
+				this.set("topic", this.get("topic") || "");
+				this.set("display_lesson", this.get("lesson"));
+			}
+
+			var vars = {
+				today: this.get("master").get("today"),
+				start: this.get("date_start_at"),
+				end: this.get("date_end_at"),
+				lesson: this.get("lesson"),
+				current: this.get("class").get("current_lesson"),
+			};
+			this.set(
+				"is_current",
+				vars.lesson == vars.current ||
+					(vars.start <= vars.today && vars.today <= vars.end)
+			);
+			this.set(
+				"is_past",
+				vars.lesson != vars.current && vars.today > vars.start
+			);
+			this.set(
+				"is_future",
+				vars.lesson != vars.current && vars.today < vars.end
+			);
+
+			var now = new Date();
+			var a_week_ago = new Date(
+				now.getFullYear(),
+				now.getMonth(),
+				now.getDate() - 7
+			);
+			var start_time = new Date(vars.start);
+			this.set(
+				"is_during_the_past_week",
+				start_time > a_week_ago && start_time < now
+			);
+
+			if (this.get("class").get("ebooks").length) {
+				var filtered = _.filter(this.get("class").get("ebooks"), function (b) {
+					return _.isArray(b.lessons) && b.lessons.indexOf(vars.lesson) >= 0;
+				});
+				this.set(
+					"ebook",
+					_.first(filtered.length ? filtered : this.get("class").get("ebooks"))
+				);
+			} else {
+				this.set("ebook", null);
+			}
+		},
+		parseReading: function (readings, user_string) {
+			var $ebook = $("<div />");
+			var parsed = readings,
+				current = parsed,
+				matches = [];
+			parsed.replace(/\{(.*?)\}/gi, function (meow) {
+				matches.push(meow);
+			});
+			_.each(
+				matches,
+				_.bind(function (splitter) {
+					var splitted = current.split(splitter, 2);
+					var parted = splitter.slice(1, -1).split(";");
+					if (splitted[0]) {
+						$ebook.append(
+							$("<span />").text($("<span />").html(splitted[0]).text())
+						);
+					}
+					if (parted.length >= 2) {
+						$ebook.append(
+							$("<a />")
+								.text(parted[0])
+								.attr({
+									nav_grid: 1,
+									href:
+										"/" +
+										AoPS.router_root +
+										"/" +
+										this.get("class").get("class_string") +
+										"/ebook/" +
+										(this.get("ebook") ? this.get("ebook").sku : "book") +
+										"/" +
+										parted[1] +
+										(user_string || ""),
+								})
+						);
+					}
+					current = splitted[1] || "";
+				}, this)
+			);
+			if (current) {
+				$ebook.append($("<span />").text($("<span />").html(current).text()));
+			}
+			return $ebook;
+		},
+	});
+
+	Models.GridClassHomeworkProblem = Backbone.Model.extend({
+		initialize: function () {},
+		fetch: function () {
+			this.set(
+				"class_lesson",
+				this.get("class")
+					.get("hw_lessons")
+					.findWhere({lesson: this.get("lesson")})
+			);
+			if (
+				this.get("class_lesson") &&
+				!this.get("class_lesson")
+					.get("hw_problems")
+					.findWhere({problem_id: this.get("problem_id")})
+			) {
+				this.get("class_lesson").get("hw_problems").add(this);
+			}
+			if (!this.get("crypt_problem_type")) {
+				this.set(
+					"crypt_problem_type",
+					this.get("master")
+						.get("crypt_problem_types")
+						.findWhere({hash: this.get("problem_type")})
+				);
+			}
+			if (!this.get("crypt_answer_type")) {
+				this.set(
+					"crypt_answer_type",
+					this.get("master")
+						.get("crypt_answer_types")
+						.findWhere({hash: this.get("answer_type")})
+				);
+			}
+			this.trigger("rebuild");
+		},
+		deleteFile: function (hw_file_id) {
+			$.ajax({
+				type: "post",
+				url: "/class/upload.php",
+				data: {
+					class_id: this.get("class").get("class_id"),
+					user_id: this.get("class").get("perms").user.user_id,
+					problem_id: this.get("problem_id"),
+					delete: hw_file_id,
+				},
+				dataType: "json",
+			}).done(
+				_.bind(function (data) {
+					if (data.response.problems) {
+						this.get("class").addOrUpdateHomeworkProblem(
+							data.response.problems
+						);
+					} else {
+						AoPS.Grid.Utils.CreateModalAlert(data.error_msg);
+					}
+				}, this)
+			);
+		},
+		getHint: function (response) {
+			AoPS.Grid.Utils.ajax_runner.run(
+				"respond_to_hw_assignment",
+				{
+					class_id: this.get("class").get("class_id"),
+					user_id: this.get("class").get("perms").user.user_id,
+					problem_id: this.get("problem_id"),
+					response: response,
+					status_text: this.get("status_text"),
+					get_hint: 1,
+					sp_last_updated_at: this.get("master").get("sp_last_updated_at"),
+				},
+				_.bind(function (ok, data) {
+					if (data.error_code) {
+						AoPS.Grid.Utils.CreateModalAlert(data.error_msg);
+					} else if (ok) {
+						if (data.response.problems) {
+							this.get("class").addOrUpdateHomeworkProblem(
+								data.response.problems
+							);
+						}
+						if (data.response.sp) {
+							this.get("master").updatePartialSelfPacedProgress(data.response);
+						}
+					}
+				}, this)
+			);
+		},
+		reportBug: function (text, success) {
+			AoPS.Grid.Utils.ajax_runner.run(
+				"report_bug",
+				{
+					class_id: this.get("class").get("class_id"),
+					user_id: this.get("class").get("perms").user.user_id,
+					problem_id: this.get("problem_id"),
+					text: text,
+				},
+				_.bind(function (ok, data) {
+					if (data.error_code) {
+						AoPS.Grid.Utils.CreateModalAlert(data.error_msg);
+					} else if (ok) {
+						success();
+					}
+				}, this)
+			);
+		},
+		thankGrader: function () {
+			AoPS.Grid.Utils.ajax_runner.run(
+				"thank_grader",
+				{
+					class_id: this.get("class").get("class_id"),
+					user_id: this.get("class").get("perms").user.user_id,
+					problem_id: this.get("problem_id"),
+				},
+				_.bind(function (ok, data) {
+					if (data.error_code) {
+						AoPS.Grid.Utils.CreateModalAlert(data.error_msg);
+					} else if (ok) {
+						if (data.response.problems) {
+							this.get("class").addOrUpdateHomeworkProblem(
+								data.response.problems
+							);
+						}
+					}
+				}, this)
+			);
+		},
+		autosave: function (response, success) {
+			AoPS.Grid.Utils.ajax_runner.run(
+				"autosave_hw_assignment",
+				{
+					class_id: this.get("class").get("class_id"),
+					user_id: this.get("class").get("perms").user.user_id,
+					problem_id: this.get("problem_id"),
+					response: response,
+				},
+				_.bind(function (ok, data) {
+					if (data.error_code) {
+						AoPS.Grid.Utils.CreateModalAlert(data.error_msg);
+					} else if (ok) {
+						if (data.response.problems) {
+							this.get("class").addOrUpdateHomeworkProblem(
+								data.response.problems
+							);
+							if (this.get("class_lesson")) {
+								this.get("class_lesson").updateHomeworkStatus();
+							}
+						}
+						if (_.isFunction(success)) {
+							success();
+						}
+					}
+				}, this)
+			);
+		},
+		refresh: function (success) {
+			AoPS.Grid.Utils.ajax_runner.run(
+				"respond_to_hw_assignment",
+				{
+					class_id: this.get("class").get("class_id"),
+					user_id: this.get("class").get("perms").user.user_id,
+					problem_id: this.get("problem_id"),
+					refresh: 1,
+				},
+				_.bind(function (ok, data) {
+					if (ok) {
+						if (data.response.problems) {
+							this.get("class").addOrUpdateHomeworkProblem(
+								data.response.problems
+							);
+							if (this.get("class_lesson")) {
+								this.get("class_lesson").updateHomeworkStatus();
+							}
+						}
+						if (_.isFunction(success)) {
+							success();
+						}
+					}
+				}, this)
+			);
+		},
+		respond: function (
+			response,
+			give_up_or_finalize,
+			use_aops_code,
+			success,
+			failure
+		) {
+			var modalPleaseWait = null;
+			if (this.get("crypt_problem_type").get("has_motor")) {
+				response = JSON.stringify(response);
+			}
+			if (
+				!this.get("crypt_problem_type").get("has_motor") &&
+				this.get("class").get("is_language_arts") &&
+				response.indexOf("$") >= 0 &&
+				response.indexOf("\\$") < 0
+			) {
+				AoPS.Grid.Utils.CreateModalAlert(
+					"Oops, it looks like you put a $ sign in your post! If you're talking about money, you either need to spell out the dollar (e.g., five dollars) or put a forward slash in front of the sign (e.g., $)."
+				);
+			} else {
+				modalPleaseWait = AoPS.Grid.Utils.CreateModalInescapable(
+					"Submitting... Please wait!"
+				);
+			}
+
+			AoPS.Grid.Utils.ajax_runner.run(
+				"respond_to_hw_assignment",
+				{
+					class_id: this.get("class").get("class_id"),
+					user_id: this.get("class").get("perms").user.user_id,
+					problem_id: this.get("problem_id"),
+					response: response,
+					give_up_or_finalize: give_up_or_finalize ? 1 : 0,
+					use_aops_code: use_aops_code ? 1 : 0,
+					sp_last_updated_at: this.get("master").get("sp_last_updated_at"),
+				},
+				_.bind(function (ok, data) {
+					if (modalPleaseWait) {
+						AoPS.Ui.Modal.removeModal(modalPleaseWait);
+					}
+					if (data.error_code) {
+						if (data.error_code == "E_BANT") {
+							// BANT
+						}
+						AoPS.Grid.Utils.CreateModalAlert(data.error_msg);
+						if (_.isFunction(failure)) {
+							failure();
+						}
+					} else if (ok) {
+						if (data.response.problems) {
+							this.get("class").addOrUpdateHomeworkProblem(
+								data.response.problems
+							);
+							if (this.get("class_lesson")) {
+								this.get("class_lesson").updateHomeworkStatus();
+							}
+						}
+						if (data.response.report) {
+							this.get("class").set("report", data.response.report);
+							this.get("class").trigger("report_has_changed");
+						}
+						if (data.response.sp) {
+							// Note: This displays any earned badges.
+							this.get("master").updatePartialSelfPacedProgress(data.response);
+						}
+						if (
+							data.response.bank &&
+							this.get("master").get("bb_reading_view")
+						) {
+							this.get("master")
+								.get("bb_reading_view")
+								.updateBank(data.response.bank);
+						}
+						if (_.isFunction(success)) {
+							success();
+						}
+					}
+				}, this)
+			);
+
+			// Fetch badges for non-SP users.
+			if (
+				!this.get("class").get("is_self_paced") &&
+				!this.get("class").get("perms").user.is_impersonated
+			) {
+				this.get("master").fetchBadges();
+			}
+		},
+		submitJudged: function (file_id, has_been_finalized, success, failure) {
+			var modalPleaseWait = AoPS.Grid.Utils.CreateModalInescapable(
+				"Submitting... Please wait!"
+			);
+			AoPS.Grid.Utils.judge_ajax_runner.run(
+				"submit_code_to_judge",
+				{
+					class_id: this.get("class").get("class_id"),
+					user_id: this.get("class").get("perms").user.user_id,
+					problem_id: this.get("problem_id"),
+					file_id: file_id,
+					sp_last_updated_at: this.get("master").get("sp_last_updated_at"),
+					has_been_finalized: has_been_finalized,
+				},
+				_.bind(function (ok, data) {
+					if (modalPleaseWait) {
+						AoPS.Ui.Modal.removeModal(modalPleaseWait);
+					}
+					if (data.error_code) {
+						AoPS.Grid.Utils.CreateModalAlert(data.error_msg);
+					} else if (ok) {
+						if (data.response.problems) {
+							this.get("class").addOrUpdateHomeworkProblem(
+								data.response.problems
+							);
+							this.get("class_lesson").updateHomeworkStatus();
+							this.get("class").trigger("report_has_changed");
+						}
+					}
+				}, this)
+			);
+		},
+		findCurrentProblemText: function () {
+			return this.get("master").findCurrentProblemText(this.get("problem_id"));
+		},
+		addCurrentProblemText: function (text) {
+			this.get("master").addCurrentProblemText(this.get("problem_id"), text);
+		},
+		updateCurrentProblemText: function (text) {
+			this.get("master").updateCurrentProblemText(this.get("problem_id"), text);
+		},
+		removeCurrentProblemText: function () {
+			this.get("master").removeCurrentProblemText(this.get("problem_id"));
+		},
+	});
+
+	Models.GridClassHandout = Backbone.Model.extend({
+		initialize: function () {},
+		fetch: function () {
+			this.set(
+				"class_lesson",
+				this.get("class")
+					.get("hw_lessons")
+					.findWhere({lesson: this.get("lesson")})
+			);
+			if (
+				this.get("class_lesson") &&
+				!this.get("class_lesson")
+					.get("handouts")
+					.findWhere({video_id: this.get("video_id")})
+			) {
+				this.get("class_lesson").get("handouts").add(this);
+			}
+
+			this.trigger("rebuild");
+		},
+	});
+
+	Models.GridClassPaper = Backbone.Model.extend({
+		initialize: function () {},
+		fetch: function () {
+			this.trigger("rebuild");
+		},
+		deleteFile: function (file) {
+			$.ajax({
+				type: "post",
+				url: "/class/zipup.php",
+				data: {
+					class_id: this.get("class").get("class_id"),
+					user_id: this.get("class").get("perms").user.user_id,
+					index: this.get("index"),
+					delete: file,
+				},
+				dataType: "json",
+			}).done(
+				_.bind(function (data) {
+					if (data.response.papers) {
+						this.get("class").addOrUpdatePaper(_.values(data.response.papers));
+						this.get("class").trigger("rebuild-papers");
+					}
+				}, this)
+			);
+		},
+		markProblems: function (options, success) {
+			AoPS.Grid.Utils.ajax_runner.run(
+				"get_marked_problems",
+				{
+					class_id: this.get("class").get("class_id"),
+					user_id: this.get("class").get("perms").user.user_id,
+					index: this.get("index"),
+					mark: options.mark || [],
+					unmark: options.unmark || [],
+				},
+				_.bind(function (ok, data) {
+					if (data.error_code) {
+						AoPS.Grid.Utils.CreateModalAlert(data.error_msg);
+					} else if (ok) {
+						if (data.response.problems) {
+							if (_.isFunction(success)) {
+								success(data.response.problems);
+							}
+						}
+					}
+				}, this)
+			);
+		},
+		thankGrader: function (problem_number) {
+			AoPS.Grid.Utils.ajax_runner.run(
+				"thank_grader",
+				{
+					class_id: this.get("class").get("class_id"),
+					user_id: this.get("class").get("perms").user.user_id,
+					paper_index: this.get("index"),
+					problem_number: problem_number,
+				},
+				_.bind(function (ok, data) {
+					if (data.error_code) {
+						AoPS.Grid.Utils.CreateModalAlert(data.error_msg);
+					} else if (ok) {
+						if (data.response.papers) {
+							this.get("class").addOrUpdatePaper(
+								_.values(data.response.papers)
+							);
+							this.get("class").trigger("rebuild-papers");
+						}
+					}
+				}, this)
+			);
+		},
+	});
+
+	Models.GridClassTest = Backbone.Model.extend({
+		initialize: function () {},
+		fetch: function () {
+			this.trigger("rebuild");
+		},
+		respond: function (response) {
+			AoPS.Grid.Utils.ajax_runner.run(
+				"respond_to_test",
+				{
+					class_id: this.get("class").get("class_id"),
+					user_id: this.get("class").get("perms").user.user_id,
+					index: this.get("index"),
+					response: response,
+				},
+				_.bind(function (ok, data) {
+					if (data.error_code) {
+						AoPS.Grid.Utils.CreateModalAlert(data.error_msg);
+					} else if (ok) {
+						if (data.response.tests) {
+							this.get("class").addOrUpdateTest(_.values(data.response.tests));
+							this.get("class").trigger("rebuild-tests");
+						}
+					}
+				}, this)
+			);
+		},
+	});
+
+	Models.GridVideo = Backbone.Model.extend({
+		initialize: function () {},
+		fetch: function () {
+			this.set(
+				"class_lesson",
+				this.get("class")
+					.get("hw_lessons")
+					.findWhere({lesson: this.get("lesson")})
+			);
+			if (
+				this.get("class_lesson") &&
+				!this.get("class_lesson")
+					.get("videos")
+					.findWhere({video_id: this.get("video_id")})
+			) {
+				this.get("class_lesson").get("videos").add(this);
+			}
+			this.trigger("rebuild");
+		},
+	});
+
+	/**
+	 * This seems to be the main view model for the classes.
+	 * It can be accessed in the view with `this.model`, e.g.,
+	 * `this.model.get("class_name");`
+	 */
+	Models.GridClass = Backbone.Model.extend({
+		defaults: {
+			embedded_video_data: null,
+		},
+		initialize: function () {
+			// Set up event listeners here. Samples provided below.
+
+			// Triggered from view with `this.model.set("class_name", "New Name");`
+			this.on("change:class_name", function (a) {
+				console.log("Class name changed to " + this.get("class_name"));
+			});
+
+			// Triggered from view with `this.model.trigger("hello");`
+			this.on("hello", function () {
+				console.log("Hello, world!");
+			});
+		},
+		fetch: function () {
+			if (
+				!_.isUndefined(this.get("master").get("crypt_tabs")) &&
+				_.isUndefined(this.get("my_grid_tabs"))
+			) {
+				this.set(
+					"my_grid_tabs",
+					new (Backbone.Collection.extend({model: Models.CryptTab}))()
+				);
+				_.each(
+					this.get("grid_tabs").split(","),
+					_.bind(function (hash) {
+						var tab = this.get("master")
+							.get("crypt_tabs")
+							.findWhere({hash: hash});
+						if (
+							!_.isUndefined(tab) &&
+							tab.get("prototype") !== AoPS.Grid.Views.GridTab
+						) {
+							this.get("my_grid_tabs").add(tab);
+						}
+					}, this)
+				);
+			}
+
+			// Only bother with this if they can access the class.
+			if (this.get("perms").me.can_access) {
+				this.addOrUpdateClassLesson(_.values(this.get("my_schedule")));
+				this.addOrUpdateClassHWSchedule(_.values(this.get("my_hw_schedule")));
+				this.addOrUpdateHandout(_.values(this.get("my_handouts")));
+				this.addOrUpdatePaper(_.values(this.get("my_papers")));
+				this.addOrUpdateTest(_.values(this.get("my_tests")));
+				this.addOrUpdateHomeworkProblem([]);
+				// this.addOrUpdateHomeworkProblem(_.values(this.get('my_hw_problems')));
+				this.addOrUpdateVideo(_.values(this.get("my_videos")));
+				this.makeAcademyTestCollection();
+
+				this.set(
+					"has_shared_forum",
+					this.get("master").get("has_shared_forum")
+				);
+				this.set(
+					"shared_forum_data",
+					this.get("master").get("shared_forum_data")
+				);
+
+				this.get("hw_lessons").each(function (lesson) {
+					lesson.updateHomeworkStatus();
+				});
+				this.processGoals();
+				this.get("master").fetchBadges();
+			}
+		},
+		addOrUpdate: function (
+			col_name,
+			col_options,
+			Model,
+			objects,
+			object_id,
+			options
+		) {
+			if (this.get(col_name) === undefined) {
+				var opt = $.extend({model: Model}, col_options);
+				this.set(col_name, new (Backbone.Collection.extend(opt))());
+			}
+			if (_.isArray(objects)) {
+				_.each(
+					objects,
+					_.bind(function (object) {
+						var where = {},
+							this_object;
+						where[object_id] = object[object_id];
+						if ((this_object = this.get(col_name).findWhere(where))) {
+							this_object.set(object);
+							if (_.isFunction(this_object.fetch)) {
+								this_object.fetch();
+							}
+						} else {
+							this_object = new Model(object);
+							this_object.set("master", this.get("master"));
+							this_object.set("class", this);
+							if (_.isFunction(this_object.fetch)) {
+								this_object.fetch();
+							}
+							this.get(col_name).add(this_object, options | {});
+						}
+					}, this)
+				);
+			}
+		},
+		addOrUpdateClassLesson: function (objects, options) {
+			this.addOrUpdate(
+				"lessons",
+				{},
+				Models.GridClassLesson,
+				objects,
+				"lesson",
+				options
+			);
+		},
+		addOrUpdateClassHWSchedule: function (objects, options) {
+			this.addOrUpdate(
+				"hw_lessons",
+				{},
+				Models.GridClassLesson,
+				objects,
+				"lesson",
+				options
+			);
+		},
+		addOrUpdateHandout: function (objects, options) {
+			this.addOrUpdate(
+				"handouts",
+				{},
+				Models.GridClassHandout,
+				objects,
+				"handout_id",
+				options
+			);
+		},
+		addOrUpdatePaper: function (objects, options) {
+			this.addOrUpdate(
+				"papers",
+				{},
+				Models.GridClassPaper,
+				objects,
+				"paper_id",
+				options
+			);
+		},
+		addOrUpdateTest: function (objects, options) {
+			this.addOrUpdate(
+				"tests",
+				{},
+				Models.GridClassTest,
+				objects,
+				"test_id",
+				options
+			);
+		},
+		addOrUpdateHomeworkProblem: function (objects, options) {
+			this.addOrUpdate(
+				"problems",
+				{},
+				Models.GridClassHomeworkProblem,
+				objects,
+				"problem_id",
+				options
+			);
+		},
+		addOrUpdateVideo: function (objects, options) {
+			var lessons = this.get("lessons");
+
+			_.each(objects, function (vid) {
+				var video_lesson = lessons.findWhere({
+					lesson: vid.lesson,
+				});
+				if (!_.isUndefined(video_lesson)) {
+					video_lesson.get("videos")[vid.video_index] = vid;
+				}
+			});
+		},
+		findDataFromInstanceId: function (instance_id) {
+			var i,
+				j,
+				k,
+				dates,
+				sections,
+				lessons = this.get("lessons"),
+				num_lessons = lessons.length;
+			for (i = 0; i < num_lessons; i++) {
+				dates = lessons.models[i].get("dates");
+				for (j = 0; j < dates.length; j++) {
+					sections = dates[j].sections;
+					for (k = 0; k < sections.length; k++) {
+						if (sections[k].instance_id === instance_id) {
+							return {
+								instance_found: true,
+								lesson: lessons.models[i],
+								date_obj: dates[j],
+								section_obj: sections[k],
+							};
+						}
+					}
+				}
+			}
+			return {
+				instance_found: false,
+			};
+		},
+		fetchPotdData: function (obj) {
+			AoPS.Grid.Utils.ajax_runner.run(
+				"fetch-potd-data",
+				{
+					class_id: this.get("class_id"),
+				},
+				_.bind(function (ok, data) {
+					if (data.error_code) {
+						AoPS.Grid.Utils.CreateModalAlert(data.error_msg);
+					} else if (ok) {
+						this.set("potd_data", data.response.potd_data);
+						obj.onFinish(data.response);
+					}
+				}, this)
+			);
+		},
+		fetchPotd: function (potd_id) {
+			var i,
+				j,
+				potd_data = this.get("potd_data"),
+				max = potd_data.weeks.length;
+			for (i = 0; i < max; i++) {
+				for (j = 0; j < 3; j++) {
+					if (potd_data.weeks[i][j].potd_id === potd_id) {
+						return potd_data.weeks[i][j];
+					}
+				}
+			}
+			return null;
+		},
+		fetchBookBankObject: function (success) {
+			if (this.get("book_bank_object")) {
+				if (_.isFunction(success)) {
+					success(this.get("book_bank_object"));
+				}
+			} else {
+				AoPS.Grid.Utils.ajax_runner.run(
+					"get_class_book_bank_object",
+					{
+						class_id: this.get("class_id"),
+						user_id: this.get("perms").user.user_id,
+					},
+					_.bind(function (ok, data) {
+						if (data.error_code) {
+							AoPS.Grid.Utils.CreateModalAlert(data.error_msg);
+						} else if (ok) {
+							this.set("book_bank_object", data.response.bank);
+							if (_.isFunction(success)) {
+								success(this.get("book_bank_object"));
+							}
+						}
+					}, this)
+				);
+			}
+		},
+		fetchWritingProjects: function (success) {
+			if (this.get("writing_projects")) {
+				if (_.isFunction(success)) {
+					success(this.get("writing_projects"));
+				}
+			} else {
+				AoPS.Grid.Utils.ajax_runner.run(
+					"get_class_writing_projects",
+					{
+						class_id: this.get("class_id"),
+						user_id: this.get("perms").user.user_id,
+					},
+					_.bind(function (ok, data) {
+						if (data.error_code) {
+							AoPS.Grid.Utils.CreateModalAlert(data.error_msg);
+						} else if (ok) {
+							this.set(
+								"writing_projects",
+								_.map(data.response.projects, function (project) {
+									project.deadlines = _.filter(
+										project.milestones,
+										function (milestone) {
+											return milestone.to_start_at && !milestone.is_ghost;
+										}
+									);
+									if (
+										project.is_ghost &&
+										project.ghost &&
+										project.ghost.is_active
+									) {
+										project.deadlines.push(
+											_.extend(
+												{
+													crypt_project_id: project.crypt_project_id,
+													crypt_milestone_id: 0,
+												},
+												project.ghost
+											)
+										);
+									}
+									return project;
+								})
+							);
+							if (_.isFunction(success)) {
+								success(this.get("writing_projects"));
+							}
+						}
+					}, this)
+				);
+			}
+		},
+		setWritingUploads(project_id, milestone_id, writing_uploads) {
+			var writing_projects = this.get("writing_projects");
+			var project = writing_projects.find(function (p) {
+				return p.crypt_project_id === project_id;
+			});
+			var milestone = project.milestones.find(function (m) {
+				return m.crypt_milestone_id === milestone_id;
+			});
+			milestone.uploads = writing_uploads;
+			this.set("writing_projects", writing_projects);
+		},
+		deleteUpload: function (project_id, milestone_id, upload_id, success) {
+			$.ajax({
+				type: "post",
+				url: "/class/writing-project-upload.php",
+				data: {
+					class_id: this.get("class_id"),
+					user_id: this.get("perms").user.user_id,
+					project_id: project_id,
+					milestone_id: milestone_id,
+					delete: upload_id,
+				},
+				dataType: "json",
+			}).done(
+				_.bind(function (data) {
+					if (data.response.writing_uploads) {
+						this.setWritingUploads(
+							project_id,
+							milestone_id,
+							data.response.writing_uploads
+						);
+						success();
+					}
+				}, this)
+			);
+		},
+		swapUploads: function (
+			project_id,
+			milestone_id,
+			upload_id_1,
+			upload_id_2,
+			success
+		) {
+			AoPS.Grid.Utils.ajax_runner.run(
+				"swap-uploads",
+				{
+					class_id: this.get("class_id"),
+					user_id: this.get("perms").user.user_id,
+					milestone_id: milestone_id,
+					upload_id_1: upload_id_1,
+					upload_id_2: upload_id_2,
+				},
+				_.bind(function (ok, data) {
+					if (ok) {
+						this.setWritingUploads(
+							project_id,
+							milestone_id,
+							data.response.uploads
+						);
+						success();
+					} else {
+						AoPS.Grid.Utils.CreateModalAlert(data.error_msg);
+					}
+				}, this)
+			);
+		},
+		changeUploadFilename: function (
+			project_id,
+			milestone_id,
+			upload_id,
+			filename,
+			success
+		) {
+			AoPS.Grid.Utils.ajax_runner.run(
+				"change-upload-filename",
+				{
+					class_id: this.get("class_id"),
+					user_id: this.get("perms").user.user_id,
+					milestone_id: milestone_id,
+					upload_id: upload_id,
+					filename: filename,
+				},
+				_.bind(function (ok, data) {
+					if (ok) {
+						this.setWritingUploads(
+							project_id,
+							milestone_id,
+							data.response.uploads
+						);
+						success();
+					} else {
+						AoPS.Grid.Utils.CreateModalAlert(data.error_msg);
+					}
+				}, this)
+			);
+		},
+		getLessonVideoData: function (lesson_id) {
+			return this.get("lessons")
+				.findWhere({
+					lesson: lesson_id,
+				})
+				.get("videos");
+		},
+		getVideoById: function (video_id) {
+			var video = null,
+				videos,
+				j,
+				vid_max,
+				i,
+				lesson,
+				max = this.get("lessons").length;
+
+			for (i = 0; i < max; i++) {
+				lesson = this.get("lessons").models[i];
+				videos = lesson.get("videos");
+				vid_max = videos.length;
+				for (j = 0; j < vid_max; j++) {
+					if (videos[j].video_id == video_id) {
+						return videos[j];
+					}
+				}
+			}
+
+			return video;
+		},
+		setPythonBookLocation: function (chapter) {
+			AoPS.Grid.Utils.ajax_runner.run("set-python-book-location", {
+				class_id: this.get("class_id"),
+				chapter: parseInt(chapter),
+			});
+		},
+		fetchClassProgress: function () {
+			if (this.get("is_self_paced")) {
+				this.get("master").getPartialSelfPacedProgress();
+			} else if (this.get("report")) {
+				AoPS.Grid.Utils.ajax_runner.run(
+					"fetch_report",
+					{
+						class_id: this.get("class_id"),
+						user_id: this.get("perms").user.user_id,
+					},
+					_.bind(function (ok, data) {
+						if (data.error_code) {
+							AoPS.Grid.Utils.CreateModalAlert(data.error_msg);
+						} else if (ok) {
+							if (data.response.report) {
+								this.set("report", data.response.report);
+								this.trigger("report_has_changed");
+							}
+						}
+					}, this)
+				);
+			}
+		},
+
+		fetchShirt: function (data, success) {
+			AoPS.Grid.Utils.ajax_runner.run(
+				"get_shirt",
+				{...data, class_id: this.get("class_id")},
+				(ok2, data2) => {
+					if (data2.error_code) {
+						AoPS.Grid.Utils.CreateModalAlert(data2.error_msg);
+					} else if (ok2 && _.isFunction(success)) {
+						success(data2.response || {});
+					}
+				}
+			);
+		},
+
+		fetchSurvey: function (success) {
+			AoPS.Grid.Utils.ajax_runner.run(
+				"get_survey",
+				{class_id: this.get("class_id")},
+				_.bind(function (ok, data) {
+					if (data.error_code) {
+						AoPS.Grid.Utils.CreateModalAlert(data.error_msg);
+					} else if (ok) {
+						if (data.response.survey && _.isFunction(success)) {
+							success(data.response.survey);
+						}
+					}
+				}, this)
+			);
+		},
+		submitSurvey: function (survey, success) {
+			AoPS.Grid.Utils.ajax_runner.run(
+				"submit_survey",
+				_.extend(survey, {
+					class_id: this.get("class_id"),
+					user_id: this.get("perms").user.user_id,
+				}),
+				_.bind(function (ok, data) {
+					if (data.error_code) {
+						AoPS.Grid.Utils.CreateModalAlert(data.error_msg);
+					} else if (ok) {
+						this.set("survey_completed", 1);
+						success();
+					}
+				}, this)
+			);
+		},
+		requestExtension: function (options, success, failure) {
+			AoPS.Grid.Utils.ajax_runner.run(
+				"request_extension",
+				{
+					class_id: this.get("class_id"),
+					user_id: this.get("perms").user.user_id,
+					lesson: options.lesson,
+					comment: options.comment,
+					date: options.date,
+				},
+				_.bind(function (ok, data) {
+					if (ok) {
+						success(data.response.message, data.response.refresh);
+					} else {
+						failure(
+							data.error_msg
+								? data.error_msg
+								: "Unknown Error. Please try again."
+						);
+					}
+				}, this)
+			);
+		},
+		fetchHonorCode: function (success) {
+			AoPS.Grid.Utils.ajax_runner.run(
+				"get_honor_code",
+				{class_id: this.get("class_id")},
+				_.bind(function (ok, data) {
+					if (data.error_code) {
+						AoPS.Grid.Utils.CreateModalAlert(data.error_msg);
+					} else if (ok) {
+						if (data.response.honor_code && _.isFunction(success)) {
+							success(data.response.honor_code);
+						}
+					}
+				}, this)
+			);
+		},
+		acceptHonorCode: function (success) {
+			AoPS.Grid.Utils.ajax_runner.run(
+				"accept_honor_code",
+				{class_id: this.get("class_id")},
+				_.bind(function (ok, data) {
+					if (data.error_code) {
+						AoPS.Grid.Utils.CreateModalAlert(data.error_msg);
+					} else if (ok) {
+						this.set("show_honor_modal", false);
+						if (_.isFunction(success)) {
+							success();
+						}
+					}
+				}, this)
+			);
+		},
+		displayMoreInfoHonorCode: function () {
+			var modalPleaseWait = AoPS.Grid.Utils.CreateModalInescapable();
+			this.fetchHonorCode(function (onFetched) {
+				AoPS.Grid.Utils.CreateModalAlert(
+					$('<div class="grid-honor-more-info-modal">')
+						.append(onFetched)
+						.append("</div>")
+				);
+				AoPS.Ui.Modal.removeModal(modalPleaseWait);
+			});
+		},
+		checkConnectedFreeTrial: function () {
+			AoPS.Grid.Utils.ajax_runner.run(
+				"check-connected-free-trial",
+				{
+					class_id: this.get("class_id"),
+					user_id: this.get("perms").user.user_id,
+					is_self_paced: this.get("is_self_paced"),
+				},
+				_.bind(function (ok, data) {
+					if (ok) {
+						if (!data.response.class_id_to_pull_from) {
+							return;
+						}
+						var source_class_id = data.response.class_id_to_pull_from;
+						// create modal with handlebars template
+						var tpl_modal_make_decision = $("<div></div>").addClass(
+							"grid-free-trial-push-data-decision"
+						);
+						tpl_modal_make_decision.html(
+							AoPS.View.compileTemplate("#grid-free-trial-push-data-decision")({
+								course_name: this.get("class_name"),
+								source_class_id: source_class_id,
+							})
+						);
+						var modal_make_decision = AoPS.Grid.Utils.CreateModalInescapable(
+							tpl_modal_make_decision
+						);
+						$("#confirm-btn").click(() => {
+							AoPS.Ui.Modal.removeModal(modal_make_decision);
+							this.markFreeTrialPushDataDecided("confirm", source_class_id);
+						});
+						$("#cancel-btn").click(() => {
+							AoPS.Ui.Modal.removeModal(modal_make_decision);
+							this.markFreeTrialPushDataDecided("cancel", source_class_id);
+						});
+					} else {
+						// just continue, users don't have to know
+						AoPS.ErrorUtil.log(data.error_code, data.error_msg);
+					}
+				}, this)
+			);
+		},
+		markFreeTrialPushDataDecided: function (decision, source_class_id) {
+			var modalPleaseWait = AoPS.Grid.Utils.CreateModalInescapable("Saving...");
+			AoPS.Grid.Utils.ajax_runner.run(
+				"mark-free-trial-push-data-decided",
+				{
+					source_class_id: source_class_id,
+					class_id: this.get("class_id"),
+					user_id: this.get("perms").user.user_id,
+					decision: decision,
+				},
+				_.bind(function (ok, data) {
+					AoPS.Ui.Modal.removeModal(modalPleaseWait);
+					if (ok && decision == "confirm") {
+						AoPS.Grid.Utils.CreateModalInescapable(
+							"Your progress has been saved! Please wait while this page reloads..."
+						);
+						setTimeout(function () {
+							location.reload(true);
+						}, 1000);
+					} else if (ok && decision == "cancel") {
+						AoPS.Grid.Utils.CreateModalAlert(
+							"You're starting your " +
+								this.get("class_name") +
+								" journey from scratch. You got this!"
+						);
+					} else {
+						AoPS.Grid.Utils.CreateModalAlert(data.error_msg);
+					}
+				}, this)
+			);
+		},
+		changeGoalSettings: function (index, value) {
+			AoPS.Grid.Utils.ajax_runner.run(
+				"change_goal_settings",
+				{
+					class_id: this.get("class_id"),
+					user_id: this.get("perms").user.user_id,
+					index: index,
+					value: value ? 1 : 0,
+				},
+				_.bind(function (ok, data) {
+					if (data.error_code) {
+						AoPS.Grid.Utils.CreateModalAlert(data.error_msg);
+					} else if (ok) {
+						this.set("goals", data.response.goals);
+						this.processGoals();
+						this.trigger("rebuild");
+						this.get("master").fetchBadges();
+					}
+				}, this)
+			);
+		},
+		processGoals: function () {
+			if (this.get("goals")) {
+				_.each(
+					this.get("goals").dates,
+					_.bind(function (date) {
+						_.each(
+							date.goals,
+							_.bind(function (goal) {
+								_.extend(goal, {date: date});
+							}, this)
+						);
+					}, this)
+				);
+			}
+		},
+		checkAndRedirectStretch: function () {
+			if (this.get("is_stretch") && this.get("enable_stretch_redirect")) {
+				$.ajax({
+					method: "post",
+					url: "/class/check-stretch",
+					data: {class_id: this.get("class_id")},
+					dataType: "json",
+				}).done(
+					_.bind(function (data) {
+						if (data.response) {
+							window.location.href = "/stretch/" + this.get("class_id");
+						}
+					}, this)
+				);
+			}
+		},
+		setAndCheckRedirectStretch: function (enabled) {
+			// Set and check right meow
+			if (this.get("is_stretch")) {
+				this.set("enable_stretch_redirect", enabled ? true : false); // Prevent undefined unassignment
+				if (enabled) {
+					this.checkAndRedirectStretch();
+				}
+			}
+		},
+		setIntervalRedirectStretch: function () {
+			// Set up Interval
+			if (this.get("is_stretch")) {
+				this.set("enable_stretch_redirect", false);
+				setInterval(
+					_.bind(function () {
+						this.checkAndRedirectStretch();
+					}, this),
+					120000
+				);
+			}
+		},
+		shouldShowDate: function (dt) {
+			if (!dt) {
+				return false;
+			} else if (!this.get("moment_hide_dates_from")) {
+				if (this.get("hide_dates_from")) {
+					this.set(
+						"moment_hide_dates_from",
+						moment(this.get("hide_dates_from"))
+					);
+				} else {
+					return true;
+				}
+			}
+
+			var mome = moment.isMoment(dt) ? dt : moment(dt);
+			var mine = this.get("moment_hide_dates_from");
+
+			return (
+				mome.format("YYYY-MM-DD HH:mm:ss") < mine.format("YYYY-MM-DD HH:mm:ss")
+			);
+		},
+		classroomDispatch: function (oh_warning, class_warning) {
+			if (AoPS.isUserCoppaBlocked()) {
+				AoPS.displayCoppaBlockedModal({escapable: true});
+				return;
+			} else if (AoPS.isUserLimited()) {
+				AoPS.Ui.Modal.showMessage(
+					'You have a limited account, so you cannot enter the classroom. \
+				You can upgrade your account for free <a href="/user/upgrade.php">here</a>.',
+					{width: "450px"}
+				);
+				return;
+			}
+			AoPS.Grid.Utils.ajax_runner.run(
+				"check-classroom-redirect",
+				{
+					class_id: this.get("class_id"),
+					is_woot: AoPS.Utils.isWootCourse(this.get("course_id")),
+				},
+				_.bind(function (ok, data) {
+					if (ok) {
+						if (data.response.shared_classroom) {
+							window.location.href =
+								"/schoolhouse/room/" + data.response.shared_classroom;
+						} else if (data.response.class) {
+							window.location.href =
+								"/schoolhouse/room/" + this.get("class_id");
+						} else if (data.response.other_class_id && !AoPS.bd.is_halper) {
+							class_warning(
+								data.response.other_class_id,
+								data.response.other_class_name
+							);
+						} else if (data.response.office_hours) {
+							oh_warning();
+						} else {
+							window.location.href =
+								"/schoolhouse/room/" + this.get("class_id");
+						}
+					} else {
+						AoPS.Grid.Utils.CreateModalAlert(data.error_msg);
+					}
+				}, this)
+			);
+		},
+		doPanic: function (classId, message) {
+			$.post(
+				"/site-admin/panic-ajax.php",
+				{
+					a: "panic",
+					class_id: classId,
+					message: message,
+				},
+				function (data) {
+					if (data.response && data.response === "OK") {
+						AoPS.Ui.Modal.showAlertQuick("Your panic message has been sent!");
+					} else {
+						AoPS.Ui.Modal.showAlertQuick(
+							"An error occurred!\n\n" + JSON.stringify(data, null, 2)
+						);
+					}
+				}
+			);
+		},
+		deleteExam: function (test_id, exam_file_id, lesson, success) {
+			$.ajax({
+				type: "post",
+				url: "/class/exam-upload.php",
+				data: {
+					class_id: this.get("class_id"),
+					current_lesson: lesson,
+					user_id: this.get("perms").user.user_id,
+					test_id: test_id,
+					delete: exam_file_id,
+				},
+				dataType: "json",
+			}).done(
+				_.bind(function (data) {
+					if (data.response.exam_uploads) {
+						var current = this.get("academy_tests");
+						current.get(test_id).set("submissions", data.response.exam_uploads);
+						this.set("academy_tests", current);
+						success();
+					}
+				}, this)
+			);
+		},
+		swapExams: function (test_id, upload_id_1, upload_id_2, lesson, success) {
+			AoPS.Grid.Utils.ajax_runner.run(
+				"swap-exams",
+				{
+					class_id: this.get("class_id"),
+					current_lesson: lesson,
+					test_id: test_id,
+					upload_id_1: upload_id_1,
+					upload_id_2: upload_id_2,
+					user_id: this.get("perms").user.user_id,
+				},
+				_.bind(function (ok, data) {
+					if (ok) {
+						var current = this.get("academy_tests");
+
+						current
+							.findWhere({id: test_id})
+							.set("submissions", data.response.uploads);
+
+						this.set("academy_tests", current);
+						success();
+					} else {
+						AoPS.Grid.Utils.CreateModalAlert(data.error_msg);
+					}
+				}, this)
+			);
+		},
+		changeExamFilename: function (
+			test_id,
+			upload_id,
+			filename,
+			lesson,
+			success
+		) {
+			AoPS.Grid.Utils.ajax_runner.run(
+				"change-exam-filename",
+				{
+					class_id: this.get("class_id"),
+					current_lesson: lesson,
+					test_id: test_id,
+					upload_id: upload_id,
+					filename: filename,
+					user_id: this.get("perms").user.user_id,
+				},
+				_.bind(function (ok, data) {
+					if (ok) {
+						var current = this.get("academy_tests");
+						var test = current.findWhere({id: test_id});
+						test.set("submissions", data.response.uploads);
+						success();
+					} else {
+						AoPS.Grid.Utils.CreateModalAlert(data.error_msg);
+					}
+				}, this)
+			);
+		},
+		checkExamAnswers: function (test_id, answers, success, submit) {
+			// Support for browsers that don't accept default parameters
+			if (!submit) {
+				submit = false;
+			}
+
+			AoPS.Grid.Utils.ajax_runner.run(
+				"check-exam-answers",
+				{
+					class_id: this.get("class_id"),
+					test_id: test_id,
+					answers: JSON.stringify(answers),
+					user_id: this.get("perms").user.user_id,
+					uses_parser: AoPS.bootstrap_data.uses_parser,
+					submit: submit,
+				},
+				_.bind(function (ok, data) {
+					if (ok) {
+						var current = this.get("academy_tests").get(test_id);
+						current.set("answers", data.response.answers);
+						current.set("problems", data.response.problems);
+						current.set("has_answers", true);
+						success();
+					} else {
+						AoPS.Grid.Utils.CreateModalAlert(data.error_msg);
+					}
+				}, this)
+			);
+		},
+		showNotifications: function () {
+			AoPS.Grid.Utils.ajax_runner.run(
+				"get-notifications",
+				{
+					class_id: this.get("class_id"),
+					is_sp: this.get("is_self_paced"),
+				},
+				_.bind(function (ok, data) {
+					if (ok) {
+						if (!data.response.has_notifications) {
+							return;
+						}
+
+						AoPS.Grid.Utils.CreateModalAlert(
+							$("<div />")
+								.css("max-width", "640px")
+								.html(
+									AoPS.View.compileTemplate("#grid-notifications-tpl")({
+										username: this.get("perms").user.username,
+										class_string: this.get("class_string"),
+										writing_problems: data.response.writing_problems,
+										extensions: data.response.extensions,
+										bug_reports: data.response.bug_reports,
+									})
+								)
+						);
+
+						// Once the notifications have been seen, they don't need to be displayed any more.
+						this.markNotificationsAsSeen();
+					} else {
+						AoPS.Grid.Utils.CreateModalAlert(data.error_msg);
+					}
+				}, this)
+			);
+		},
+		markNotificationsAsSeen: function () {
+			AoPS.Grid.Utils.ajax_runner.run(
+				"mark-notifications-as-seen",
+				{
+					class_id: this.get("class_id"),
+				},
+				_.bind(function (ok, data) {
+					if (!ok) {
+						AoPS.Grid.Utils.CreateModalAlert(data.error_msg);
+					}
+				}, this)
+			);
+		},
+		makeAcademyTestCollection: function () {
+			var academy_tests = this.get("academy_tests");
+			// TODO - is this necessary?  Will it pass an empty array if there are no tests?
+			if (!_.isEmpty(academy_tests)) {
+				this.set(
+					"academy_tests",
+					new Models.GridAcademyTestCollection(_.values(academy_tests))
+				);
+			}
+		},
+	});
+	return Models;
+})(AoPS.Grid.Models);

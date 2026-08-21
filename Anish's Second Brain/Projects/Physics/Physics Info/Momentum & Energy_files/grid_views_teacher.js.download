@@ -1,0 +1,2490 @@
+AoPS.Utils.initKeyChain(AoPS, "Grid", "Views");
+
+AoPS.Grid.Views = (function (Views) {
+	Views.GridTabTeacher = Views.GridTab.extend({
+		template_id: "#grid-tab-teacher-tpl",
+		sub_tabs: [
+			{hash: "roster", prototype: "Roster", caption: "Roster"},
+			{
+				hash: "extensions",
+				prototype: "Extensions",
+				caption: "Extensions",
+			},
+			{hash: "reports", prototype: "Reports", caption: "Reports"},
+			{hash: "sp-reports", prototype: "SPReports", caption: "Reports"},
+			{hash: "alcumus", prototype: "Alcumus", caption: "Alcumus"},
+			{hash: "homework", prototype: "Homework", caption: "Homework"},
+			{hash: "reading", prototype: "BBReading", caption: "Reading"},
+			{hash: "tests", prototype: "Tests", caption: "Tests"},
+			{hash: "survey", prototype: "Survey", caption: "Survey Responses"},
+			{hash: "writing", prototype: "LAWriting", caption: "Writing Projects"},
+		],
+		loadFirst: function (success) {
+			this.vars = _.extend(this.vars, this.options);
+			this.vars.sub_tabs = _.clone(this.sub_tabs);
+			this.vars.aops_url = this.model
+				.get("master")
+				.get("grid_data").config.aops_url;
+			this.vars.class_id = this.model.get("class_id");
+			this.vars.class_string = this.model.get("class_string");
+			this.vars.class_perms = this.model.get("perms");
+			this.vars.is_academy = this.model.get("campus_id") != "web";
+			var not_academy = ["web", "virtual", "lumen", "test-virtual"];
+			this.vars.is_physical_campus = !not_academy.includes(
+				this.model.get("campus_id")
+			);
+			this.vars.show_pc_new_surveys =
+				parseInt(this.model.get("season_id")) >= 2023 &&
+				this.vars.is_physical_campus;
+			this.vars.is_vacad_la = this.model.get("course_id").includes("vacad-la");
+
+			if (
+				!this.model.get("my_grid_tabs").findWhere({prototype_name: "Alcumus"})
+			) {
+				this.vars.sub_tabs = _.without(
+					this.vars.sub_tabs,
+					_.findWhere(this.vars.sub_tabs, {hash: "alcumus"})
+				);
+			}
+
+			if (
+				!this.model.get("my_grid_tabs").findWhere({prototype_name: "Homework"})
+			) {
+				this.vars.sub_tabs = _.without(
+					this.vars.sub_tabs,
+					_.findWhere(this.vars.sub_tabs, {hash: "extensions"})
+				);
+			}
+
+			if (
+				!this.model
+					.get("my_grid_tabs")
+					.findWhere({prototype_name: "Homework"}) &&
+				!this.model.get("my_grid_tabs").findWhere({prototype_name: "Paper"}) &&
+				!this.model
+					.get("my_grid_tabs")
+					.findWhere({prototype_name: "PracticeTest"})
+			) {
+				this.vars.sub_tabs = _.without(
+					this.vars.sub_tabs,
+					_.findWhere(this.vars.sub_tabs, {hash: "homework"})
+				);
+			}
+
+			if (
+				!this.model.get("my_grid_tabs").findWhere({prototype_name: "LAWriting"})
+			) {
+				this.vars.sub_tabs = _.without(
+					this.vars.sub_tabs,
+					_.findWhere(this.vars.sub_tabs, {hash: "writing"})
+				);
+			}
+
+			if (
+				!this.model.get("my_grid_tabs").findWhere({prototype_name: "BBReading"})
+			) {
+				this.vars.sub_tabs = _.without(
+					this.vars.sub_tabs,
+					_.findWhere(this.vars.sub_tabs, {hash: "reading"})
+				);
+			}
+
+			if (this.vars.is_academy) {
+				this.vars.sub_tabs = _.without(
+					this.vars.sub_tabs,
+					_.findWhere(this.vars.sub_tabs, {hash: "extensions"})
+				);
+			} else {
+				this.vars.sub_tabs = _.without(
+					this.vars.sub_tabs,
+					_.findWhere(this.vars.sub_tabs, {hash: "tests"})
+				);
+			}
+
+			if (this.model.get("is_self_paced")) {
+				this.vars.sub_tabs = _.without(
+					this.vars.sub_tabs,
+					_.findWhere(this.vars.sub_tabs, {hash: "reports"})
+				);
+			} else {
+				this.vars.sub_tabs = _.without(
+					this.vars.sub_tabs,
+					_.findWhere(this.vars.sub_tabs, {hash: "sp-reports"})
+				);
+			}
+
+			_.each(this.vars.sub_tabs, function (sub) {
+				sub.selected = false;
+			});
+
+			if (this.options.args.length) {
+				this.vars.selected = _.findWhere(this.vars.sub_tabs, {
+					hash: this.options.args[0],
+				});
+			} else {
+				this.vars.selected = _.first(this.vars.sub_tabs);
+			}
+
+			if (this.vars.selected) {
+				this.vars.selected.selected = true;
+			}
+
+			$.ajax({
+				url: "/m/xo/ajax.php",
+				method: "post",
+				data: {
+					a: "get_class_teacher_info",
+					class_id: this.model.get("class_id"),
+				},
+			}).done(
+				_.bind(function (data) {
+					this.vars.class = _.clone(data.response.class);
+					if (!this.vars.class || !this.vars.class.survey_results.length) {
+						this.vars.sub_tabs = _.without(
+							this.vars.sub_tabs,
+							_.findWhere(this.vars.sub_tabs, {hash: "survey"})
+						);
+					}
+
+					if (_.isFunction(success)) {
+						success();
+						$(window).trigger("resize");
+					}
+					this.getSubTab();
+				}, this)
+			);
+		},
+		prerenderHelper: function () {},
+		constructCrumbs: function () {
+			if (
+				(this.vars.selected = _.findWhere(this.vars.sub_tabs, {
+					selected: true,
+				}))
+			) {
+				return [
+					{
+						text: "Teacher",
+						url: "/teacher",
+					},
+					{
+						text: this.vars.selected.caption,
+					},
+				];
+			} else {
+				return [
+					{
+						text: "Teacher",
+					},
+				];
+			}
+		},
+		onAddToPage: function (obj) {
+			if (obj.args.join("/") != this.options.args.join("/")) {
+				this.options.args = obj.args;
+				if (obj.args.length > 0) {
+					if (
+						(this.vars.selected = _.findWhere(this.vars.sub_tabs, {
+							hash: obj.args[0],
+						}))
+					) {
+						var currently_selected = _.findWhere(this.vars.sub_tabs, {
+							selected: true,
+						});
+						if (currently_selected) {
+							currently_selected.selected = false;
+						}
+						this.vars.selected.selected = true;
+					} else {
+						_.findWhere(this.vars.sub_tabs, {
+							selected: true,
+						}).selected = false;
+						this.vars.selected = _.first(this.vars.sub_tabs);
+						this.vars.selected = true;
+					}
+				}
+			}
+			this.getSubTab();
+		},
+		getSubTab: function () {
+			if (!this.vars.class) {
+				return;
+			}
+			this.$("a.grid-teacher-sub-tabs").removeClass("btn-primary btn-success");
+			_.each(
+				this.$("a.grid-teacher-sub-tabs"),
+				_.bind(function (el) {
+					if ($(el).attr("hash") == (this.vars.selected || {}).hash) {
+						$(el).addClass("btn-success");
+					} else {
+						$(el).addClass("btn-primary");
+					}
+				}, this)
+			);
+			if (this.vars.selected) {
+				_.each(this.vars.sub_tabs, function (sub) {
+					if (sub.view) {
+						sub.view.$el.hide();
+					}
+				});
+				if (
+					_.isUndefined(this.vars.selected.view) &&
+					!_.isUndefined(Views["GridTabTeacher" + this.vars.selected.prototype])
+				) {
+					this.vars.selected.view = new Views[
+						"GridTabTeacher" + this.vars.selected.prototype
+					]({
+						model: this.model,
+						vars: this.vars,
+					});
+					this.$(".inner-main").append(this.vars.selected.view.$el);
+				}
+				if (this.vars.selected.view) {
+					this.vars.selected.view.$el.show();
+				}
+			}
+		},
+		renderHelper: function () {
+			if (this.model.get("is_sp_nova")) {
+				AoPS.Grid.Utils.MakeAopsScrollBar(this.$el);
+			}
+		},
+	});
+
+	Views.GridTabTeacherRoster = AoPS.View.extend({
+		template_id: "#grid-tab-teacher-roster-tpl",
+		className: "grid-tab-teacher-roster",
+		initialize: function (options) {
+			this.options = options;
+			this.vars = _.extend({}, this.options.vars);
+			this.render();
+		},
+		render: function () {
+			this.$el.html(this.getTemplate(this.template_id, this.vars));
+			this.$inner = this.$(".inner");
+
+			this.ViewEnrollments = new Views.GridTabTeacherRosterEnrollments({
+				model: this.model,
+				vars: this.vars,
+			});
+			this.$inner.append(
+				$("<div />")
+					.css({display: "table-cell", "padding-right": "5px"})
+					.append(this.ViewEnrollments.$el)
+			);
+			this.ViewSchedule = new Views.GridTabTeacherRosterSchedule({
+				model: this.model,
+				vars: this.vars,
+			});
+			this.$inner.append(
+				$("<div />")
+					.css({display: "table-cell", "padding-left": "5px"})
+					.append(this.ViewSchedule.$el)
+			);
+		},
+	});
+
+	Views.GridTabTeacherLAWriting = AoPS.View.extend({
+		template_id: "#grid-tab-teacher-writing-tpl",
+		className: "grid-tab-teacher-writing",
+		initialize: function (options) {
+			this.options = options;
+			this.vars = _.extend({}, this.options.vars);
+			this.$el.text("Loading...");
+			this.loadAndRender();
+		},
+		loadAndRender: function () {
+			$.ajax({
+				url: "/m/xo/ajax.php",
+				method: "post",
+				data: {
+					a: "get_class_academy_writing_projects",
+					class_id: this.model.get("class_id"),
+				},
+			}).done(
+				_.bind(function (data) {
+					this.vars.academy_writing_projects = _.values(
+						data.response.academy_writing_projects
+					);
+					this.render();
+				}, this)
+			);
+		},
+		render: function () {
+			_.each(
+				this.vars.academy_writing_projects,
+				_.bind(function (writing_project) {
+					writing_project.users = [];
+					_.each(
+						writing_project.categories,
+						_.bind(function (p, i) {
+							p.name_short = i + 1;
+						}, this)
+					);
+					_.each(
+						//filter dropped students
+						this.vars.class.enrollments.filter(
+							(student) => student.dropped_at === null
+						),
+						_.bind(function (e) {
+							var u = _.clone(e);
+							if (writing_project.scores[e.user_id]) {
+								u.num = writing_project.scores[e.user_id].num;
+								u.denom = writing_project.scores[e.user_id].denom;
+								u.color = writing_project.scores[e.user_id].color;
+								u.unscaled = (
+									writing_project.scores[e.user_id].denom
+										? writing_project.scores[e.user_id].num /
+										  writing_project.scores[e.user_id].denom
+										: 0
+								).toFixed(2);
+								u.scaled = u.unscaled; //calculate post curve score in the future
+								u.has_score = true;
+								u.rubric = writing_project.scores[e.user_id].rubric;
+							} else {
+								u.num = u.denom = 0;
+								u.has_score = false;
+								u.rubric = _.map(writing_project.categories, function () {
+									return {};
+								});
+							}
+							writing_project.users.push(u);
+						}, this)
+					);
+				}, this)
+			);
+			this.$el.html(this.getTemplate(this.template_id, this.vars));
+			_.each(this.$(".mouseover"), function (el) {
+				AoPS.Grid.Utils.CreateTooltip(el, $(el).attr("title"));
+				$(el).attr("title", null);
+			});
+		},
+	});
+
+	Views.GridTabTeacherTests = AoPS.View.extend({
+		template_id: "#grid-tab-teacher-tests-tpl",
+		className: "grid-tab-teacher-tests",
+		initialize: function (options) {
+			this.options = options;
+			this.vars = _.extend({}, this.options.vars);
+			this.vars.not_paper_test =
+				this.model.get("has_book_test") || this.model.get("is_virtual");
+			this.$el.text("Loading...");
+			this.loadAndRender();
+		},
+		loadAndRender: function () {
+			$.ajax({
+				url: "/m/xo/ajax.php",
+				method: "post",
+				data: {
+					a: "get_class_academy_tests",
+					class_id: this.model.get("class_id"),
+				},
+			}).done(
+				_.bind(function (data) {
+					this.vars.academy_tests = _.values(data.response.academy_tests);
+					this.render();
+				}, this)
+			);
+		},
+		render: function () {
+			_.each(
+				this.vars.academy_tests,
+				_.bind(function (academy_test) {
+					academy_test.users = [];
+					_.each(
+						academy_test.problems,
+						_.bind(function (p, i) {
+							p.name_short = i + 1;
+							p.denom = Math.round((p.denom + Number.EPSILON) * 100) / 100;
+						}, this)
+					);
+					_.each(
+						this.vars.class.enrollments,
+						_.bind(function (enrollment) {
+							var user = _.clone(enrollment);
+							if (academy_test.scores[enrollment.user_id]) {
+								user.num =
+									Math.round(
+										(academy_test.scores[enrollment.user_id].num +
+											Number.EPSILON) *
+											100
+									) / 100;
+								user.denom =
+									Math.round(
+										(academy_test.scores[enrollment.user_id].denom +
+											Number.EPSILON) *
+											100
+									) / 100;
+								user.color = academy_test.scores[enrollment.user_id].color;
+								user.unscaled = (
+									academy_test.scores[enrollment.user_id].denom
+										? academy_test.scores[enrollment.user_id].num /
+										  academy_test.scores[enrollment.user_id].denom
+										: 0
+								).toFixed(2);
+								user.scaled =
+									academy_test.scores[enrollment.user_id].scaled.toFixed(2);
+								user.has_score = true;
+								user.problems =
+									academy_test.scores[enrollment.user_id].problems;
+								_.each(
+									user.problems,
+									_.bind(function (p) {
+										p.denom =
+											Math.round((p.denom + Number.EPSILON) * 100) / 100;
+										p.num = Math.round((p.num + Number.EPSILON) * 100) / 100;
+									}, this)
+								);
+							} else {
+								user.num = user.denom = 0;
+								user.has_score = false;
+								user.problems = _.map(academy_test.problems, function () {
+									return {};
+								});
+							}
+							academy_test.users.push(user);
+						}, this)
+					);
+				}, this)
+			);
+			this.$el.html(this.getTemplate(this.template_id, this.vars));
+			_.each(this.$(".mouseover"), function (el) {
+				AoPS.Grid.Utils.CreateTooltip(el, $(el).attr("title"));
+				$(el).attr("title", null);
+			});
+		},
+	});
+
+	Views.GridTabTeacherRosterEnrollments = AoPS.View.extend({
+		template_id: "#grid-tab-teacher-roster-enrollments-tpl",
+		className: "grid-tab-teacher-roster-enrollments",
+		initialize: function (options) {
+			this.addTableSorterParser();
+			this.options = options;
+			this.vars = _.extend({}, this.options.vars);
+			this.render();
+		},
+		addTableSorterParser: function () {
+			var roles = [
+				"Instructor",
+				"Assistant",
+				"Student",
+				"Ex-Instructor",
+				"Ex-Assistant",
+				"Ex-Student",
+			];
+			$.tablesorter.addParser({
+				id: "enrollment-type",
+				is: function (s) {
+					return false;
+				},
+				format: function (s) {
+					var index,
+						str = s.toLowerCase();
+					for (index = 0; index < roles.length; index++) {
+						if (roles[index].toLowerCase() == str) {
+							break;
+						}
+					}
+					return index;
+				},
+				type: "numeric",
+			});
+		},
+		render: function () {
+			this.vars.enrollments = [];
+			this.vars.num_students = 0;
+			this.vars.num_instructors = 0;
+			this.vars.num_assistants = 0;
+			_.each(
+				this.vars.class.enrollments,
+				_.bind(function (enrollment) {
+					var row = _.clone(enrollment);
+					if (!row.dropped_at) {
+						if (row.role == "student") {
+							this.vars.num_students++;
+						} else if (row.role == "instructor") {
+							this.vars.num_instructors++;
+						} else if (row.role == "assistant") {
+							this.vars.num_assistants++;
+						}
+						row.role = row.role.substr(0, 1).toUpperCase() + row.role.substr(1);
+						this.vars.enrollments.push(row);
+					}
+				}, this)
+			);
+			this.$el.html(this.getTemplate(this.template_id, this.vars));
+
+			this.sort_headers = {};
+			if (!this.vars.is_academy) {
+				this.sort_headers[2] = {sorter: "enrollment-type"};
+			}
+			this.$("table").tablesorter({
+				sortList: [[2, 0]],
+				headers: this.sort_headers,
+				theme: "xo",
+			});
+		},
+	});
+
+	/**
+	 * Under Teacher -> Roster -> Schedule lists all class days and times and their instructors
+	 */
+	Views.GridTabTeacherRosterSchedule = AoPS.View.extend({
+		template_id: "#grid-tab-teacher-roster-schedule-tpl",
+		className: "grid-tab-teacher-roster-schedule",
+		initialize: function (options) {
+			this.options = options;
+			this.vars = _.extend({}, this.options.vars);
+			this.render();
+		},
+		render: function () {
+			this.vars.schedule = [];
+			this.vars.section_personnel = [];
+
+			this.vars.instances = [];
+			this.vars.instance_users = [];
+			this.vars.section_users = [];
+
+			_.each(
+				this.vars.class.sections,
+				_.bind(function (section) {
+					var this_row = {
+						section: section,
+						personnel: [],
+					};
+					this.vars.instances = _.extend(
+						this.vars.instances,
+						section.instances
+					);
+					this.vars.instance_users = _.extend(
+						this.vars.instance_users,
+						section.instance_users
+					);
+					this.vars.section_users = _.extend(
+						this.vars.section_users,
+						section.section_users
+					);
+					_.each(
+						section.section_users,
+						_.bind(function (su) {
+							this_row.personnel.push({
+								user_type:
+									su.user_type.substr(0, 1).toUpperCase() +
+									su.user_type.substr(1),
+								index: su.index,
+								user: _.findWhere(this.vars.class.lineup, {
+									user_id: su.user_id,
+								}),
+							});
+						}, this)
+					);
+					this.vars.section_personnel.push(this_row);
+				}, this)
+			);
+
+			this.model.get("lessons").each(
+				_.bind(function (lesson) {
+					var this_row = {
+						lesson: lesson.get("lesson"),
+						instances: [],
+					};
+					_.each(
+						_.where(this.vars.instances, {
+							lesson: lesson.get("lesson"),
+						}),
+						_.bind(function (instance) {
+							var this_instance = {
+								start: moment(instance.start_at),
+								end: moment(instance.end_at),
+								personnel: [],
+							};
+							this_instance.date =
+								this_instance.start.format("MMM D, YYYY") +
+								" (" +
+								this_instance.start.format("h:mm") +
+								" - " +
+								this_instance.end.format("h:mm") +
+								")";
+							this_row.instances.push(this_instance);
+							_.each(
+								_.where(this.vars.section_users, {
+									section_id: instance.section_id,
+								}),
+								_.bind(function (su) {
+									var iu = _.findWhere(this.vars.instance_users, {
+										instance_id: instance.instance_id,
+										user_type: su.user_type,
+										index: su.index,
+									});
+									if (iu) {
+										this_instance.personnel.push({
+											user_type:
+												su.user_type.substr(0, 1).toUpperCase() +
+												su.user_type.substr(1),
+											index: su.index,
+											user: _.findWhere(this.vars.class.lineup, {
+												user_id: iu.user_id < 0 ? su.user_id : iu.user_id,
+											}),
+										});
+									}
+								}, this)
+							);
+						}, this)
+					);
+					this.vars.schedule.push(this_row);
+				}, this)
+			);
+			this.$el.html(this.getTemplate(this.template_id, this.vars));
+		},
+	});
+
+	Views.GridTabTeacherExtensions = AoPS.View.extend({
+		template_id: "#grid-tab-teacher-extensions-tpl",
+		className: "grid-tab-teacher-extensions",
+		initialize: function (options) {
+			this.options = options;
+			this.vars = _.extend({}, this.options.vars);
+			this.$el.text("Loading...");
+			this.loadAndRender();
+		},
+		loadAndRender: function () {
+			$.ajax({
+				url: "/m/xo/ajax.php",
+				method: "post",
+				data: {
+					a: "get_class_extensions",
+					class_id: this.model.get("class_id"),
+				},
+			}).done(
+				_.bind(function (data) {
+					this.vars.grid_extensions = data.response.grid_extensions;
+					this.render();
+				}, this)
+			);
+		},
+		render: function () {
+			this.$el.html(this.getTemplate(this.template_id, this.vars));
+			this.$extensions = this.$("table.extensions");
+			this.$header = $("<tr />").appendTo(this.$extensions.find("thead"));
+			this.$header.append(
+				$("<th />")
+					.css("background", "#bbb")
+					.text("User ID")
+					.addClass("user_id")
+			);
+			this.$header.append(
+				$("<th />")
+					.css("background", "#bbb")
+					.text("Username")
+					.addClass("username")
+			);
+			_.each(
+				this.vars.grid_extensions.columns,
+				_.bind(function (lesson) {
+					this.$header.append(
+						$("<th />").css("background", "#bbb").text(lesson.lesson)
+					);
+				}, this)
+			);
+			_.each(
+				this.vars.grid_extensions.rows,
+				_.bind(function (row) {
+					var $tr = $("<tr />").appendTo(this.$extensions.find("tbody"));
+					$tr
+						.append(
+							$("<td />")
+								.addClass("user_id")
+								.append(
+									this.vars.class_perms.me.can_impersonate
+										? $("<a />")
+												.attr({
+													href:
+														this.vars.base_class_url +
+														"/homework?user_id=" +
+														row.user_id,
+													target: "_blank",
+												})
+												.text(row.user_id)
+										: $("<span />").text(row.user_id)
+								)
+						)
+						.append(
+							$("<td />")
+								.addClass("username")
+								.append(
+									$("<a />")
+										.attr({
+											href:
+												"/report/problem_report.php?class_id=" +
+												this.vars.class_id +
+												"&user_id=" +
+												row.user_id,
+											target: "_blank",
+										})
+										.text(row.username)
+								)
+						);
+					_.each(
+						row.lessons,
+						_.bind(function (lesson) {
+							var $td = $("<td />").text(lesson.due_at_fmt).appendTo($tr);
+							if (lesson.answered_at) {
+								this.$("ul.legend").show();
+								$td.css("color", "#3da000");
+							} else {
+								$td.css("color", "black");
+							}
+							if (lesson.graded_at) {
+								$td.css("font-weight", "bold");
+							}
+							if (lesson.closed_at) {
+								$td.css("background", "#dbd");
+								if (lesson.cheated) {
+									$td.css("background", "#ff9b9b");
+								}
+							}
+							if (lesson.solution_at) {
+								$td.css("text-decoration", "line-through");
+							}
+							$td.addClass("ecole-clickable").click(
+								_.bind(function (e) {
+									// eslint-disable-next-line no-alert
+									var due = prompt(
+										"Enter new due date (blank for original due date):",
+										"+2 day"
+									);
+									if (!_.isNull(due)) {
+										$.ajax({
+											url: "/m/xo/ajax.php",
+											method: "post",
+											data: {
+												a: "grid_change_lesson_due_at",
+												class_id: this.model.get("class_id"),
+												lesson: lesson.lesson,
+												user_id: row.user_id,
+												due_at: due,
+											},
+										}).done(
+											_.bind(function (data) {
+												this.loadAndRender();
+											}, this)
+										);
+									}
+								}, this)
+							);
+						}, this)
+					);
+				}, this)
+			);
+		},
+	});
+
+	Views.GridTabTeacherReports = AoPS.View.extend({
+		template_id: "#grid-tab-teacher-reports-tpl",
+		className: "grid-tab-teacher-reports",
+		initialize: function (options) {
+			this.options = options;
+			this.vars = _.extend({}, this.options.vars);
+			this.$el.text("Loading...");
+			this.vars.is_math_level_1 =
+				this.model.get("course_id") === "acad-1st-grade-math";
+			this.loadAndRender();
+		},
+		loadAndRender: function () {
+			$.ajax({
+				url: "/m/xo/ajax.php",
+				method: "post",
+				data: {
+					a: "get_class_reports",
+					class_id: this.model.get("class_id"),
+					include_bao_topics: this.vars.is_math_level_1,
+				},
+			}).done(
+				_.bind(function (data) {
+					this.vars.last_cached_at = data.response.last_cached_at;
+					this.vars.reports = data.response.grid_reports;
+					this.render();
+				}, this)
+			);
+		},
+		render: function () {
+			this.vars.has_overall = this.model.get("flavor").has_overall;
+			const is_math_level_1 = this.vars.is_math_level_1;
+			this.vars.is_expandable =
+				_.keys(this.model.get("flavor").report_bar_weights).length > 1;
+			_.each(this.vars.reports, function (report) {
+				_.each(report.bars, function (bar) {
+					bar.display = Math.round(Math.max(0, Math.min(100, bar.length)) - 1);
+				});
+				report.overall.display = Math.round(
+					Math.max(0, Math.min(100, report.overall.length)) - 1
+				);
+				_.each(report.lessons, function (lesson) {
+					_.each(lesson.bars, function (bar) {
+						if (is_math_level_1 && bar.bao) {
+							const bar_length = AoPS.Grid.Utils.CalculateBaoBarLength(
+								bar.bao.topics,
+								0
+							);
+							bar.length = Math.max(bar_length, 5);
+							bar.color = AoPS.Grid.Utils.GetBarColor(bar.length);
+							bar.display = bar_length;
+						} else {
+							bar.display = Math.round(
+								Math.max(0, Math.min(100, bar.length)) - 1
+							);
+						}
+					});
+					lesson.overall.display = Math.round(
+						Math.max(0, Math.min(100, lesson.overall.length)) - 1
+					);
+				});
+			});
+			if (this.vars.is_expandable && !this.vars.is_vacad_la) {
+				var first_slice = {
+					caption: "Overall",
+					weight: 100,
+					rows: [],
+					lessons: [],
+				};
+				_.each(this.vars.reports, function (report) {
+					var this_row = {
+						user_id: report.user_id,
+						username: report.username,
+						first_name: report.first_name,
+						last_name: report.last_name,
+						overall: report.overall,
+						lessons: [],
+					};
+					_.each(report.lessons, function (lesson) {
+						this_row.lessons.push({
+							lesson: lesson.lesson,
+							bar: lesson.overall,
+						});
+					});
+					first_slice.rows.push(this_row);
+				});
+				this.vars.slices = [first_slice];
+			} else {
+				this.vars.slices = [];
+			}
+
+			this.vars.has_bao = false;
+			this.vars.first = _.first(this.vars.reports) || {};
+			_.each(
+				this.vars.first.bars || [],
+				_.bind(function (bar) {
+					var this_slice = {
+						caption: bar.caption,
+						weight: bar.weight,
+						rows: [],
+						lessons: [],
+					};
+					if (bar.key == "bao") {
+						this.vars.has_bao = true;
+					}
+					_.each(this.vars.reports, function (report) {
+						var this_row = {
+							user_id: report.user_id,
+							username: report.username,
+							first_name: report.first_name,
+							last_name: report.last_name,
+							overall: _.findWhere(report.bars, {key: bar.key}),
+							lessons: [],
+						};
+						_.each(report.lessons, function (lesson) {
+							this_row.lessons.push({
+								lesson: lesson.lesson,
+								bar: _.findWhere(lesson.bars, {key: bar.key}),
+							});
+						});
+						this_slice.rows.push(this_row);
+					});
+					this.vars.slices.push(this_slice);
+				}, this)
+			);
+			this.$el.html(this.getTemplate(this.template_id, this.vars));
+
+			/**
+			 * adjust user info table height to match data table height
+			 *
+			 * timeout is to give the page time to load the DOM
+			 *
+			 * 01.24.2024 - ;>> <<; ;>> I mean...if the function
+			 * exists...then...I'm going to go with it. - angela
+			 */
+			setTimeout(function () {
+				var teacherReportsTables = $(".teacher-reports-flexbox");
+				_.each(teacherReportsTables, function (table) {
+					var $table = $(table);
+					var tableCells = $table.find(
+						".teacher-reports-fixed td, .scrollable-table-section td"
+					);
+
+					var maxHeight = _.reduce(
+						tableCells,
+						function (max, td) {
+							return Math.max($(td).outerHeight(), max);
+						},
+						0
+					);
+
+					_.each(tableCells, function (td) {
+						$(td).outerHeight(maxHeight);
+					});
+				});
+			}, 10);
+		},
+	});
+
+	Views.GridTabTeacherSPReports = AoPS.View.extend({
+		template_id: "#grid-tab-teacher-sp-reports-tpl",
+		className: "grid-tab-teacher-reports",
+		initialize: function (options) {
+			this.options = options;
+			this.vars = _.extend({}, this.options.vars);
+			this.$el.text("Warning: this page is slow.  Loading...");
+			this.showing_descriptions = false;
+
+			this.num_students = 0;
+			this.min_lesson = this.model.get("min_lesson");
+			this.num_lessons =
+				this.model.get("max_lesson") - this.model.get("min_lesson") + 1;
+			this.max_task_score = this.num_lessons;
+			this.max_task_score =
+				(this.max_task_score * (this.max_task_score + 1)) / 2;
+
+			this.loadAndRender();
+		},
+		slices: [
+			{hash: "overall", caption: "Overall", is_default: true},
+			{hash: "lessons", caption: "Lessons", types: ["composite"]},
+			{hash: "alcumus", caption: "Alcumus", types: ["alcumus"]},
+			{
+				hash: "problems",
+				caption: "Problems",
+				types: ["problem_challenge", "problem_writing", "problem_discussion"],
+			},
+			{
+				hash: "writings",
+				caption: "Writing Problems",
+				types: ["problem_writing"],
+			},
+			{hash: "videos", caption: "Video", types: ["video"]},
+			{hash: "readings", caption: "Reading", types: ["reading"]},
+		],
+		filters: [
+			{
+				hash: "started",
+				caption: "Started",
+				filter_func: function (obj) {
+					return obj.dot > 0;
+				},
+				desc: "Students who have completed at least one task.",
+			},
+			{
+				hash: "active",
+				caption: "Active",
+				filter_func: function (obj) {
+					return obj.is_active;
+				},
+				desc: "Students who have completed a task in the last two weeks.",
+			},
+			{
+				hash: "mostly_done",
+				caption: "Mostly Done",
+				filter_func: function (obj) {
+					return obj.dot > 19; // Magic number from curriculum.
+				},
+				desc: "Students with task dot > 19.",
+			},
+			{
+				hash: "done",
+				caption: "Done",
+				filter_func: function (obj) {
+					return obj.s.course_completed_date ? true : false;
+				},
+				desc: "Students who have completed all sections (even if new objects were added later).",
+			},
+		],
+
+		loadAndRender: function () {
+			$.ajax({
+				url: "/m/xo/ajax.php",
+				method: "post",
+				data: {
+					a: "get_sp_reports",
+					class_id: this.model.get("class_id"),
+				},
+			}).done(
+				_.bind(function (data) {
+					this.vars.columns = _.map(data.response.chapters, function (c) {
+						return {chapter: c.chapter};
+					});
+					this.vars.rows = _.map(
+						data.response.students,
+						_.bind(function (s) {
+							this.num_students++;
+							var by_id = {};
+							_.each(s.colors, function (ids, color) {
+								_.each(ids, function (id) {
+									by_id[id] = color;
+								});
+							});
+							var columns = _.map(
+								data.response.chapters,
+								_.bind(function (chapter) {
+									return {
+										chapter: chapter.chapter,
+										bars: _.map(
+											this.slices,
+											_.bind(function (slice) {
+												return {
+													hash: slice.hash,
+													bar: _.reduce(
+														chapter.items,
+														_.bind(function (bar, item) {
+															if (
+																!_.isArray(slice.types) ||
+																slice.types.indexOf(item.type) >= 0
+															) {
+																var last = _.last(bar.colors);
+																var color = by_id[item.id] || "default";
+																if (
+																	_.isUndefined(last) ||
+																	last.color != color
+																) {
+																	bar.colors.push({
+																		color: color,
+																		start: bar.size,
+																		size: 1,
+																	});
+																} else {
+																	last.size++;
+																}
+																if (color != "default") {
+																	bar.num_complete++;
+																}
+																bar.size++;
+															}
+															return bar;
+														}, this),
+														{size: 0, colors: [], num_complete: 0}
+													),
+												};
+											}, this)
+										),
+									};
+								}, this)
+							);
+
+							// Funny dot product definition for completion that curriculum came up with:
+							// Chapter vector (1, 2, ..., #chapters) dot percent task completion vector.
+							var dot = 0;
+							_.each(
+								columns,
+								_.bind(function (column) {
+									var overall_bar = column.bars.find(function (bar) {
+										return bar.hash === "overall";
+									}).bar;
+									dot +=
+										(column.chapter - this.min_lesson + 1) *
+										(overall_bar.num_complete / overall_bar.size);
+								}, this)
+							);
+
+							var is_active =
+								(Date.now() - new Date(s.max_completed_date).getTime()) /
+									(1000 * 60 * 60 * 24) <=
+								14;
+
+							// Preprocess filters to store on each row.
+							var applicable_filters = [];
+							var filter_obj = {
+								s: s,
+								dot: dot,
+								max_task_score: this.max_task_score,
+								is_active: is_active,
+							};
+							_.each(
+								this.filters,
+								_.bind(function (filter) {
+									if (filter.filter_func(filter_obj)) {
+										applicable_filters.push(filter.hash);
+									}
+								}, this)
+							);
+
+							var days_until_done = null; // Default when the scheduler can't project an end date.
+							var days_spent = null;
+							if (
+								applicable_filters.includes("done") ||
+								(applicable_filters.includes("mostly_done") &&
+									!applicable_filters.includes("active"))
+							) {
+								days_until_done = 0;
+								var final_day = s.course_completed_date
+									? new Date(s.course_completed_date).getTime()
+									: new Date(s.max_completed_date).getTime();
+								days_spent = final_day
+									? Math.ceil(
+											(final_day - new Date(s.enrolled_at).getTime()) /
+												(1000 * 60 * 60 * 24)
+									  )
+									: null;
+							} else if (s.proj_end_date) {
+								days_until_done = Math.ceil(
+									(new Date(s.proj_end_date).getTime() - Date.now()) /
+										(1000 * 60 * 60 * 24)
+								);
+							}
+
+							return {
+								user_id: s.user_id,
+								username: s.username,
+								columns: columns,
+								tasks_dot: dot,
+								start_date: s.enrolled_at,
+								proj_end_date: s.proj_end_date,
+								course_completed_date: s.course_completed_date,
+								days_until_done: days_until_done,
+								days_spent: days_spent,
+								last_completed_date: s.max_completed_date,
+								is_active: is_active,
+								applicable_filters: applicable_filters,
+							};
+						}, this)
+					);
+					this.render();
+				}, this)
+			);
+		},
+
+		processCheckboxes: function () {
+			var inputHash;
+			_.each(
+				this.slices,
+				_.bind(function (slice) {
+					inputHash = 'input[type="checkbox"][name="' + slice.hash + '"]';
+					if (this.$(inputHash).prop("checked")) {
+						this.$(".bar-" + slice.hash).show();
+					} else {
+						this.$(".bar-" + slice.hash).hide();
+					}
+				}, this)
+			);
+
+			var search_str = "tr.body-row";
+			var anti_search_str = "";
+			this.$(search_str).addClass("filtered");
+			_.each(
+				this.filters,
+				_.bind(function (filter) {
+					inputHash = 'input[type="checkbox"][name="' + filter.hash + '"]';
+					if (this.$(inputHash).prop("checked")) {
+						search_str += "." + filter.hash;
+					} else if (this.$(inputHash).prop("indeterminate")) {
+						anti_search_str += "." + filter.hash + ",";
+					}
+				}, this)
+			);
+			if (anti_search_str) {
+				search_str += ":not(" + anti_search_str.slice(0, -1) + ")"; // Slice to remove last comma
+			}
+			var jq_elems = this.$(search_str);
+			jq_elems.removeClass("filtered");
+			// ignore-security-checks
+			document.getElementById("num_students").innerHTML = jq_elems.size();
+
+			$("table.tablesorter").trigger("applyWidgets");
+		},
+
+		createSpReportTooltips: function () {
+			_.each(
+				this.slices,
+				_.bind(function (slice) {
+					_.each(
+						this.$(".bar-" + slice.hash),
+						_.bind(function (bar) {
+							var $bar = $(bar);
+							AoPS.Grid.Utils.CreateTooltip(
+								$bar,
+								$(bar).attr("username") +
+									" - Ch " +
+									$(bar).attr("chapter") +
+									" - " +
+									slice.caption +
+									" - " +
+									$(bar).attr("vitals")
+							);
+						}, this)
+					);
+				}, this)
+			);
+		},
+
+		toggleDescriptions: function () {
+			if (this.showing_descriptions) {
+				this.$("table.teacher-reports.aops").removeClass("expanded");
+				this.$(".legend-body").addClass("hidden");
+			} else {
+				this.$("table.teacher-reports.aops").addClass("expanded");
+				this.$(".legend-body").removeClass("hidden");
+			}
+			this.showing_descriptions = !this.showing_descriptions;
+		},
+
+		setInnerHeight: function () {
+			this.$("form")
+				.parent()
+				.css("max-height", window.innerHeight - 225 + "px");
+		},
+
+		render: function () {
+			this.vars.slices = this.slices;
+			this.vars.filters = this.filters;
+			this.vars.num_students = this.num_students;
+			this.$el.html(this.getTemplate(this.template_id, this.vars));
+
+			this.$("table.teacher-reports").tablesorter({
+				sortList: [[1, 0]],
+				theme: "xo",
+				widthFixed: true,
+				widgets: ["zebra", "filter"],
+				widgetOptions: {
+					filter_columnFilters: false,
+					filter_filteredRow: "filtered",
+					zebra: ["normal-row", "alt-row"],
+				},
+			});
+			this.createSpReportTooltips();
+			this.$(".legend-head").on("click", _.bind(this.toggleDescriptions, this));
+			this.setInnerHeight();
+			$(window).on("resize", _.bind(this.setInnerHeight, this));
+
+			this.processCheckboxes();
+			this.$('input[type="checkbox"].filter-checkbox').on(
+				"click",
+				_.bind(function (e) {
+					var cb = e.target;
+					if (cb.readOnly) {
+						cb.checked = cb.readOnly = false;
+					} else if (!cb.checked) {
+						cb.readOnly = cb.indeterminate = true;
+					}
+				}, this)
+			);
+			this.$('input[type="checkbox"]').change(
+				_.bind(this.processCheckboxes, this)
+			);
+		},
+	});
+
+	Views.GridTabTeacherAlcumus = AoPS.View.extend({
+		template_id: "#grid-tab-teacher-alcumus-tpl",
+		className: "grid-tab-teacher-alcumus",
+		initialize: function (options) {
+			this.options = options;
+			this.vars = _.extend({}, this.options.vars);
+			this.$el.text("Loading...");
+			this.loadAndRender();
+		},
+		loadAndRender: function () {
+			$.ajax({
+				url: "/m/xo/ajax.php",
+				method: "post",
+				data: {
+					a: "get_class_alcumus_topics",
+					class_id: this.model.get("class_id"),
+				},
+			}).done(
+				_.bind(function (data) {
+					this.vars.grid_alcumus_topics = data.response.grid_alcumus_topics;
+					this.render();
+				}, this)
+			);
+		},
+		render: function () {
+			this.lessons = {};
+			_.each(
+				this.vars.class.hw_schedule,
+				_.bind(function (lesson) {
+					var class_lesson = this.model
+						.get("lessons")
+						.findWhere({lesson: lesson.lesson});
+					this.lessons[lesson.lesson] = {
+						lesson: lesson.lesson,
+						topic: lesson.topic,
+						due_at: class_lesson ? class_lesson.get("due_at_fmt") : "???",
+						topics: [],
+					};
+				}, this)
+			);
+			_.each(
+				this.vars.grid_alcumus_topics,
+				_.bind(function (topic) {
+					topic.nominal_rating = Math.round(150 * (12 + topic.rating));
+					if (!_.isUndefined(this.lessons[topic.lesson])) {
+						this.lessons[topic.lesson].topics.push(topic);
+					}
+				}, this)
+			);
+			this.vars.lessons = _.values(this.lessons);
+			this.$el.html(this.getTemplate(this.template_id, this.vars));
+		},
+	});
+
+	Views.GridTabTeacherHomework = AoPS.View.extend({
+		template_id: "#grid-tab-teacher-homework-tpl",
+		className: "grid-tab-teacher-homework",
+		initialize: function (options) {
+			this.options = options;
+			this.vars = _.extend({}, this.options.vars);
+			this.vars.lesson_units = this.model.get("lesson_units");
+			this.$el.text("Loading...");
+			this.loadAndRender();
+		},
+		loadAndRender: function () {
+			$.ajax({
+				url: "/m/xo/ajax.php",
+				method: "post",
+				data: {
+					a: "get_class_aggregate_homework",
+					class_id: this.model.get("class_id"),
+				},
+			}).done(
+				_.bind(function (data) {
+					this.vars.assignments = data.response.assignments;
+					this.render();
+				}, this)
+			);
+		},
+		render: function () {
+			this.vars.has_release = false;
+			this.vars.to_release = [];
+			_.each(
+				this.vars.assignments,
+				_.bind(function (hw) {
+					hw.link =
+						this.vars.aops_url +
+						"grader/grade/class-" +
+						this.model.get("class_id") +
+						"/week-" +
+						hw.lesson +
+						"/problem-" +
+						hw.problem_id;
+					if (
+						(hw.lesson_model = this.model
+							.get("lessons")
+							.findWhere({lesson: hw.lesson}))
+					) {
+						if (
+							(hw.problem_model = hw.lesson_model
+								.get("hw_problems")
+								.findWhere({problem_id: hw.problem_id}))
+						) {
+							hw.problem = _.clone(hw.problem_model.attributes);
+						}
+					}
+					if (hw.is_evaluated) {
+						this.vars.has_release = true;
+					}
+					if (hw.num_graded > hw.num_released) {
+						this.vars.to_release.push(hw);
+					}
+				}, this)
+			);
+			this.$el.html(this.getTemplate(this.template_id, this.vars));
+		},
+	});
+
+	Views.GridTabTeacherSurvey = AoPS.View.extend({
+		template_id: "#grid-tab-teacher-survey-tpl",
+		className: "grid-tab-teacher-survey",
+		initialize: function (options) {
+			this.options = options;
+			this.vars = _.extend({}, this.options.vars);
+			this.render();
+		},
+		valueToColor: function (x) {
+			if (x < -0.05 || x > 1.05) {
+				return AoPS.Grid.Utils.rgbToHex(0.8, 0.8, 0.8);
+			}
+			var conversion = [
+					{in: 0, color: "#FF0016"},
+					{in: 1 / 6, color: "#ED989A"},
+					{in: 2 / 6, color: "#FBCAA2"},
+					{in: 3 / 6, color: "#FFF2D0"},
+					{in: 4 / 6, color: "#B4D7AD"},
+					{in: 5 / 6, color: "#65A75B"},
+					{in: 6 / 6, color: "#A2C3F0"},
+				],
+				index = 0;
+
+			_.each(conversion, function (item) {
+				item.r = parseInt(item.color.substring(1, 3), 16) / 255;
+				item.g = parseInt(item.color.substring(3, 5), 16) / 255;
+				item.b = parseInt(item.color.substring(5, 7), 16) / 255;
+			});
+			for (index = 0; index < conversion.length - 2; index++) {
+				if (x < conversion[index + 1].in) {
+					break;
+				}
+			}
+			var from = conversion[index],
+				to = conversion[index + 1];
+
+			x = Math.min(Math.max(x, 0), 1);
+			return AoPS.Grid.Utils.rgbToHex(
+				(from.r * (x - to.in) - to.r * (x - from.in)) / (from.in - to.in),
+				(from.g * (x - to.in) - to.g * (x - from.in)) / (from.in - to.in),
+				(from.b * (x - to.in) - to.b * (x - from.in)) / (from.in - to.in)
+			);
+		},
+		render: function () {
+			this.vars.columns = [];
+			this.vars.rows = [];
+			this.vars.likert = false;
+			this.vars.is_virtual_summer =
+				this.model.get("is_virtual") &&
+				this.model.get("course_id").includes("summer");
+
+			if (this.vars.show_pc_new_surveys) {
+				this.renderAcademySurveys();
+			} else {
+				this.renderOnlineVirtualSurveys();
+			}
+
+			this.$el.html(this.getTemplate(this.template_id, this.vars));
+		},
+
+		renderOnlineVirtualSurveys: function () {
+			_.each(
+				this.vars.class.survey_results,
+				_.bind(function (item) {
+					item.display_labels = [];
+					_.each(_.keys(item.values), function (key) {
+						if (item.labels[key]) {
+							item.display_labels.push({
+								value: item.values[key],
+								caption: item.labels[key],
+							});
+						}
+					});
+
+					if (item.short) {
+						this.vars.columns.push(item);
+					}
+
+					if (item.best_score === 4 && !this.vars.is_virtual_summer) {
+						this.vars.likert = true;
+					}
+				}, this)
+			);
+
+			_.each(
+				this.vars.class.survey_responses,
+				_.bind(function (response) {
+					var row = {
+						user_id: response.user_id,
+						username: response.username,
+						columns: [],
+						general: response.general,
+						summer_most: response.summer_most,
+						summer_least: response.summer_least,
+					};
+					_.each(
+						this.vars.columns,
+						_.bind(function (item) {
+							var val = response[item.key];
+
+							if (_.isArray(val)) {
+								// These are multi-selects. Push directly.
+								row.columns.push({
+									response: val,
+								});
+							} else {
+								var x = null;
+								if (item.best_score === 3) {
+									x = (3 - Math.abs(val - 3)) / 3;
+								} else if (item.best_score === 0) {
+									x = (6 - val) / 6;
+								} else if (item.best_score === 4) {
+									x = val < 0 ? -0.5 : (val + 1) / 5;
+								} else {
+									x = val / 6;
+								}
+								row.columns.push({
+									response: [val < 0 ? "--" : val],
+									color: this.valueToColor(x),
+								});
+							}
+						}, this)
+					);
+					this.vars.rows.push(row);
+				}, this)
+			);
+		},
+
+		valueToColorAcademy: function (score, best_score = 5) {
+			if (isNaN(score)) {
+				return "#ddd";
+			}
+
+			var diff = Math.abs(best_score - score);
+
+			function compute(coefficient) {
+				if (diff <= coefficient) {
+					return "#a4c2f4";
+				}
+				if (diff <= coefficient * 2) {
+					return "#b7d7a8";
+				}
+				if (diff <= coefficient * 3) {
+					return "#ffe597";
+				}
+				if (diff <= coefficient * 4) {
+					return "#f9cb9c";
+				}
+				return "#e99a99";
+			}
+
+			if (best_score === 3) {
+				return compute(0.4);
+			}
+			if (best_score === 5) {
+				return compute(0.8);
+			}
+
+			return "#ddd";
+		},
+
+		// We process the Backend data to be formated for display on the Frontend.
+		// A little awkward because the Backend data is formated as a row for each class instance,
+		// where the Frontend displays this as a column. It appears Handlebars cannot process
+		// arrays through indexs, so this function does the conversion from rows to columns.
+		createAcademySurveyAverages: function () {
+			//  SSV2 TODO: These need to be database calls
+			var num_questions = 5;
+			var question_labels = [
+				"My teacher runs the class in a way that helps me learn.",
+				"The lessons challenge me with questions and activities.",
+				"I'm learning new concepts, skills, and techniques.",
+				"The homework helps me practice the concepts and skills I learned in class.",
+				"The classes are fun and engaging.",
+			];
+			var survey_scale = "1 - Strongly Disagree to 5 - Strongly Agree";
+			this.vars.survey_instance_headers = [];
+			this.vars.survey_counts = [];
+
+			// Initializes the survey averages table data
+			this.vars.survey_averages = [
+				{
+					label: question_labels[0],
+					instances: [],
+					scale: survey_scale,
+				},
+				{
+					label: question_labels[1],
+					instances: [],
+					scale: survey_scale,
+				},
+				{
+					label: question_labels[2],
+					instances: [],
+					scale: survey_scale,
+				},
+				{
+					label: question_labels[3],
+					instances: [],
+					scale: survey_scale,
+				},
+				{
+					label: question_labels[4],
+					instances: [],
+					scale: survey_scale,
+				},
+			];
+
+			// Format each instance of the survey averages into columns for table display
+			_.each(
+				this.vars.class.survey_responses,
+				_.bind(function (averages, instance) {
+					// The Header information about instances
+					var header_data = {
+						instance: instance,
+						count: averages["count"],
+					};
+					this.vars.survey_instance_headers.push(header_data);
+
+					this.vars.survey_counts.push(averages["count"]);
+					for (var i = 0; i < num_questions; i++) {
+						var average = averages[i + 1] ? averages[i + 1] : "N/A";
+						// Display data for each survey average table cell
+						var cell_data = {
+							average,
+							color: this.valueToColorAcademy(average),
+						};
+						this.vars.survey_averages[i].instances.push(cell_data);
+					}
+				}, this)
+			);
+
+			// Needed for the 'Average Rating' Header display to know how long to make it with colspan attribute
+			this.vars.survey_instances_count =
+				this.vars.survey_instance_headers.length;
+		},
+
+		// Convert the Backend comments data into the Frontend format.
+		// We separate the first comment from the rest in order to make the rowspan attribute work,
+		// and the first row of each instance will have the instance number and first comment
+		createAcademySurveyComments: function () {
+			this.vars.survey_comments = [];
+			_.each(
+				this.vars.class.survey_comments,
+				_.bind(function (comments, instance) {
+					var num_comments = Math.max(comments.length, 1);
+					var first_comment = "";
+					var next_comments = [];
+					if (comments.length) {
+						first_comment = comments[0];
+						next_comments = comments.slice(1);
+					}
+					var instance_comments_data = {
+						instance,
+						first_comment,
+						comments: next_comments,
+						num_comments,
+					};
+					this.vars.survey_comments.push(instance_comments_data);
+				}, this)
+			);
+		},
+
+		renderAcademySurveys: function () {
+			this.createAcademySurveyAverages();
+			this.createAcademySurveyComments();
+		},
+	});
+
+	Views.GridTabTeacherBBReading = AoPS.View.extend({
+		template_id: "#grid-tab-teacher-bb-reading-tpl",
+		className: "grid-tab-teacher-bb-reading",
+		initialize: function (options) {
+			this.options = options;
+			this.vars = _.extend({}, this.options.vars);
+			this.$el.text("Loading...");
+			this.loadAndRender();
+		},
+		loadAndRender: function () {
+			$.ajax({
+				url: "/m/xo/ajax.php",
+				method: "post",
+				data: {
+					a: "get_class_bb_reading",
+					class_id: this.model.get("class_id"),
+				},
+			}).done(
+				_.bind(function (data) {
+					this.units = data.response.units;
+					this.render();
+				}, this)
+			);
+		},
+		render: function () {
+			this.$el.html(this.getTemplate(this.template_id, this.vars));
+			this.$inner = this.$(".inner");
+			_.each(this.units, _.bind(this.renderUnit, this));
+		},
+		renderUnit: function (unit) {
+			var $el = $("<div />").appendTo(this.$inner);
+			var $vitals = $("<ul />");
+			var unit_number = this.units.indexOf(unit) + 1;
+
+			if (unit_number > 1) {
+				$el.append($("<hr />"));
+			}
+
+			$el
+				.append($("<h3 />").text("Unit #" + unit_number + ": " + unit.name))
+				.append($vitals);
+			if (!_.isNull(unit.min_lesson) && !_.isNull(unit.max_lesson)) {
+				$vitals.append(
+					$("<li />").html(
+						this.model.get("lesson_units").singular +
+							" " +
+							unit.min_lesson +
+							" &ndash; " +
+							unit.max_lesson
+					)
+				);
+			}
+
+			if (unit.books.length) {
+				_.each(
+					unit.books,
+					_.bind(function (book) {
+						$vitals.append(
+							$("<li />")
+								.append($("<i />").text(book.name))
+								.append(
+									$("<span />").text(
+										" by " +
+											(_.pluck(book.author, "name").join(" + ") || "unknown") +
+											" (" +
+											(book.type.charAt(0).toUpperCase() + book.type.slice(1)) +
+											")"
+									)
+								)
+						);
+					})
+				);
+
+				if (
+					this.vars.class.enrollments &&
+					this.model.get("current_lesson") >= unit.min_lesson
+				) {
+					$el.append(this.renderUnitEnrollments(unit));
+				}
+
+				_.each(
+					unit.books,
+					_.bind(function (book) {
+						$el.append(this.renderUnitBook(unit, book));
+					}, this)
+				);
+			} else {
+				$vitals.append(
+					$("<li />")
+						.text("No books currently defined.")
+						.css("font-style", "italic")
+				);
+			}
+		},
+		renderUnitBook: function (unit, book) {
+			// Make each book for Unit
+			var $book = $("<div />").css({margin: "10px 0 20px 50px"});
+			var $inner = $("<div />").css({
+				margin: "5px 0 20px 15px",
+				padding: "5px 7px",
+				background: "#ddd",
+			});
+
+			var users = _.filter(
+				this.vars.class.enrollments,
+				_.bind(function (e) {
+					return book.user_ids.indexOf(e.user_id) >= 0;
+				}, this)
+			);
+
+			$book
+				.append(
+					$("<h3 />")
+						.text(unit.name + " - ")
+						.append($("<i />").text(book.name))
+				)
+				.append($inner);
+
+			$inner.append(
+				$("<h4 />").html(
+					"Quizzes <span class='faux-link aops-font about-quizzes'>?</span>"
+				)
+			);
+
+			$inner.find(".about-quizzes").click(function () {
+				AoPS.Ui.Modal.showMessage(
+					"<p>This table includes every student with this book active, \
+				and any student with the book inactive but with some progress. </p>\
+				<p>The students who have this book inactive have their names & scores in italic.</p>\
+				<p>Maxed scores are bolded.</p>"
+				);
+			});
+
+			if (book.quizzes.length) {
+				if (users.length) {
+					$inner.append(
+						this.renderUnitBookQuizComplete(
+							unit,
+							book,
+							users,
+							this.vars.class.enrollments
+						)
+					);
+				}
+				$inner.append(
+					_.reduce(
+						book.quizzes,
+						_.bind(function ($quizzes, quiz) {
+							var $name = $("<div />").css("padding", "2px 5px");
+							var $status = $("<span />").text(" (Expand)");
+							var $li = $("<li />").append($name);
+
+							$name
+								// ignore-security-checks
+								.html("<b>Quiz #" + quiz.index + "</b>: ")
+								.append(
+									$("<span />")
+										.text(quiz.name)
+										.css({color: "#1b365d", "font-weight": "bold"})
+								);
+							if (quiz.problems.length) {
+								var $problems = $("<div />").hide();
+
+								$li.append($problems);
+								$name
+									.append($status)
+									.addClass("ecole-clickable")
+									.hover(
+										function () {
+											$problems.css("opacity", "0.75");
+										},
+										function () {
+											$problems.css("opacity", "1");
+										}
+									)
+									.click(
+										_.bind(function () {
+											if ($status.hasClass("expanded")) {
+												$status.text(" (Expand)").removeClass("expanded");
+												$problems.slideUp();
+											} else {
+												$status.text(" (Hide)").addClass("expanded");
+												$problems.css("opacity", "1");
+												if (!$problems.hasClass("rendered")) {
+													$problems.append(
+														this.renderUnitQuizProblems(
+															unit,
+															book,
+															quiz,
+															users,
+															this.vars.class.enrollments
+														)
+													);
+													$problems.addClass("rendered").slideDown();
+												}
+												$problems.slideDown();
+											}
+										}, this)
+									);
+							}
+
+							return $quizzes.append($li);
+						}, this),
+						$("<ul />")
+					)
+				);
+			} else {
+				$inner.append($("<em />").text("No quizzes for this book."));
+			}
+
+			return $book;
+		},
+		renderUnitQuizProblems: function (unit, book, quiz, users, all_users) {
+			var $div = $("<div />");
+
+			var user_map = users.reduce(function (map, user) {
+				map[user.user_id] = user;
+				return map;
+			}, {});
+
+			if (users.length || quiz.user_progress.keys().length) {
+				$div.append(
+					$("<div />")
+						.css("margin-left", "5px")
+						.append(
+							$("<table />")
+								.addClass("aops")
+								.css("table-layout", "fixed")
+								.append(
+									$("<thead />").append(
+										_.reduce(
+											quiz.problems,
+											function ($tr, problem) {
+												return $tr.append(
+													$("<th />")
+														.text("#" + problem.problem_id)
+														.css("text-align", "center")
+												);
+											},
+											$("<tr />").append(
+												$("<th />")
+													.text("Student")
+													.css("width", "250px")
+													.css("text-align", "center")
+											)
+										)
+									)
+								)
+								.append(
+									_.reduce(
+										all_users,
+										_.bind(function ($tbody, student) {
+											var is_inactive = false;
+											if (!user_map.hasOwnProperty(student.user_id)) {
+												var should_append = quiz.problems.reduce(function (
+													acc,
+													problem
+												) {
+													acc =
+														acc ||
+														problem.user_scores.hasOwnProperty(student.user_id);
+													return acc;
+												},
+												false);
+
+												if (!should_append) {
+													return $tbody;
+												}
+
+												is_inactive = true;
+											}
+
+											return $tbody.append(
+												_.reduce(
+													quiz.problems,
+													_.bind(function ($tr, problem) {
+														var score =
+															problem.user_scores[student.user_id] || null;
+														var color = "#bbb";
+														if (!_.isNull(score)) {
+															if (
+																score > 0 &&
+																score == problem.max_score &&
+																!is_inactive
+															) {
+																color = "rgba(20, 150, 216, 1)";
+															} else if (
+																score > 0 &&
+																score < problem.max_score &&
+																!is_inactive
+															) {
+																color = "rgba(61, 160, 0, 1)";
+															} else if (
+																score == 0 &&
+																score < problem.max_score &&
+																!is_inactive
+															) {
+																color = "rgba(239, 127, 0, 1)";
+															}
+														}
+														return $tr.append(
+															$("<td />")
+																.html(
+																	(is_inactive ? "<i>" : "") +
+																		score +
+																		(is_inactive ? "</i>" : "")
+																)
+																.css({
+																	"text-align": "center",
+																	color: color,
+																})
+														);
+													}, this),
+													$("<tr />").append(
+														$("<td />").html(
+															(is_inactive ? "<i>" : "") +
+																[]
+																	.concat(
+																		student.last_name ? [student.last_name] : []
+																	)
+																	.concat(
+																		student.first_name
+																			? [student.first_name]
+																			: []
+																	)
+																	.join(", ") +
+																(is_inactive ? "</i>" : "")
+														)
+													)
+												)
+											);
+										}, this),
+										$("<tbody />")
+									)
+								)
+								.append(
+									$("<tfoot />").append(
+										_.reduce(
+											quiz.problems,
+											_.bind(function ($tr, problem) {
+												return $tr.append(
+													$("<th />")
+														.text(problem.max_score)
+														.css("text-align", "center")
+												);
+											}, this),
+											$("<tr />").append(
+												$("<th />")
+													.text("Max Score for Problem")
+													.css("width", "250px")
+													.css("text-align", "center")
+											)
+										)
+									)
+								)
+						)
+				);
+			}
+
+			if (quiz.problems.length) {
+				$div.append(
+					_.reduce(
+						quiz.problems,
+						_.bind(function ($list, problem) {
+							var $name = $("<div />").css("padding", "2px 5px");
+							var $status = $("<span />").text(" (Expand)");
+							var $li = $("<li />").append($name).appendTo($list);
+							var $extra = $("<div />").hide().appendTo($li);
+
+							var crypt_problem_type = this.model
+								.get("master")
+								.get("crypt_problem_types")
+								.findWhere({hash: problem.problem_type});
+
+							$name
+								// ignore-security-checks
+								.html("<b>#Problem " + problem.problem_id + "</b>: ")
+								.append(
+									$("<span />")
+										.text(problem.markup)
+										.css({color: "#1b365d", "font-weight": "bold"})
+								)
+								.append(
+									$("<span />").text(
+										" [" +
+											(crypt_problem_type
+												? crypt_problem_type.get("name")
+												: problem.problem_type) +
+											"]"
+									)
+								)
+								.append($status);
+
+							$name
+								.addClass("ecole-clickable")
+								.hover(
+									function () {
+										$extra.css("opacity", "0.75");
+									},
+									function () {
+										$extra.css("opacity", "1");
+									}
+								)
+								.click(
+									_.bind(function () {
+										if ($status.hasClass("expanded")) {
+											$status.text(" (Expand)").removeClass("expanded");
+											$extra.slideUp();
+										} else {
+											$status.text(" (Hide)").addClass("expanded");
+											$extra.css("opacity", "1");
+											if (!$extra.hasClass("rendered")) {
+												$extra.append(
+													this.renderUnitQuizProblemIndividual(
+														unit,
+														problem,
+														crypt_problem_type,
+														users,
+														all_users
+													)
+												);
+												$extra.addClass("rendered").slideDown();
+											}
+											$extra.slideDown();
+										}
+									}, this)
+								);
+
+							return $list;
+						}, this),
+						$("<ul />").css("margin-bottom", "10px")
+					)
+				);
+			}
+
+			return $div;
+		},
+		renderUnitQuizProblemIndividual: function (
+			unit,
+			problem,
+			crypt_problem_type,
+			users,
+			all_users
+		) {
+			var $div = $("<div />").css("margin", "10px 0");
+			var $problem_text = $("<div />")
+				// ignore-security-checks
+				.html(problem.problem_fmt)
+				.css("margin-bottom", "10px")
+				.appendTo(
+					$("<div />")
+						.css({background: "#f2f2f2", padding: "4px 10px"})
+						.append($("<b />").text("Problem:"))
+						.appendTo($div)
+				);
+			var $problem_options = $problem_text.find("problem_options");
+
+			if ($problem_options.length) {
+				var $ol = $("<ol />")
+					.addClass("bbcode_list")
+					.css("list-style-type", "upper-alpha")
+					.insertBefore($problem_options);
+				_.each(
+					$problem_options.find("problem_option"),
+					_.bind(function (option) {
+						// ignore-security-checks
+						$("<li />").html($(option).text()).appendTo($ol);
+					}, this)
+				);
+				$problem_options.remove();
+			}
+
+			if (
+				crypt_problem_type.get("is_parsed") &&
+				_.keys(problem.user_trials).length > 0
+			) {
+				var user_map = users.reduce(function (map, user) {
+					map[user.user_id] = user;
+					return map;
+				}, {});
+
+				$div.append(
+					$("<table />")
+						.addClass("aops")
+						.append(
+							$("<thead />").append(
+								$("<tr />")
+									.append($("<th />").css("width", "250px").text("Student"))
+									.append($("<th />").text("Trial(s)"))
+							)
+						)
+						.append(
+							_.reduce(
+								all_users,
+								_.bind(function ($tbody, student) {
+									var trials = problem.user_trials[student.user_id];
+									if (trials) {
+										$("<tr />")
+											.append(
+												$("<td />").html(
+													(!user_map.hasOwnProperty(student.user_id)
+														? "<i>"
+														: "") +
+														[]
+															.concat(
+																student.last_name ? [student.last_name] : []
+															)
+															.concat(
+																student.first_name ? [student.first_name] : []
+															)
+															.join(", ") +
+														(!user_map.hasOwnProperty(student.user_id)
+															? "</i>"
+															: "")
+												)
+											)
+											.append(
+												$("<td />").append(
+													_.reduce(
+														trials,
+														_.bind(function ($trials, trial) {
+															if (trial.c == "G") {
+																$trials.append($("<li />").text("Give Up"));
+															} else {
+																$trials.append(
+																	$("<li />")
+																		.append(
+																			$("<span />")
+																				.css({
+																					"font-family": "monospace",
+																					"white-space": "pre-wrap",
+																				})
+																				.text(trial.r)
+																		)
+																		.append(
+																			$("<span />").text(
+																				trial.c == "Y"
+																					? " (Correct)"
+																					: " (Incorrect)"
+																			)
+																		)
+																);
+															}
+															return $trials;
+														}, this),
+														$("<ul />").css("padding-left", "25px")
+													)
+												)
+											)
+											.appendTo($tbody);
+									}
+									return $tbody;
+								}, this),
+								$("<tbody />")
+							)
+						)
+				);
+			}
+
+			if (
+				crypt_problem_type.get("is_free_response") &&
+				_.keys(problem.user_submissions || {}).length > 0
+			) {
+				$div.append(
+					$("<table />")
+						.addClass("aops")
+						.append(
+							$("<thead />").append(
+								$("<tr />")
+									.append($("<th />").css("width", "250px").text("Student"))
+									.append($("<th />").text("Submission(s)"))
+							)
+						)
+						.append(
+							_.reduce(
+								users,
+								_.bind(function ($tbody, student) {
+									var submission = problem.user_submissions[student.user_id];
+									if (submission) {
+										$("<tr />")
+											.append(
+												$("<td />").text(
+													[]
+														.concat(
+															student.last_name ? [student.last_name] : []
+														)
+														.concat(
+															student.first_name ? [student.first_name] : []
+														)
+														.join(", ")
+												)
+											)
+											// ignore-security-checks
+											.append($("<td />").html(submission))
+											.appendTo($tbody);
+									}
+									return $tbody;
+								}, this),
+								$("<tbody />")
+							)
+						)
+				);
+			}
+
+			return $div;
+		},
+		renderUnitBookQuizComplete: function (unit, book, users, all_users) {
+			var $table = $("<table />").addClass("aops").css("table-layout", "fixed");
+
+			var user_map = users.reduce(function (map, user) {
+				map[user.user_id] = user;
+				return map;
+			}, {});
+
+			$table
+				.append(
+					$("<thead />").append(
+						_.reduce(
+							book.quizzes,
+							function ($tr, quiz) {
+								return $tr.append($("<th />").text("#" + quiz.index));
+							},
+							$("<tr />").append(
+								$("<th />").text("Student").css("width", "250px")
+							)
+						)
+					)
+				)
+				.append(
+					_.reduce(
+						all_users,
+						_.bind(function ($tbody, student) {
+							var is_inactive = false;
+							if (!user_map.hasOwnProperty(student.user_id)) {
+								var should_append = book.quizzes.reduce(function (acc, quiz) {
+									acc =
+										acc || quiz.user_progress.hasOwnProperty(student.user_id);
+									return acc;
+								}, false);
+
+								if (!should_append) {
+									return $tbody;
+								}
+
+								is_inactive = true;
+							}
+
+							return $tbody.append(
+								_.reduce(
+									book.quizzes,
+									_.bind(function ($tr, quiz) {
+										var num_completed =
+											quiz.user_progress[student.user_id] || 0;
+
+										var color = "#bbb";
+										if (
+											num_completed > 0 &&
+											num_completed == quiz.num_total &&
+											!is_inactive
+										) {
+											color = "rgba(20, 150, 216, 1)";
+										} else if (
+											num_completed > 0 &&
+											num_completed / 0.6 < quiz.num_total &&
+											!is_inactive
+										) {
+											color = "rgba(27, 54, 93, 1)";
+										} else if (
+											num_completed > 0 &&
+											num_completed < quiz.num_total &&
+											!is_inactive
+										) {
+											color = "rgba(61, 160, 0, 1)";
+										}
+
+										return $tr.append(
+											$("<td />")
+												.html(
+													(is_inactive ? "<i>" : "") +
+														num_completed +
+														(is_inactive ? "</i>" : "")
+												)
+												.css({
+													"text-align": "center",
+													color: color,
+													"font-weight":
+														num_completed > 0 && num_completed == quiz.num_total
+															? "bold"
+															: "normal",
+												})
+										);
+									}, this),
+									$("<tr />").append(
+										$("<td />").html(
+											(is_inactive ? "<i>" : "") +
+												[]
+													.concat(student.last_name ? [student.last_name] : [])
+													.concat(
+														student.first_name ? [student.first_name] : []
+													)
+													.join(", ") +
+												(is_inactive ? "</i>" : "")
+										)
+									)
+								)
+							);
+						}, this),
+						$("<tbody />")
+					)
+				)
+				.append(
+					$("<tfoot />").append(
+						_.reduce(
+							book.quizzes,
+							function ($tr, quiz) {
+								return $tr.append($("<th />").text(quiz.num_total));
+							},
+							$("<tr />").append(
+								$("<th />").text("Problems Per Quiz").css("width", "250px")
+							)
+						)
+					)
+				);
+
+			return $("<div />").css("margin-left", "25px").append($table);
+		},
+		renderUnitEnrollments: function (unit) {
+			// Make the User Table for Unit
+			return $("<table />")
+				.addClass("aops")
+				.css({width: "auto", "margin-left": "50px"})
+				.append(
+					$("<thead />").append(
+						$("<tr />")
+							.append($("<th />").text("User ID"))
+							.append($("<th />").text("Username"))
+							.append($("<th />").text("Name"))
+							.append($("<th />").text("Book"))
+					)
+				)
+				.append(
+					_.reduce(
+						this.vars.class.enrollments,
+						_.bind(function ($tbody, student) {
+							return $tbody.append(
+								$("<tr />")
+									.append(
+										$("<td />").append(
+											(this.vars.class_perms.me.can_impersonate
+												? $("<a />").attr({
+														href:
+															this.vars.base_class_url +
+															"/reading" +
+															(_.isNull(unit.min_lesson)
+																? ""
+																: "/" + unit.min_lesson) +
+															"?user_id=" +
+															student.user_id,
+														target: "_blank",
+												  })
+												: $("<span />")
+											).text(student.user_id)
+										)
+									)
+									.append(
+										$("<td />").append(
+											$("<a />")
+												.attr({
+													href:
+														"/report/reading?class_id=" +
+														this.vars.class.class_id +
+														"&user_id=" +
+														student.user_id,
+													target: "_blank",
+												})
+												.text(student.username)
+										)
+									)
+									.append(
+										$("<td />").append(
+											$("<span />").text(
+												[]
+													.concat(student.last_name ? [student.last_name] : [])
+													.concat(
+														student.first_name ? [student.first_name] : []
+													)
+													.join(", ")
+											)
+										)
+									)
+									.append(
+										$("<td />").append(
+											unit.users[student.user_id]
+												? $("<i />").text(
+														(
+															_.findWhere(unit.books, {
+																id: unit.users[student.user_id].b,
+															}) || {name: "Error"}
+														).name
+												  )
+												: $("<span />")
+														.text("None selected.")
+														.css("color", "#777")
+										)
+										// T44881 Allow Academy LA students to complete both reading quizzes per unit on Reading Tab
+										//
+										// .append(
+										// 	(unit.users[student.user_id] || {}).l ? " 🔒" : ""
+										// )
+									)
+							);
+						}, this),
+						$("<tbody />")
+					)
+				);
+		},
+	});
+
+	return Views;
+})(AoPS.Grid.Views);

@@ -1,0 +1,1351 @@
+/**
+ * Original author: Paul Salerno <psalerno@artofproblemsolving.com>
+ *
+ * videos_models.js Holds the Backbone views for the videos page.
+ */
+
+AoPS.Utils.initKeyChain(AoPS, "Videos", "Views");
+
+AoPS.Videos.Views = (function (VideoViews) {
+	// View of the title/introductory message of the chapters page.
+	VideoViews.IntroChapterView = AoPS.View.extend({
+		initialize: function () {
+			this.render();
+		},
+
+		render: function () {
+			var intro_html = this.getTemplate("#intro-chapters-tpl", {
+				intro_header: this.model.get("header"),
+				intro_message: this.model.get("intro_message"),
+			});
+
+			this.$el.html(intro_html);
+			AoPS.fixSidebarClassObserver();
+		},
+	});
+
+	// Views of the admin page
+	VideoViews.AdminAddView = AoPS.View.extend({
+		events: {
+			"change #contest_add": "onContestChange",
+			"click .create-video-button": "createVideo",
+		},
+
+		initialize: function () {
+			this.model.set("contest_add", "MATHCOUNTS");
+			this.listenTo(this.model, "change:contest_add", this.render);
+			this.render();
+		},
+
+		render: function () {
+			// Helper to determine if a variable takes a particular value
+			Handlebars.registerHelper("equal", function (field, checked_value) {
+				return field === checked_value;
+			});
+
+			var admin_page_html = this.getTemplate("#admin-add-tpl", {
+				contest_add: this.model.get("contest_add"),
+			});
+			this.$el.html(admin_page_html);
+		},
+
+		onContestChange: function () {
+			var new_contest = this.$("#contest_add").val();
+			this.model.set("contest_add", new_contest);
+		},
+
+		createVideo: function () {
+			var contest = this.$("#contest_add").val();
+			var youtube_id = this.$("#video_id").val();
+			var year = this.$("#year").val();
+			this.model.createVideo({
+				contest: contest,
+				youtube_id: youtube_id,
+				year: year,
+				title: this.$("#video_title").val(),
+				subtitle: this.$("#video_subtitle").val(),
+				number_on_10: this.$("#problem_number_10").val(),
+				number_on_12: this.$("#problem_number_12").val(),
+				number_on_aime: this.$("#problem_number_aime").val(),
+				version: this.$("#version_amc").val()
+					? this.$("#version_amc").val()
+					: this.$("#version_aime").val(),
+			});
+		},
+	});
+
+	VideoViews.AdminSearchView = AoPS.View.extend({
+		events: {
+			"click .search-video-button": "searchContestVideos",
+		},
+
+		initialize: function () {
+			this.listenTo(this.model, "table_refresh", this.searchContestVideos);
+			this.render();
+		},
+
+		render: function () {
+			var admin_search_html = this.getTemplate("#admin-search-tpl", {});
+			this.$el.html(admin_search_html);
+		},
+
+		searchContestVideos: function (e) {
+			var self = this;
+			var contest, youtube_id, year;
+			// If this function is called by search button click
+			if (e) {
+				contest = this.$("#contest_search").val();
+				youtube_id = this.$("#video_id_search").val();
+				year = this.$("#year_search").val();
+				this.model.set("last_query", {
+					contest: contest,
+					youtube_id: youtube_id,
+					year: year,
+				});
+			} else {
+				// If this function is called to refresh results and there's a previous search result
+				var last_query = this.model.get("last_query");
+				if (last_query) {
+					contest = last_query.contest;
+					youtube_id = last_query.youtube_id;
+					year = last_query.year;
+				} else {
+					return; // If no search criteria to use, don't search.
+				}
+			}
+			this.model.searchContestVideos(
+				contest,
+				youtube_id,
+				year,
+				// Anonymous function to display the rows after the ajax call.
+				function (rows) {
+					if (rows.length === 0) {
+						if (e) {
+							// Let the user know the search yielded no results
+							AoPS.Ui.Modal.showAlert("Rats, I didn't find anything.");
+						}
+						self.model.set("search_list", null);
+						self.model.trigger("table_display");
+						return;
+					}
+					var contest_searched = rows[0].contest_type; // not necessarily the same as contest if user searched by youtube_id
+					self.model.set("searched", contest_searched);
+					// Get problem numbers
+					if (contest_searched !== "MATHCOUNTS") {
+						// Don't need problem numbers if MATHCOUNTS
+						for (var i = 0; i < rows.length; i++) {
+							var regex = /\#([0-9]*)/;
+							rows[i].problem_number = regex.exec(rows[i].video_title)[1];
+						}
+					}
+					// Sort the rows so that they appear in an intuitive order for the user
+					rows.sort(function (a, b) {
+						if (a.grade && b.grade && a.grade !== b.grade) {
+							return a.grade - b.grade;
+						} else if (
+							a.test_version &&
+							b.test_version &&
+							a.test_version !== b.test_version
+						) {
+							return a.test_version.localeCompare(b.test_version);
+						} else {
+							return a.display_order - b.display_order;
+						}
+					});
+					self.model.set("search_list", rows);
+					self.model.trigger("table_display");
+				}
+			);
+		},
+	});
+
+	VideoViews.AdminResultsView = AoPS.View.extend({
+		events: {
+			"click .delete-button": "deleteContestVideo",
+			"click .editable-cell": "editField",
+		},
+
+		initialize: function () {
+			this.listenTo(this.model, "table_display", this.render);
+			this.render();
+		},
+
+		render: function () {
+			// Helper to determine if a variable takes a particular value
+			Handlebars.registerHelper("equal", function (field, checked_value) {
+				return field === checked_value;
+			});
+
+			var results_html = this.getTemplate("#admin-results-tpl", {
+				search_list: this.model.get("search_list"),
+				searched: this.model.get("searched"),
+			});
+			this.$el.html(results_html);
+		},
+
+		editField: function (e) {
+			var model = this.model;
+
+			var $clicked_cell = $(e.target);
+			var original_value = $clicked_cell[0].innerText;
+			var $row = $clicked_cell[0].parentNode;
+			var row_id = $($row).data("table-id");
+			$clicked_cell.editable(
+				function (value) {
+					if (original_value === value.trim()) {
+						// Don't make an Ajax call if not necessary
+						return original_value;
+					}
+					var cell_type = $clicked_cell[0].className.replace(
+						" editable-cell",
+						""
+					);
+					model.editContestVideo(value, cell_type, row_id);
+					return value;
+				},
+				{
+					event: "click",
+					placeholder: "",
+					type: "textarea",
+					onblur: "submit",
+					rows: 2,
+				}
+			);
+		},
+
+		deleteContestVideo: function (e) {
+			var $del_button = $(e.target);
+			var $row = $del_button[0].parentNode.parentNode;
+			var row_id = $($row).data("table-id");
+			var video_id = $($row).data("video-id");
+			this.model.deleteContestVideo(row_id, video_id);
+		},
+	});
+
+	// View of the title/introductory message of the subjects/top videos page.
+	VideoViews.IntroTopVideosView = AoPS.View.extend({
+		initialize: function () {
+			this.render();
+		},
+
+		render: function () {
+			var top_videos_intro_html = this.getTemplate("#intro-top-videos-tpl");
+			this.$el.html(top_videos_intro_html);
+		},
+	});
+
+	// View of the title of the embedded video page.
+	// Only a title for now.  Could add an intro message later.
+	VideoViews.IntroEmbeddedVideoView = AoPS.View.extend({
+		id: "embedded-video-intro",
+
+		initialize: function () {
+			this.render();
+
+			// Update this when the embedded video changes.
+			this.listenTo(this.model, "change:embedded_video_data", this.render);
+		},
+
+		render: function () {
+			var video_data = this.model.get("embedded_video_data"),
+				embedded_video_intro_html;
+
+			if (_.isNull(video_data)) {
+				this.$el.empty();
+				return;
+			}
+
+			embedded_video_intro_html = this.getTemplate(
+				"#embedded-video-intro-tpl",
+				{
+					video_title: video_data.video_title,
+					alcumus_url: video_data.alcumus_url,
+					is_community_active: AoPS.bd.is_community_active,
+				}
+			);
+
+			this.$el.html(embedded_video_intro_html);
+			this.setPageFeed();
+		},
+
+		events: {
+			"click .open-feed": "onClickOpenFeed",
+			"click .new-topic": "onClickNewTopic",
+		},
+
+		onAddToPage: function () {
+			this.setPageFeed();
+		},
+
+		setPageFeed: function () {
+			var title = this.model.get("embedded_video_data").video_title;
+			AoPS.Feed.setPageFeed(
+				AoPS.Community.Constants.aops_videos_id,
+				this.getTargetUrl(),
+				title
+			);
+		},
+
+		onClickOpenFeed: function (e) {
+			var title = this.model.get("embedded_video_data").video_title;
+			AoPS.Feed.openPageFeed(
+				AoPS.Community.Constants.aops_videos_id,
+				this.getTargetUrl(),
+				title
+			);
+		},
+		getTargetUrl: function () {
+			// Here goeth the url for this video
+			return (
+				"/videos/" +
+				this.model.get("embedded_video_data").subject_url_id +
+				"/" +
+				this.model.get("embedded_video_data").chapter_shorthand_title +
+				"/" +
+				this.model.get("embedded_video_data").video_id
+			);
+		},
+		onClickNewTopic: function (e) {
+			var visible_tag = this.model.get("embedded_video_data").subject_topic,
+				subject_tag =
+					"/videos/" + this.model.get("embedded_video_data").subject_url_id;
+
+			AoPS.Feed.startNewTopic({
+				category_id: AoPS.Community.Constants.aops_videos_id,
+				linked_tag: visible_tag,
+				target_text:
+					"the video " + this.model.get("embedded_video_data").feed_video_title,
+				target_url: this.getTargetUrl(),
+				hidden_tags: [subject_tag],
+			});
+		},
+	});
+
+	// View for a chapter's grey panel.
+	VideoViews.ChapterView = AoPS.View.extend({
+		events: {
+			"click .expandable": "toggleChapterExpansion",
+			"mouseenter .video-link a": "updateThumbnail",
+		},
+
+		initialize: function () {
+			// Mixin with some functions for controlling the thumbnail.
+			_.extend(this, thumbnailMixin);
+
+			// Get the initial URL for the thumbnail ready.
+			// We need conditionals because it might be a link to a chapter or to a direct video.
+			var initial_thumbnail_url,
+				firstVideo = this.model.get("contents")[0];
+
+			if (firstVideo.video_html) {
+				// Get the review chapter's URL from the video_html, using a regexp.
+				initial_thumbnail_url =
+					firstVideo.video_html.match(/href\s?=\s?"(\S*)"/im)[1];
+			} else {
+				initial_thumbnail_url =
+					"/videos/" +
+					this.model.get("subject").get("subject_url_id") +
+					"/" +
+					this.model.get("chapter_shorthand_title") +
+					"/" +
+					firstVideo.video_id;
+			}
+
+			this.model.set({thumbnail_video_url: initial_thumbnail_url});
+
+			// Preload the thumbnail images to make transition seamless.
+			this.preloadImages("contents");
+
+			// Subview for the thumbnail.
+			this.thumbnail_view = new AoPS.Videos.Views.ThumbnailView({
+				model: this.model,
+			});
+
+			this.render();
+		},
+
+		onClose: function () {
+			// Close the thumbnail subview when we close the parent view.
+			this.thumbnail_view.close();
+		},
+
+		render: function () {
+			var subject_url_id = this.model.get("subject").get("subject_url_id"),
+				chapter_html = this.getTemplate("#chapter-tpl", {
+					anchor: this.model.get("chapter_shorthand_title"),
+					chapter_title: this.model.get("chapter_title"),
+					chapter_shorthand_title: this.model.get("chapter_shorthand_title"),
+					chapter_subtitle: this.model.get("chapter_subtitle"),
+					contents: this.model.get("contents"),
+					model_id: this.model.get("id"),
+					subject_url_id: subject_url_id,
+				});
+
+			this.$el.html(chapter_html);
+
+			this.$(".thumbnail-view-container").append(this.thumbnail_view.$el);
+
+			// Insert non-breaking space in things like Part 1 or Chapter 1 to avoid
+			// awkward line breaks between word and number.
+			this.$(".video-link a:contains('Part')").each(function (i) {
+				var title_text = $(this).html();
+				title_text = title_text.replace(/(Part) (\d+)/, "$1&nbsp;$2");
+				$(this).html(title_text);
+			});
+		},
+
+		// Toggle the grey panel open or closed.
+		toggleChapterExpansion: function () {
+			this.$(".grey-panel").toggleClass("closed");
+		},
+	});
+
+	// View on a collection of chapter models.  Loops through each
+	// chapter model and renders a view.
+	VideoViews.ChapterCollectionView = AoPS.View.extend({
+		initialize: function () {
+			this.render();
+		},
+
+		render: function () {
+			this.collection.each(function (chapterModel) {
+				var chapterView = new VideoViews.ChapterView({
+					model: chapterModel,
+				});
+
+				this.$el.append(chapterView.$el);
+			}, this);
+		},
+	});
+
+	// View on a collection of subject models.  Loops through each
+	// subject model and renders a "top videos" view.
+	VideoViews.SubjectCollectionView = AoPS.View.extend({
+		initialize: function () {
+			this.render();
+		},
+
+		render: function () {
+			this.collection.each(function (subjectModel) {
+				var topVideosView = new VideoViews.TopVideosView({
+					model: subjectModel,
+				});
+
+				this.$el.append(topVideosView.$el);
+			}, this);
+		},
+	});
+
+	// View for a thumbnail.
+	VideoViews.ThumbnailView = AoPS.View.extend({
+		className: "thumbnail-container",
+
+		events: {
+			mouseenter: "colorPlaySymbol",
+			mouseleave: "decolorPlaySymbol",
+		},
+
+		initialize: function () {
+			// Mixin with some functions for controlling the thumbnail.
+			_.extend(this, thumbnailMixin);
+
+			this.render();
+		},
+
+		render: function () {
+			var thumbnail_html = this.getTemplate("#thumbnail-tpl", {
+				thumbnail_youtube_id: this.model.get("thumbnail_youtube_id"),
+				thumbnail_video_title: this.model.get("thumbnail_video_title"),
+				thumbnail_video_url: this.model.get("thumbnail_video_url"),
+			});
+
+			this.$el.html(thumbnail_html);
+
+			// Insert non-breaking space in things like Part 1 to avoid
+			// awkward line breaks between word and number.
+			this.$(".thumbnail-subtext:contains('Part')").each(function (i) {
+				var title_text = $(this).html();
+				title_text = title_text.replace(/(Part) (\d+)/, "$1&nbsp;$2");
+				$(this).html(title_text);
+			});
+		},
+	});
+
+	// View for an aops panel that contains a subject's top videos.
+	VideoViews.TopVideosView = AoPS.View.extend({
+		events: {
+			"mouseenter .video-link a": "updateThumbnail",
+		},
+
+		initialize: function () {
+			// Mixin with some functions for controlling the thumbnail.
+			_.extend(this, thumbnailMixin);
+
+			// Preload thumbnail images for a seamless transition.
+			this.preloadImages("top_videos_data");
+
+			// Create a subview for the thumbnail.
+			this.thumbnail_view = new AoPS.Videos.Views.ThumbnailView({
+				model: this.model,
+			});
+
+			this.render();
+		},
+
+		render: function () {
+			var subject_topic = this.model.get("subject_topic"),
+				sorted_by = this.model.get("is_contest") ? "Year" : "Chapter",
+				top_videos_html = this.getTemplate("#top-videos-tpl", {
+					subject_topic: subject_topic,
+					subject_url_id: this.model.get("subject_url_id"),
+					capitalized_subject_topic: subject_topic.toUpperCase(),
+					top_videos_data: this.model.get("top_videos_data"),
+					sorted_by: sorted_by,
+				});
+
+			this.$el.html(top_videos_html);
+
+			this.$(".thumbnail-view-container").append(this.thumbnail_view.el);
+
+			// Insert non-breaking space in things like Part 1 to avoid
+			// awkward line breaks between word and number.
+			this.$(".video-link a:contains('Part')").each(function (i) {
+				var title_text = $(this).html();
+				title_text = title_text.replace(/(Part) (\d+)/, "$1&nbsp;$2");
+				$(this).html(title_text);
+			});
+		},
+
+		onClose: function () {
+			// Close thumbnail subview upon closing parent view.
+			this.thumbnail_view.close();
+		},
+	});
+
+	// View containing an embedded video.
+	VideoViews.EmbeddedVideoView = AoPS.View.extend({
+		id: "embedded-video-container",
+
+		initialize: function (options) {
+			if (typeof options.should_autoplay === "boolean") {
+				this.should_autoplay = options.should_autoplay;
+			} else {
+				this.should_autoplay = true;
+			}
+
+			this.render();
+
+			// Update embedded video when the model changes accordingly.
+			this.listenTo(this.model, "change:embedded_video_data", this.render);
+		},
+
+		render: function () {
+			//			this.$loader = AoPS.Page.buildLoader();
+			//			this.$el.append(this.$loader);
+
+			var video_data = this.model.get("embedded_video_data"),
+				video_url,
+				video_html,
+				should_autoplay;
+
+			if (_.isNull(video_data)) {
+				this.$el.empty();
+				return;
+			}
+
+			should_autoplay = this.should_autoplay ? "1" : "0";
+			video_url =
+				"https://www.youtube.com/embed/" +
+				video_data.youtube_id +
+				"?autoplay=" +
+				should_autoplay +
+				"&rel=0&hd=1";
+			video_html = this.getTemplate("#embedded-video-tpl", {
+				// video_title : video_data.video_title,
+				video_url: video_url,
+			});
+
+			//this.$loader.detach();
+
+			this.$el.html(video_html);
+
+			//So that we can do chaining like video.render.el
+			return this;
+		},
+	});
+
+	VideoViews.GridVideoNavigatorView = AoPS.View.extend({
+		className: "video-navigator no-select",
+
+		events: {
+			"click #videos-carousel-outer .arrow-holder.left": "clickLeftArrow",
+			"click #videos-carousel-outer .arrow-holder.right": "clickRightArrow",
+			"mouseenter .videos-carousel-container a": "colorPlaySymbol",
+			"mouseleave .videos-carousel-container a": "decolorPlaySymbol",
+		},
+
+		initialize: function () {
+			// The index of the currently highlighted video in the carousel.
+			var carousel_video_index = this.model.get(
+				"embedded_video_data"
+			).video_index;
+
+			this.model.set({carousel_video_index: carousel_video_index});
+			this.render();
+
+			this.scrollToCarouselIndex();
+
+			// When the currently browsed lesson changes, rerender this view.
+			this.listenTo(this.model, "change:navigator_current_lesson", this.render);
+		},
+
+		render: function () {
+			var navigator_current_lesson_number = this.model.get(
+					"navigator_current_lesson"
+				),
+				navigator_current_lesson_data = this.model.getLessonVideoData(
+					navigator_current_lesson_number
+				),
+				video_html;
+
+			if (navigator_current_lesson_data.length === 0) {
+				return;
+			}
+			video_html = this.getTemplate("#grid-navigator-tpl", {
+				navigator_current_lesson_number: navigator_current_lesson_number,
+				navigator_current_lesson_data: navigator_current_lesson_data,
+				route_base: "/class/" + this.model.get("class_string") + "/video/",
+			});
+			this.$el.html(video_html);
+
+			// Builds the video carousel.
+			this.buildCarousel();
+			this.$scroll_inner = this.$("#videos-carousel-outer .aops-scroll-inner");
+
+			// Need to adjust how many thumbnails we scroll each time we rebuild the carousel.
+			this.adjustCarouselForResize();
+		},
+		buildCarousel: function () {
+			var parseClick = true, // Indicates if click should be processed on touch carousel
+				self = this;
+
+			this.items_per_move = 3;
+			/** Here we build the scrollable space **/
+			this.$(".aops-scroll-bar").buildAopsScrollbar({
+				$content: this.$(".aops-scroll-content"),
+				axis: "x",
+				is_draggable: true,
+				onDragStart: function () {
+					setTimeout(function () {
+						parseClick = false;
+					}, 100);
+				},
+				onDragRelease: function () {
+					setTimeout(function () {
+						parseClick = true;
+					}, 200);
+				},
+				onScroll: function () {
+					self.checkArrows();
+					self.scroll_loc = self.$scroll_inner.scrollLeft();
+				},
+			});
+
+			// This prevents going to page after dragging on the carousel
+			this.$("a.video-link").on("click", function (e) {
+				return parseClick;
+			});
+
+			// Set disabled status appropriately.  Need setTimeout because otherwise checkArrows doesn't see
+			// the new width of #videos-carousel-2 when we re-render the view.
+			setTimeout(function () {
+				self.checkArrows();
+			}, 0);
+
+			// Highlight the carousel video that corresponds to the currently embedded video.
+			this.highlightVideo();
+		},
+
+		// Adjust how many items carousel scrolls through on each move, depending on window size.
+		adjustCarouselForResize: function (e) {
+			var width = window.innerWidth,
+				$videos_lis = this.$("#videos-carousel-outer li");
+
+			if (width <= 540) {
+				this.items_per_move = 1;
+			} else if (width <= 820) {
+				this.items_per_move = 2;
+			} else {
+				this.items_per_move = 3;
+			}
+
+			// Responsive design might cause the item widths to change.
+			// So, we have to reset the width of the container.
+			var element_width = $videos_lis.first().outerWidth(true);
+			this.$("#videos-carousel-2").width($videos_lis.length * element_width);
+			this.checkArrows();
+		},
+
+		// Determines whether or not to show the arrows.
+		checkArrows: function () {
+			var $videos = this.$("#videos-carousel-outer .aops-scroll-inner"),
+				loc = $videos.scrollLeft(),
+				content_width = this.$("#videos-carousel-2").width(),
+				carousel_width = $videos.width();
+
+			this.$("#videos-carousel-outer .arrow-holder.left").toggleClass(
+				"disabled",
+				loc < 18
+			);
+			this.$("#videos-carousel-outer .arrow-holder.right").toggleClass(
+				"disabled",
+				loc > content_width - carousel_width - 18
+			);
+		},
+
+		clickLeftArrow: function (e) {
+			var target = Math.max(
+				0,
+				this.findFirstVisibleItem() - this.items_per_move
+			);
+			this.moveToTargetItem(target);
+			e.preventDefault();
+			e.stopPropagation();
+		},
+
+		clickRightArrow: function (e) {
+			var target = Math.min(
+				this.$(".video-link li").length - 1,
+				this.findFirstVisibleItem() + this.items_per_move
+			);
+			this.moveToTargetItem(target);
+			e.preventDefault();
+			e.stopPropagation();
+		},
+
+		colorPlaySymbol: function (e) {
+			$(e.currentTarget).addClass("play-symbol-colored");
+		},
+
+		decolorPlaySymbol: function (e) {
+			$(e.currentTarget).removeClass("play-symbol-colored");
+		},
+
+		findFirstVisibleItem: function () {
+			var loc = this.$(
+					"#videos-carousel-outer .aops-scroll-inner"
+				).scrollLeft(),
+				element_width = this.$("#videos-carousel-outer li")
+					.first()
+					.outerWidth(true),
+				first_item = Math.floor(loc / element_width);
+
+			return first_item;
+		},
+		/*
+		RR experimenting with not scrolling on click of visible
+		items.  But then we need to use different functions
+		for the arrows and for the other scrolls.
+		We'll revisit this if others are bothered by the video scrolling.
+		moveToTargetItem : function	(item_id) {
+			var $target_item,
+				scroll_loc,
+				target_offset,
+				scroll = false,
+				element_width = this.$('#videos-carousel-outer li').first().outerWidth(true),
+				self = this;
+			if (item_id < 0) {
+				item_id = 0;
+			}
+			$target_item = $(this.$('#videos-carousel-outer li')[item_id]);
+
+			target_offset = parseInt($target_item.position().left);
+
+			scroll_loc = parseInt(this.$scroll_inner.scrollLeft());
+
+			if (target_offset < scroll_loc) {
+				scroll = true;
+			}
+			if (scroll) {
+				this.scroll_loc = target_offset;
+				this.$scroll_inner.animate({
+					scrollLeft : target_offset
+				}, 20, function () {
+					self.scroll_loc = self.$scroll_inner.scrollLeft()
+				});
+			}
+		},*/
+
+		moveToTargetItem: function (item_id) {
+			var $target_item,
+				target_offset,
+				self = this;
+			if (item_id < 0) {
+				item_id = 0;
+			}
+			$target_item = $(this.$("#videos-carousel-outer li")[item_id]);
+			target_offset = parseInt($target_item.position().left);
+
+			this.scroll_loc = target_offset;
+			this.$scroll_inner.animate(
+				{
+					scrollLeft: target_offset,
+				},
+				250,
+				function () {
+					self.scroll_loc = self.$scroll_inner.scrollLeft();
+				}
+			);
+		},
+
+		onAddToPage: function () {
+			// When we resize the window, adjust how many items carousel scrolls through on each move.
+			$(window).on(
+				"resize." + this.cid,
+				_.bind(this.adjustCarouselForResize, this)
+			);
+			if (_.isNull(this.model.get("embedded_video_data"))) {
+				return;
+			}
+			if (this.hasOwnProperty("scroll_loc")) {
+				this.$scroll_inner.scrollLeft(this.scroll_loc);
+			}
+			this.adjustCarouselForResize();
+			this.scrollToCarouselIndex();
+		},
+		onRemoveFromPage: function () {
+			$(window).off("resize." + this.cid);
+		},
+		// Show play symbol of old video, de-highlight it.
+		dehighlightVideo: function () {
+			this.$(".carousel-thumbnails  .large-play-symbol.no-display").toggleClass(
+				"no-display"
+			);
+			this.$(".highlighted-thumbnail").toggleClass("highlighted-thumbnail");
+		},
+
+		// Highlight the embedded video in the navigator.  Get rid of its play symbol.
+		highlightVideo: function () {
+			var embedded_video_id = this.model.get("embedded_video_data").video_id;
+			this.$(
+				"a[data-carousel-video-id='" +
+					embedded_video_id +
+					"'] .large-play-symbol"
+			).addClass("no-display");
+			this.$(
+				"a[data-carousel-video-id='" +
+					embedded_video_id +
+					"'] .carousel-thumbnail-img"
+			).addClass("highlighted-thumbnail");
+			this.$(
+				"a[data-carousel-video-id='" +
+					embedded_video_id +
+					"'] .thumbnail-subtext"
+			).addClass("highlighted-thumbnail");
+		},
+
+		// When the embedded video is updated, carousel highlights it and scrolls to it, and dehighlights the old video.
+		scrollToCarouselIndex: function () {
+			// Show play symbol of old video, unhighlight old video.
+			this.dehighlightVideo();
+			this.highlightVideo();
+
+			// The index of the currently highlighted video in the carousel.
+			var carousel_video_index = this.model.get(
+				"embedded_video_data"
+			).video_index;
+
+			//	if (window.innerWidth <= 588)
+			//	{
+			this.moveToTargetItem(carousel_video_index);
+			//	}
+			//	else
+			//	{
+			//this.moveToTargetItem(carousel_video_index-1);
+			//	}
+		},
+
+		// Update the currently browsed lesson in the navigator.
+		updateNavigatedLesson: function (e) {
+			this.model.set({
+				navigator_current_lesson: $(e.currentTarget).attr("data-lesson-number"),
+				carousel_video_index: 0,
+			});
+		},
+	});
+
+	// View for the video navigator.
+	VideoViews.VideoNavigatorView = AoPS.View.extend({
+		className: "video-navigator no-select",
+
+		events: {
+			"click .videos-carousel-container a": "updateEmbeddedVideo",
+			"click .video-navigator-chapter-switcher": "updateNavigatedChapter",
+			"mouseenter .video-navigator-subject-dropdown": "openSubjectMenu",
+			"mouseleave .video-navigator-subject-dropdown": "closeSubjectMenu",
+			"click .video-navigator-subject-menu .menu-item":
+				"updateNavigatedSubject",
+			"click #videos-carousel-outer .arrow-holder.left": "clickLeftArrow",
+			"click #videos-carousel-outer .arrow-holder.right": "clickRightArrow",
+			"mouseenter .videos-carousel-container a": "colorPlaySymbol",
+			"mouseleave .videos-carousel-container a": "decolorPlaySymbol",
+		},
+
+		initialize: function () {
+			// Mixin with some functions for manipulating thumbnails.
+			_.extend(this, thumbnailMixin);
+
+			// The index of the currently highlighted video in the carousel.
+			var carousel_video_index = this.model.get(
+				"embedded_video_data"
+			).video_index;
+
+			this.model.set({carousel_video_index: carousel_video_index});
+
+			this.render();
+
+			// When we resize the window, adjust how many items carousel scrolls through on each move.
+			$(window).on("resize", _.bind(this.adjustCarouselForResize, this));
+
+			// When the currently browsed chapter changes, rerender this view.
+			// Note that this will trigger when the currently navigated subject changes too.
+			this.listenTo(
+				this.model,
+				"change:navigator_current_chapter",
+				this.render
+			);
+			this.listenTo(
+				this.model,
+				"change:embedded_video_data",
+				this.scrollToCarouselIndex
+			);
+		},
+
+		render: function () {
+			var current_chapter = this.model.get("navigator_current_chapter"),
+				current_subject = this.model.get("navigator_current_subject");
+
+			if (!current_chapter || !current_subject) {
+				return;
+			}
+			var current_subject_url_id = current_subject.get("subject_url_id"),
+				subject_menu_ids_titles = this.model
+					.get("subject_collection")
+					.getOtherSubjectIdsTitles(current_subject_url_id),
+				chapter_collection = current_subject.get("chapter_collection"),
+				video_html = this.getTemplate("#video-navigator-tpl", {
+					navigator_current_subject: current_subject.get("subject_topic"),
+					navigator_current_subject_url_id: current_subject_url_id,
+					navigator_current_chapter_shorthand_title: current_chapter.get(
+						"chapter_shorthand_title"
+					),
+					navigator_current_chapter_subtitle:
+						current_chapter.get("chapter_subtitle"),
+					navigator_current_chapter_title: current_chapter.get("chapter_title"),
+					navigator_current_chapter_contents: current_chapter.get("contents"),
+					subject_menu_ids_titles: subject_menu_ids_titles,
+				});
+			this.$el.html(video_html);
+
+			// Insert non-breaking space in things like Part 1 to avoid
+			// awkward line breaks between word and number.
+			this.$(".video-link .thumbnail-subtext:contains('Part')").each(function (
+				i
+			) {
+				var title_text = $(this).html();
+				title_text = title_text.replace(/(Part) (\d+)/, "$1&nbsp;$2");
+				$(this).html(title_text);
+			});
+
+			// If there isn't a next chapter in the subject...
+			if (!chapter_collection.hasNextChapter(current_chapter)) {
+				// Hide the "next chapter" button.
+				this.$(".video-navigator-left .video-navigator-right-button").hide();
+				// Add right padding to the chapter title (previously the padding here had to be part of the chapter arrow).
+				this.$(".video-navigator-chapter .video-navigator-left").addClass(
+					"no-right-chapter"
+				);
+			}
+
+			// If there isn't a previous chapter in the subject...
+			if (!chapter_collection.hasPreviousChapter(current_chapter)) {
+				// Hide the "previous chapter" button.
+				this.$(".video-navigator-left .video-navigator-left-button").hide();
+				// Add left padding to the chapter title (previously the padding here had to be part of the chapter arrow).
+				this.$(".video-navigator-chapter .video-navigator-left").addClass(
+					"no-left-chapter"
+				);
+			}
+			// Builds the video carousel.
+			this.buildCarousel();
+
+			// Need to adjust how many thumbnails we scroll each time we rebuild the carousel.
+			this.adjustCarouselForResize();
+		},
+
+		buildCarousel: function () {
+			var parseClick = true, // Indicates if click should be processed on touch carousel
+				self = this;
+
+			this.items_per_move = 3;
+			/** Here we build the scrollable space **/
+			this.$(".aops-scroll-bar").buildAopsScrollbar({
+				$content: this.$(".aops-scroll-content"),
+				axis: "x",
+				is_draggable: true,
+				onDragStart: function () {
+					setTimeout(function () {
+						parseClick = false;
+					}, 100);
+				},
+				onDragRelease: function () {
+					setTimeout(function () {
+						parseClick = true;
+					}, 200);
+				},
+				onScroll: function () {
+					self.checkArrows();
+				},
+			});
+
+			// This prevents going to page after dragging on the carousel
+			this.$("a.video-link").on("click", function (e) {
+				return parseClick;
+			});
+
+			// Set disabled status appropriately.  Need setTimeout because otherwise checkArrows doesn't see
+			// the new width of #videos-carousel-2 when we re-render the view.
+			setTimeout(function () {
+				self.checkArrows();
+			}, 0);
+
+			// Highlight the carousel video that corresponds to the currently embedded video.
+			this.highlightVideo();
+		},
+
+		// Adjust how many items carousel scrolls through on each move, depending on window size.
+		adjustCarouselForResize: function (e) {
+			var width = window.innerWidth,
+				$videos_lis = this.$("#videos-carousel-outer li");
+
+			if (width <= 540) {
+				this.items_per_move = 1;
+			} else if (width <= 820) {
+				this.items_per_move = 2;
+			} else if (931 <= width && width <= 1020) {
+				this.items_per_move = 2;
+			} else {
+				this.items_per_move = 3;
+			}
+
+			// Responsive design might cause the item widths to change.
+			// So, we have to reset the width of the container.
+			var element_width = $videos_lis.first().outerWidth(true);
+			this.$("#videos-carousel-2").width($videos_lis.length * element_width);
+
+			// Arrows that were grey before might become un-grey as we display less videos.
+			// That means we need to check the arrows again.
+			this.checkArrows();
+		},
+
+		// Determines whether or not to show the arrows.
+		checkArrows: function () {
+			var $videos = this.$("#videos-carousel-outer .aops-scroll-inner"),
+				loc = $videos.scrollLeft(),
+				content_width = this.$("#videos-carousel-2").width(),
+				carousel_width = $videos.width();
+
+			this.$("#videos-carousel-outer .arrow-holder.left").toggleClass(
+				"disabled",
+				loc < 18
+			);
+			this.$("#videos-carousel-outer .arrow-holder.right").toggleClass(
+				"disabled",
+				loc > content_width - carousel_width - 18
+			);
+		},
+
+		clickLeftArrow: function (e) {
+			var target = Math.max(
+				0,
+				this.findFirstVisibleItem() - this.items_per_move
+			);
+			this.moveToTargetItem(target);
+			e.preventDefault();
+			e.stopPropagation();
+		},
+
+		clickRightArrow: function (e) {
+			var target = Math.min(
+				this.$(".video-link li").length - 1,
+				this.findFirstVisibleItem() + this.items_per_move
+			);
+			this.moveToTargetItem(target);
+			e.preventDefault();
+			e.stopPropagation();
+		},
+
+		// Close an open subject menu.
+		closeSubjectMenu: function (e) {
+			$(".video-navigator-subject-menu").removeClass("open");
+		},
+
+		findFirstVisibleItem: function () {
+			var loc = this.$(
+					"#videos-carousel-outer .aops-scroll-inner"
+				).scrollLeft(),
+				element_width = this.$("#videos-carousel-outer li")
+					.first()
+					.outerWidth(true),
+				first_item = Math.floor(loc / element_width);
+
+			return first_item;
+		},
+
+		moveToTargetItem: function (item_id) {
+			if (item_id < 0) {
+				item_id = 0;
+			}
+
+			this.$("#videos-carousel-outer .aops-scroll-inner").animate({
+				scrollLeft: this.$("#videos-carousel-outer li")[item_id].offsetLeft,
+			});
+		},
+
+		onAddToPage: function () {
+			this.render();
+			this.scrollToCarouselIndex();
+		},
+
+		// Open the subject menu.
+		openSubjectMenu: function () {
+			this.$(".video-navigator-subject-menu").toggleClass("open");
+		},
+
+		// Show play symbol of old video, de-highlight it.
+		dehighlightVideo: function () {
+			this.$(".carousel-thumbnails  .large-play-symbol.no-display").toggleClass(
+				"no-display"
+			);
+			this.$(".highlighted-thumbnail").toggleClass("highlighted-thumbnail");
+		},
+
+		// Highlight the embedded video in the navigator.  Get rid of its play symbol.
+		highlightVideo: function () {
+			var embedded_video_id = this.model.get("embedded_video_data").video_id;
+			this.$(
+				"a[data-carousel-video-id='" +
+					embedded_video_id +
+					"'] .large-play-symbol"
+			).addClass("no-display");
+			this.$(
+				"a[data-carousel-video-id='" +
+					embedded_video_id +
+					"'] .carousel-thumbnail-img"
+			).addClass("highlighted-thumbnail");
+			this.$(
+				"a[data-carousel-video-id='" +
+					embedded_video_id +
+					"'] .thumbnail-subtext"
+			).addClass("highlighted-thumbnail");
+		},
+
+		// When the embedded video is updated, carousel highlights it and scrolls to it, and dehighlights the old video.
+		scrollToCarouselIndex: function () {
+			// Show play symbol of old video, unhighlight old video.
+			this.dehighlightVideo();
+			this.highlightVideo();
+
+			// The index of the currently highlighted video in the carousel.
+			var carousel_video_index = this.model.get(
+				"embedded_video_data"
+			).video_index;
+
+			if (window.innerWidth <= 588) {
+				this.moveToTargetItem(carousel_video_index);
+			} else {
+				this.moveToTargetItem(carousel_video_index - 1);
+			}
+		},
+
+		// Update the embedded video.
+		updateEmbeddedVideo: function (e) {
+			var $element = $(e.currentTarget),
+				clicked_video_id = $element.attr("data-carousel-video-id"),
+				current_chapter = this.model.get("navigator_current_chapter");
+
+			if (!current_chapter) {
+				return;
+			}
+			var clicked_video_data =
+					current_chapter.getVideoDataByVideoId(clicked_video_id),
+				subject_url_id = this.model
+					.get("navigator_current_subject")
+					.get("subject_url_id"),
+				chapter_shorthand_title = current_chapter.get(
+					"chapter_shorthand_title"
+				),
+				mathcounts_mini_number = clicked_video_data.video_title.match(
+					/(Mini \#\d*(\s*\(Part \d\))?)\s*\-/
+				),
+				breadcrumb_video_title;
+
+			// Update the model's data on the embedded video.
+			this.model.set({
+				embedded_video_data: clicked_video_data,
+			});
+
+			// Need to call this here to close an open subject menu,
+			// since we are stopping event propagation.
+			this.closeSubjectMenu(e);
+
+			// Highlight appropriate subject in left-hand menu.
+			$("#side-column .menu").removeClass("open");
+			$("#side-column #menu-" + subject_url_id).addClass("open");
+
+			// If embedded video is a Mathcounts mini, set breadcrumb to something like Mini #40.
+			// Otherwise, abbreviate video title in breadcrumb with ellipses.
+			breadcrumb_video_title = mathcounts_mini_number
+				? mathcounts_mini_number[1]
+				: clicked_video_data.video_title;
+
+			// Update the breadcrumbs.
+			AoPS.Page.setBreadcrumbs([
+				{
+					text: "Resources",
+					url: "/resources/index.php",
+					no_stay: true,
+				},
+				{
+					text: "Videos",
+					url: "/videos",
+				},
+				{
+					text: this.model
+						.get("navigator_current_subject")
+						.get("subject_topic"),
+					url: "/videos/" + subject_url_id,
+				},
+				{
+					text: breadcrumb_video_title,
+				},
+			]);
+
+			// Set URL appropriately.
+			Backbone.history.navigate(
+				subject_url_id + "/" + chapter_shorthand_title + "/" + clicked_video_id,
+				{replace: true}
+			);
+
+			return false;
+		},
+
+		// Update the currently browsed chapter in the navigator.
+		updateNavigatedChapter: function (e) {
+			var chapter_collection = this.model
+					.get("navigator_current_subject")
+					.get("chapter_collection"),
+				current_chapter = this.model.get("navigator_current_chapter"),
+				new_chapter;
+
+			if ($(e.currentTarget).hasClass("video-navigator-left-button")) {
+				// Left arrow, get the previous chapter
+				new_chapter = chapter_collection.getPreviousChapter(current_chapter);
+			} else {
+				//It's a right arrow, so we get the next chapter.
+				new_chapter = chapter_collection.getNextChapter(current_chapter);
+			}
+
+			this.model.set({
+				navigator_current_chapter: new_chapter,
+				carousel_video_index: 0,
+			});
+		},
+
+		// Update the currently browsed subject in the navigator.
+		updateNavigatedSubject: function (e) {
+			var new_subject_id = $(e.currentTarget).attr("data-subject-url-id"),
+				new_subject_model = this.model
+					.get("subject_collection")
+					.getSubject(new_subject_id);
+
+			this.model.set({
+				navigator_current_subject: new_subject_model,
+				carousel_video_index: 0,
+			});
+
+			// If the subject's chapters have already been loaded, update model with
+			// the new subject.
+			if (new_subject_model.get("chapters_loaded")) {
+				// Navigate to the first chapter of the subject.
+				this.setChapterToOne();
+			} else {
+				// The subject's chapters have not been fetched yet. Fetch them.
+
+				// When the chapters are fetched, this will trigger and build the video page.
+				this.listenToOnce(
+					new_subject_model,
+					"chapters_fetched",
+					this.setChapterToOne
+				);
+
+				// Here we call a method in the subject that performs the Ajax call to fetch the chapters.
+				new_subject_model.fetchChapters();
+			}
+		},
+
+		// Set the currently browsed chapter in the navigator to the first chapter of the subject.
+		setChapterToOne: function () {
+			var subject_model = this.model.get("navigator_current_subject");
+
+			this.model.set({
+				navigator_current_chapter:
+					subject_model.get("chapter_collection").models[0],
+			});
+		},
+	});
+
+	// Mixin with a few functions dealing with video thumbnails.
+	var thumbnailMixin = {
+		colorPlaySymbol: function (e) {
+			$(e.currentTarget).addClass("play-symbol-colored");
+		},
+
+		decolorPlaySymbol: function (e) {
+			$(e.currentTarget).removeClass("play-symbol-colored");
+		},
+
+		// Given a model attribute that's an array of video data,
+		// loop through it and preload each video's thumbnail image.
+		preloadImages: function (video_data_attribute) {
+			var images = new Array(),
+				video_data_array = this.model.get(video_data_attribute);
+
+			// Create each video's image to get it into the browser's cache before user needs it.
+			for (var i = 0; i < video_data_array.length; i++) {
+				images[i] = new Image();
+				images[i].src =
+					"//img.youtube.com/vi/" +
+					video_data_array[i].youtube_id +
+					"/mqdefault.jpg";
+			}
+		},
+
+		// Update the model attributes determining the current thumbnail.
+		updateThumbnail: function (e) {
+			var $element = $(e.currentTarget),
+				thumbnail_url = $element.attr("href");
+
+			this.model.set({
+				thumbnail_youtube_id: $element.attr("data-youtube-id"),
+				thumbnail_video_title: $element.attr("data-video-title"),
+				thumbnail_video_url: thumbnail_url,
+			});
+
+			// Render the thumbnail view.
+			this.thumbnail_view.render();
+		},
+	};
+
+	return VideoViews;
+})(AoPS.Videos.Views || {});

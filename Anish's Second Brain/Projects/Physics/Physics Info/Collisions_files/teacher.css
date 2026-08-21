@@ -1,0 +1,278 @@
+/********************
+ * Teacher Reports 
+ ********************/
+
+div.grid-tab-teacher-reports {
+	overflow-x: auto;
+}
+
+div.sp-report-options-menu {
+	position: absolute;
+	left: 10px;
+	height: 160px;
+}
+div.sp-report-options-menu + table.teacher-reports.aops {
+	margin-top: 170px;
+}
+div.sp-report-options-menu + table.teacher-reports.aops.expanded {
+	margin-top: 600px;
+}
+
+table.teacher-reports.aops {
+	/* table-layout: fixed; */
+	width: 1400px;
+	min-width: 1400px;
+	overflow-y: scroll;
+}
+
+table.teacher-reports.aops.teacher-reports-fixed {
+	width: auto;
+	min-width: auto;
+	z-index: 10;
+	flex-shrink: 0;
+}
+
+section.teacher-reports-flexbox {
+	display: flex;
+	flex-direction: row;
+	align-items: start;
+}
+
+section.teacher-reports-flexbox section.scrollable-table-section {
+	overflow-x: auto;
+	overflow-y: hidden;
+	width: 100%;
+}
+
+table.teacher-reports thead {
+	position: -webkit-sticky;
+	position: sticky;
+	top: 0;
+}
+
+table.teacher-reports th,
+table.teacher-reports td {
+	text-align: center;
+	font-size: 0.9em;
+	width: 120px;
+	min-width: 120px;
+	line-height: 19px;
+	padding: 1px 1px !important;
+}
+
+table.teacher-reports th.user_id,
+table.teacher-reports td.user_id {
+	text-align: left;
+	width: 120px;
+	min-width: 120px;
+	padding: 1px 4px !important;
+	position: sticky;
+	left: 0;
+}
+
+table.teacher-reports th.username,
+table.teacher-reports td.username {
+	text-align: left;
+	width: 100px;
+	min-width: 100px;
+	padding: 1px 4px !important;
+	position: sticky;
+	left: 120px;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+	max-width: 100px;
+}
+
+table.teacher-reports th.name,
+table.teacher-reports td.name {
+	text-align: left;
+	width: auto;
+	min-width: 100px;
+	white-space: nowrap;
+	padding: 1px 4px !important;
+	position: sticky;
+}
+
+table.teacher-reports .xo-report-bar-container {
+	position: relative;
+	margin-bottom: 1px;
+}
+
+table.teacher-reports .xo-report-bar-container .aops-rogb-container {
+	line-height: 12px;
+	height: 18px;
+}
+
+table.teacher-reports .bar-outer {
+	margin: 1px;
+}
+
+table.teacher-reports svg.bar {
+	width: 100%;
+	height: 20px;
+	background: #bbb;
+	display: block;
+}
+
+table.teacher-reports svg.bar:hover {
+	opacity: 0.85;
+}
+
+table.teacher-reports svg.bar rect {
+	fill: transparent;
+}
+
+table.teacher-reports svg.bar rect.fill-unknown {
+	fill: #192a4c;
+}
+
+table.teacher-reports svg.bar rect.fill-red {
+	fill: #e2002b;
+}
+
+table.teacher-reports svg.bar rect.fill-orange {
+	fill: #ef7f00;
+}
+
+table.teacher-reports svg.bar rect.fill-green {
+	fill: #3da000;
+}
+
+table.teacher-reports svg.bar rect.fill-blue {
+	fill: #1496d8;
+}
+
+table.teacher-reports svg.bar rect.fill-gray {
+	fill: #666666;
+}
+
+/**********************
+ * Self Paced Reports
+ **********************/
+
+.grid-tab-teacher-reports .legend {
+	padding: 10px 0px;
+	width: 1000px;
+}
+
+.grid-tab-teacher-reports .legend-head {
+	background-color: #ddd;
+}
+.grid-tab-teacher-reports .legend-head:hover {
+	background-color: #bbb;
+}
+
+.grid-tab-teacher-reports .legend-body.hidden {
+	display: none;
+}
+
+.grid-tab-teacher-reports .legend-name {
+	width: 110px;
+}
+
+.teacher-reports .tablesorter-header.sorter-false {
+	cursor: default;
+}
+
+.tablesorter .filtered {
+	display: none;
+}
+
+table.tablesorter tbody tr.normal-row td {
+	background-color: #e1e1e1;
+}
+table.tablesorter tbody tr.alt-row td {
+	background-color: #f2f2f2;
+}
+
+table.teacher-reports tr th.start_date,
+table.teacher-reports tr td.start_date,
+table.teacher-reports tr th.last_active_date,
+table.teacher-reports tr td.last_active_date {
+	width: 80px;
+	min-width: 80px;
+}
+
+table.teacher-reports tr th.days_until_done,
+table.teacher-reports tr td.days_until_done,
+table.teacher-reports tr th.days_spent,
+table.teacher-reports tr td.days_spent {
+	width: 70px;
+	min-width: 70px;
+}
+
+table.teacher-reports tr td.last_completed_date {
+	color: #e2002b;
+}
+table.teacher-reports tr td.last_completed_date.is_active {
+	color: #3da000;
+}
+
+table.teacher-reports tr td.days_until_done {
+	color: #666666;
+}
+table.teacher-reports tr td.days_until_done.done {
+	color: black;
+}
+
+form.sp-report-selector,
+form.sp-report-selector * {
+	/* Prefixer not working, so to prevent text selection: */
+	-moz-user-select: none; /* Firefox */
+	-webkit-user-select: none; /* Safari */
+	-ms-user-select: none; /* Microsoft */
+	user-select: none; /* Everything else */
+}
+
+form.sp-report-selector label {
+	padding: 2px 10px;
+	margin: 10px 0 0;
+}
+
+form.sp-report-selector label:hover {
+	background: #eee;
+}
+
+/**********************
+ * Teacher Extensions
+ **********************/
+
+table.teacher-extensions {
+	table-layout: fixed;
+}
+
+table.teacher-extensions tr td,
+table.teacher-extensions tr th {
+	text-align: center;
+	font-size: 0.9em;
+	padding: 1px 0;
+}
+
+table.teacher-extensions tr th.user_id,
+table.teacher-extensions tr td.user_id {
+	text-align: left;
+	width: 60px;
+	padding: 1px 4px;
+}
+
+table.teacher-extensions tr th.username,
+table.teacher-extensions tr td.username {
+	text-align: left;
+	width: 120px;
+	padding: 1px 4px;
+}
+
+div.grid-tab-teacher-extensions {
+	overflow-x: auto;
+	position: relative;
+}
+
+.truncate-link {
+	display: inline-block;
+	max-width: 100px;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+	vertical-align: top;
+}

@@ -1,0 +1,91 @@
+.grid-tab-bb-reading .lesson-selector .lesson.unified {
+	font-weight: bold;
+}
+
+.grid-tab-bb-reading .custom-quiz-schedule-wrapper {
+	margin-left: 25px;
+}
+.grid-tab-bb-reading .custom-quiz-schedule-individual.current.assigned .name {
+	font-weight: bold;
+}
+
+.grid-tab-bb-reading .custom-quiz-schedule-individual.gray {
+	cursor: default;
+	color: #888;
+}
+
+.grid-tab-bb-reading .custom-quiz-schedule-individual.completed {
+	cursor: default;
+	color: rgba(20, 150, 216, 1) !important;
+}
+
+.grid-tab-bb-reading .custom-quiz-schedule-individual .padded {
+	padding: 5px 10px;
+	margin: 0 5px;
+}
+
+.grid-tab-bb-reading .indented {
+	margin-left: 30px;
+}
+
+.grid-tab-bb-reading .padded {
+	padding: 10px;
+}
+
+.grid-tab-bb-reading .reading-quiz-outer {
+	margin: 0 10px;
+}
+
+.grid-tab-bb-reading .reading-quiz-inner {
+}
+
+.grid-tab-bb-choose-book {
+	padding: 0 10px;
+	width: 700px;
+	max-width: 98%;
+}
+
+.grid-tab-bb-choose-book .book-selection {
+	border-left: 1px solid #aaa;
+	border-top: 1px solid #aaa;
+	border-right: 1px solid #aaa;
+	margin-right: 15px;
+	background: #f7f7f7;
+	padding-bottom: 7px;
+	cursor: pointer;
+}
+
+.grid-tab-bb-choose-book .book-selection:hover {
+	background: #eee;
+}
+
+.grid-tab-bb-choose-book .book-selection:last-child {
+	border-bottom: 1px solid #aaa;
+}
+
+.grid-tab-bb-choose-book .book-selection .book-block {
+	padding: 7px 10px 0px;
+}
+
+.grid-tab-bb-choose-book .book-selection .book-title {
+	font-weight: bold;
+	float: left;
+	margin-right: 45px;
+}
+
+.grid-tab-bb-choose-book .book-selection .book-provided {
+	font-weight: bold;
+	font-style: italic;
+	color: rgba(61, 160, 0, 1);
+}
+
+.grid-tab-bb-choose-book .book-selection .book-not-provided {
+	font-weight: bold;
+	font-style: italic;
+	color: rgba(226, 0, 43, 1);
+}
+
+.grid-tab-bb-choose-book .reading-level {
+	float: left;
+	margin-right: 45px;
+}

@@ -1,0 +1,1204 @@
+/**
+ * Methods for parsing a user's response to a problem in an input field,
+ * including these features.
+ *
+ * - Automatically adjust and format the user's response. For instance, the
+ *   shorthand "inf" is rewritten as "infty," as in the LaTeX symbol for
+ *   infinity.
+ *
+ * - Keep a running list of errors and messages to show the user.
+ *
+ * - Parses certain patterns using LaTeX. For instance, "sqrt(3)" becomes
+ *   "\sqrt{3}." A special "latex" message is attached to responses that were
+ *   edited to use LaTeX.
+ *
+ * - Remember that the user may still be typing their response. The text "2^{x"
+ *   doesn't raise an error because there may be more text to follow. The
+ *   previewer, a component above the input field that continuously parses and
+ *   renders the user's response, would display the text as if it reads "2^{x}."
+ */
+(function () {
+	/**
+	 * Helpers used by the `parseMath` function, defined separately to allow unit
+	 * tests.
+	 */
+	const ParseMathHelpers = {};
+
+	/**
+	 * Dictionary of possible messages and errors. Seems to be unused right now, and
+	 * probably shouldn't be student-facing.
+	 */
+	ParseMathHelpers.messagesToUser = {
+		// Will be errors
+		frac_bracket: "Please use curly braces, {}, when typing \\frac{num}{denom}",
+		unmatched_close:
+			"You have a close bracket that isn't matched! Please fix your submission.",
+		nested_exponent:
+			"We don't accept answers with nested exponents. Please simplify your answer.",
+		backslash: "Did you mean to use the backslash? (\\)",
+		unicode:
+			"You have inputted an invalid unicode character. Please edit your response.",
+		frac_slash:
+			"To write fractions, please use \\frac{num}{denom} or just num/denom",
+		inf_in_inequality: "You put infinity in an inequality. Stop it.",
+		interval_notation: "Please write your answer in interval notation",
+
+		// Will be messages
+		sqrt_bracket: "Please use curly braces, {}, when typing \\sqrt{radicand}",
+		unclosed_bracket:
+			"You have an unclosed bracket. Please fix your submission.",
+		latex: "In LaTeX, you would have to write ",
+
+		// Get rid of these?
+		multi_char_exponent:
+			"In LaTeX, you would have to use curly braces, {}, for multi-character exponents",
+	};
+
+	/**
+	 * Log an error (with the parser, not the user's submission)
+	 */
+	ParseMathHelpers.logNonUserFacingError = function (type, message, data) {
+		console.error(type, message, data);
+	};
+
+	/**
+	 * Replaces or removes special characters in the user's submission.
+	 */
+	ParseMathHelpers.checkUnicode = function ({submission, errors, messages}) {
+		submission = submission.replace(String.fromCharCode(0x221a), "\\sqrt ");
+		submission = submission.replace(String.fromCharCode(0x03c0), "\\pi");
+		submission = submission.replace(String.fromCharCode(0x002d), "-");
+		submission = submission.replace(String.fromCharCode(0x2010), "-");
+		submission = submission.replace(String.fromCharCode(0x2011), "-");
+		submission = submission.replace(String.fromCharCode(0x2012), "-");
+		submission = submission.replace(String.fromCharCode(0x2013), "-");
+		submission = submission.replace(String.fromCharCode(0x2014), "-");
+		submission = submission.replace(String.fromCharCode(0x2015), "-");
+		submission = submission.replace(String.fromCharCode(0x2212), "-");
+		submission = submission.replace(String.fromCharCode(0xfe58), "-");
+		submission = submission.replace(String.fromCharCode(0xfe63), "-");
+		submission = submission.replace(String.fromCharCode(0xff0d), "-");
+		submission = submission.replace(String.fromCharCode(0x221e), "\\infty");
+		submission = submission.replace(String.fromCharCode(0x00b0), "^{\\circ}");
+		submission = submission.replace(String.fromCharCode(0x2264), "\\le");
+		submission = submission.replace(String.fromCharCode(0x2265), "\\ge");
+		submission = submission.replace(String.fromCharCode(0xff0c), ",");
+		submission = submission.replace(String.fromCharCode(0x222a), "U");
+
+		for (var i = 0; i < submission.length; i++) {
+			var code = submission.charCodeAt(i);
+			if (code > 126 || code < 32) {
+				if (errors.indexOf(ParseMathHelpers.messagesToUser["unicode"]) === -1) {
+					errors.push(ParseMathHelpers.messagesToUser["unicode"]);
+				}
+				submission =
+					submission.substring(0, i) +
+					submission.substring(i + 1, submission.length);
+				i--;
+			}
+		}
+
+		return {submission, errors, messages};
+	};
+
+	/**
+	 * Throw an error if a \\frac has arguments in parentheses
+	 */
+	ParseMathHelpers.findParenthesesInFrac = function ({
+		submission,
+		errors,
+		messages,
+	}) {
+		var regexps = [
+			new RegExp("frac\\s*\\("),
+			new RegExp("frac\\s*\\{(([^{}]|\\{.*?\\})*)\\}\\s*\\("),
+			new RegExp("frac\\s*[^{]\\s*\\("),
+		];
+		var i;
+		var myArray;
+
+		for (i = 0; i < regexps.length; i++) {
+			try {
+				myArray = submission.match(regexps[i]);
+				if (myArray !== null) {
+					errors.push(ParseMathHelpers.messagesToUser["frac_bracket"]);
+				}
+			} catch (error) {
+				ParseMathHelpers.logNonUserFacingError("E_PARSE_MATH_REGEXP", error, {
+					submission: submission,
+					regexps: regexps,
+					i: i,
+				});
+			}
+		}
+
+		return {submission, errors, messages};
+	};
+
+	/**
+	 * Find unmatched brackets. If there are too many close brackets, throw an
+	 * error. If there are too many open brackets, just send a message (the user may
+	 * still be typing).
+	 */
+	ParseMathHelpers.findUnmatchedBrackets = function ({
+		submission,
+		errors,
+		messages,
+	}) {
+		var count = 0;
+		var openbrackets = ["(", "[", "{"];
+		var closebrackets = [")", "]", "}"];
+		for (let i = 0, len = submission.length; i < len; i++) {
+			var sub = submission.substring(i, i + 1);
+			if (openbrackets.indexOf(sub) >= 0) {
+				count++;
+			} else if (closebrackets.indexOf(sub) >= 0) {
+				count--;
+			}
+		}
+		if (count < 0) {
+			errors.push(ParseMathHelpers.messagesToUser["unmatched_close"]);
+		}
+		if (count > 0) {
+			messages.push(ParseMathHelpers.messagesToUser["unclosed_bracket"]);
+		}
+
+		return {submission, errors, messages};
+	};
+
+	/**
+	 * Throw an error if a response contains nested exponents.
+	 */
+	ParseMathHelpers.findNestedExponents = function ({
+		submission,
+		errors,
+		messages,
+	}) {
+		const regexps = [
+			new RegExp("\\([^)]+?\\^[^(]+?\\)\\^"),
+			new RegExp("\\{[^}]+?\\^[^{]+?\\}\\^"),
+			new RegExp("\\^\\((([^()]|\\(.*?\\))*)\\)\\^"),
+			new RegExp("\\^\\{(([^{}]|\\{.*?\\})*)\\}\\^"),
+			new RegExp("\\^[a-zA-Z0-9_. ]+\\^"),
+		];
+		for (let i = 0; i < regexps.length; i++) {
+			const myArray = submission.match(regexps[i]);
+			if (myArray !== null) {
+				errors.push(ParseMathHelpers.messagesToUser["nested_exponent"]);
+			}
+		}
+
+		return {submission, errors, messages};
+	};
+
+	/**
+	 * Throw an error if a response begins with a forward slash. The user probably
+	 * intended to use a backslash.
+	 */
+	ParseMathHelpers.findLeadingForwardSlash = function ({
+		submission,
+		errors,
+		messages,
+	}) {
+		const re = new RegExp("^\\/");
+		const myArray = submission.match(re);
+		if (myArray !== null) {
+			errors.push(ParseMathHelpers.messagesToUser["backslash"]);
+		}
+
+		return {submission, errors, messages};
+	};
+
+	/**
+	 * Throw an error if a backslash looks like it's being used as a fraction
+	 * divider.
+	 */
+	ParseMathHelpers.findBackslashBetweenNumbers = function ({
+		submission,
+		errors,
+		messages,
+	}) {
+		const re = new RegExp("[0-9]\\s*\\\\\\s*[0-9]");
+		const myArray = submission.match(re);
+		if (myArray !== null) {
+			errors.push(ParseMathHelpers.messagesToUser["frac_slash"]);
+		}
+
+		return {submission, errors, messages};
+	};
+
+	/**
+	 * Check for errors that should cause the parser to halt.
+	 */
+	ParseMathHelpers.findErrors = function (response) {
+		response = ParseMathHelpers.findParenthesesInFrac(response);
+		response = ParseMathHelpers.findUnmatchedBrackets(response);
+		response = ParseMathHelpers.findNestedExponents(response);
+		response = ParseMathHelpers.findLeadingForwardSlash(response);
+		response = ParseMathHelpers.findBackslashBetweenNumbers(response);
+		return response;
+	};
+
+	/**
+	 * Check whether the submission looks like a matrix. If it's a JSON
+	 * parseable array, rewrite it in matrix notation.
+	 */
+	ParseMathHelpers.parseMatrix = function ({submission, errors, messages}) {
+		var submission_json;
+		try {
+			submission_json = JSON.parse(submission);
+		} catch (ex) {
+			return {submission, errors, messages};
+		}
+		if (!Array.isArray(submission_json)) {
+			return {submission, errors, messages};
+		}
+		var renderRow = function (row) {
+			return Array.isArray(row) ? row.join(" & ") : String(row);
+		};
+		submission =
+			"\\begin{bmatrix}" +
+			submission_json.map(renderRow).join(" \\\\ ") +
+			"\\end{bmatrix}";
+		return {submission, errors, messages};
+	};
+
+	/**
+	 * Replace common shorthand or alternate symbols.
+	 */
+	ParseMathHelpers.preprocess = function ({submission, errors, messages}) {
+		submission = submission.replace(/\*/g, "\\cdot ");
+		submission = submission.replace(/dfrac/g, "frac");
+		submission = submission.replace(/inf(?![A-Za-z])/g, "infty");
+		submission = submission.replace(/infinity/g, "infty");
+		submission = submission.replace(new RegExp("\\\\?\\$", "g"), "");
+		submission = submission.replace(
+			new RegExp("cbrt(?![A-Za-z])", "g"),
+			"sqrt[3]"
+		);
+		return {submission, errors, messages};
+	};
+
+	/**
+	 * Add a backslash to shorthand words that are also supported by LaTeX.
+	 */
+	ParseMathHelpers.addSlash = function ({submission, errors, messages}) {
+		var exps = [
+			"pi",
+			"sqrt",
+
+			/**
+			 * We shouldn't encounter "dfrac" if `preprocess` is called first.
+			 *
+			 * "frac" is handled separately by `parseFraction`.
+			 */
+			"dfrac",
+
+			"infty",
+			"cos",
+			"sin",
+			"tan",
+			"sec",
+			"cot",
+			"csc",
+			"log",
+			"ln",
+			"left",
+			"right",
+		];
+		for (var i = 0, n = exps.length; i < n; i++) {
+			var match = submission.match(
+				new RegExp("\\\\(" + exps[i] + ")([^a-zA-Z]|$)")
+			);
+			if (match !== null) {
+				submission = submission.replace(
+					new RegExp("\\\\" + exps[i], "g"),
+					exps[i]
+				);
+			}
+
+			match = submission.match(new RegExp("(" + exps[i] + ")([^a-zA-Z]|$)"));
+			if (match !== null) {
+				submission = submission.replace(
+					new RegExp(exps[i], "g"),
+					"\\" + exps[i]
+				);
+			}
+		}
+		return {submission, errors, messages};
+	};
+
+	/**
+	 * Standardize how inequality relations are written.
+	 */
+	ParseMathHelpers.replaceMistypedSign = function ({
+		submission,
+		errors,
+		messages,
+	}) {
+		submission = submission.replace(new RegExp("=\\s*<", "g"), "<=");
+		submission = submission.replace(new RegExp("=\\s*>", "g"), ">=");
+		submission = submission.replace(new RegExp("<\\s*=", "g"), " \\le ");
+		submission = submission.replace(new RegExp(">\\s*=", "g"), " \\ge ");
+		submission = submission.replace(new RegExp("\\\\leqslant", "g"), "\\le");
+		submission = submission.replace(new RegExp("\\\\leq", "g"), "\\le");
+		submission = submission.replace(new RegExp("\\\\geqslant", "g"), "\\ge");
+		submission = submission.replace(new RegExp("\\\\geq", "g"), "\\ge");
+		// Adding spaces to protect from screwing up radical parsing
+		submission = submission.replace(new RegExp("<", "g"), " < ");
+		submission = submission.replace(new RegExp(">", "g"), " > ");
+		submission = submission.replace(
+			new RegExp("\\\\le(?![A-Za-z])", "g"),
+			" \\le "
+		);
+		submission = submission.replace(
+			new RegExp("\\\\ge(?![A-Za-z])", "g"),
+			" \\ge "
+		);
+		return {submission, errors, messages};
+	};
+
+	/**
+	 * Check whether a string looks like a fraction. Doesn't make assumptions
+	 * about which parsing steps have already been run.
+	 *
+	 * If true, the string is probably a fraction, and certainly not a variable.
+	 * Used by `parseToInterval` to see which side of an expression is constant.
+	 */
+	ParseMathHelpers.isConstantFraction = function (s) {
+		const re_slashNotation = new RegExp("\\-?[0-9. ]+\\/\\-?[0-9. ]+");
+		if (s.match(re_slashNotation) !== null) {
+			return true;
+		}
+		const re_fracNotation = new RegExp("\\\\?d?frac");
+		if (s.match(re_fracNotation) !== null) {
+			return true;
+		}
+		return false;
+	};
+
+	/**
+	 * Check whether a string is a number.
+	 *
+	 * If true, the string is probably a number, and certainly not a variable.
+	 * Used by `parseToInterval` to see which side of an expression is constant.
+	 */
+	ParseMathHelpers.isConstantNumber = function (s) {
+		const re = new RegExp("^\\-?[0-9. ]+$");
+		return s.match(re) !== null;
+	};
+
+	/**
+	 * Rewrite the user's submission in interval notation. Only called by
+	 * problems that specifically accept interval responses.
+	 */
+	ParseMathHelpers.parseToInterval = function ({submission, errors, messages}) {
+		var re;
+
+		submission = submission.replace(new RegExp("or", "gi"), "∪");
+		submission = submission.replace(new RegExp("and", "gi"), "∩");
+
+		// Catching infinity in inequality notation
+		re = new RegExp(
+			"(infty\\s*(<|>|(\\\\?le)|(\\\\?ge)))|((<|>|(le)|(ge))\\s*\\\\?infty)"
+		);
+		if (submission.match(re) !== null) {
+			errors.push(ParseMathHelpers.messagesToUser["inf_in_inequality"]);
+			return {submission, errors, messages};
+		}
+
+		// Parsing compound inequalities
+		re = new RegExp(
+			"([0-9\\-+*/ ]+)[\t\n\r\f \\\\]*(<|>|(le)|(ge))\\s*[a-zA-Z]+[\t\n\r\f \\\\]*(<|>|(le)|(ge))\\s*([0-9\\-+*/ ]+)"
+		);
+		var num1;
+		var num2;
+		var interval;
+		var myArray = submission.match(re);
+		if (myArray !== null) {
+			var sign1 = myArray[2];
+			var sign2 = myArray[5];
+			num1 = myArray[1];
+			num2 = myArray[8];
+			interval = "";
+
+			if (sign1 === "<") {
+				interval = "(" + num1 + ", ";
+			} else if (sign1 === "le") {
+				interval = "[" + num1 + ", ";
+			} else if (sign1 === ">") {
+				interval = ", " + num1 + ")";
+			} else if (sign1 === "ge") {
+				interval = ", " + num1 + "]";
+			}
+			if (sign2 === "<") {
+				interval = interval + num2 + ")";
+			} else if (sign2 === "le") {
+				interval = interval + num2 + "]";
+			} else if (sign2 === ">") {
+				interval = "(" + num2 + interval;
+			} else if (sign2 === "ge") {
+				interval = "[" + num2 + interval;
+			}
+
+			if (num2 < num1) {
+				interval = "\\emptyset";
+			}
+
+			submission = submission.replace(myArray[0], interval);
+			return ParseMathHelpers.parseToInterval({submission, errors, messages});
+		}
+
+		// Parsing single inequalities
+		re = new RegExp(
+			"([a-zA-Z.0-9\\-+*/ ]+)[\t\n\r\f \\\\]*(<|>|(le)|(ge))\\s*([a-zA-Z.0-9\\-+*/\\\\ ]+)"
+		);
+		myArray = submission.match(re);
+		if (myArray !== null) {
+			num1 = myArray[1];
+			var sign = myArray[2].replace(new RegExp("\\s+", "g"), "");
+			num2 = myArray[5];
+			// Determines which part of the inequality is the variable
+			var variable = false;
+			if (
+				!(
+					ParseMathHelpers.isConstantNumber(num1) ||
+					ParseMathHelpers.isConstantFraction(num1)
+				)
+			) {
+				variable = 1;
+			} else if (
+				!(
+					ParseMathHelpers.isConstantNumber(num2) ||
+					ParseMathHelpers.isConstantFraction(num2)
+				)
+			) {
+				variable = 2;
+			}
+			// Determines which part of inequality is number
+			// Done to make sure they don't put two variables (x<y)
+			var number = false;
+			if (
+				ParseMathHelpers.isConstantNumber(num1) ||
+				ParseMathHelpers.isConstantFraction(num1)
+			) {
+				number = 1;
+			} else if (
+				ParseMathHelpers.isConstantNumber(num2) ||
+				ParseMathHelpers.isConstantFraction(num2)
+			) {
+				number = 2;
+			}
+
+			// If we can't find a variable or number, then return submission as is
+			if (!variable || !number) {
+				return {submission, errors, messages};
+			}
+			// Makes sure there aren't numbers or negative signs in variable
+			if (variable === 1 && num1.search(new RegExp("[0-9\\-]")) !== -1) {
+				return {submission, errors, messages};
+			}
+			if (variable === 2 && num2.search(new RegExp("[0-9\\-]")) !== -1) {
+				return {submission, errors, messages};
+			}
+
+			// Constructing new interval
+			interval = "";
+			if (variable === 1) {
+				if (sign === "<") {
+					interval = "(-infty, " + num2 + ")";
+				} else if (sign === "le") {
+					interval = "(-infty, " + num2 + "]";
+				} else if (sign === ">") {
+					interval = "(" + num2 + ", infty)";
+				} else if (sign === "ge") {
+					interval = "[" + num2 + ", infty)";
+				}
+			} else if (variable === 2) {
+				if (sign === ">") {
+					interval = "(-infty, " + num1 + ")";
+				} else if (sign === "ge") {
+					interval = "(-infty, " + num1 + "]";
+				} else if (sign === "<") {
+					interval = "(" + num1 + ", infty)";
+				} else if (sign === "le") {
+					interval = "[" + num1 + ", infty)";
+				}
+			}
+
+			submission = submission.replace(myArray[0], interval);
+			return ParseMathHelpers.parseToInterval({submission, errors, messages});
+		}
+
+		// Parsing "and"
+		submission = submission.replace("∩", " \\cap ");
+		re = new RegExp(
+			"(\\(|\\[)\\s*([^()\\[\\]]*)\\s*,\\s*([^()\\[\\]]*)\\s*(\\)|\\])\\s*\\\\cap\\s*(\\(|\\[)\\s*([^()\\[\\]]*)\\s*,\\s*([^()\\[\\]]*)\\s*(\\)|\\])"
+		);
+		myArray = submission.match(re);
+		if (myArray !== null) {
+			// Keeping track of parts of intervals
+			var first = [myArray[1], myArray[2], myArray[3], myArray[4]];
+			var second = [myArray[5], myArray[6], myArray[7], myArray[8]];
+			interval = "";
+
+			// Finding appropriate lower bound
+			// If both are -inf, then use -inf
+			if (first[1] === "-infty" && second[1] === "-infty") {
+				interval += "(-infty, ";
+			}
+			// If one is -inf, use the other
+			else if (first[1] === "-infty") {
+				interval += second[0] + second[1] + ", ";
+			} else if (second[1] === "-infty") {
+				interval += first[0] + first[1] + ", ";
+			}
+			// Otherwise, they should both be numbers
+			else {
+				// Try to convert them to float
+				var l1 = parseFloat(first[1]);
+				var l2 = parseFloat(second[1]);
+				// If two values are equal and paren exists as bound on one, use paren
+				if (l1 === l2) {
+					if (first[0] === "(" || second[0] === "(") {
+						interval += "(" + first[1] + ", ";
+					} else {
+						interval += "[" + first[1] + ", ";
+					}
+				}
+				// If values are different, use the bigger one
+				else if (l1 > l2) {
+					interval += first[0] + first[1] + ", ";
+				} else {
+					interval += second[0] + second[1] + ", ";
+				}
+			}
+			// Finding appropriate upper bound
+			// If both are inf, then use inf
+			if (first[2] === "infty" && second[2] === "infty") {
+				interval += "infty)";
+			}
+			// If one is inf, use the other
+			else if (first[2] === "infty") {
+				interval += second[2] + second[3];
+			} else if (second[2] === "infty") {
+				interval += first[2] + first[3];
+			}
+			//Otherwise, they should both be numbers
+			else {
+				// Try to convert them to float
+				var r1 = parseFloat(first[2]);
+				var r2 = parseFloat(second[2]);
+				// If two values are equal and paren exists as bound on one, use paren
+				if (r1 === r2) {
+					if (first[3] === ")" || second[3] === ")") {
+						interval += first[2] + ")";
+					} else {
+						interval += first[2] + "]";
+					}
+				}
+				// If value are different, use the smaller one
+				else if (r1 < r2) {
+					interval += first[2] + first[3];
+				} else {
+					interval += second[2] + second[3];
+				}
+			}
+
+			// Checking to make sure upper bound bigger than lower bound
+			var check = new RegExp(
+				"(\\(|\\[)\\s*([^()\\[\\]]*)\\s*,\\s*([^()\\[\\]]*)\\s*(\\)|\\])"
+			);
+			var checkArray = interval.match(check);
+			if (checkArray === null) {
+				return submission;
+			}
+			if (parseFloat(checkArray[3]) < parseFloat(checkArray[2])) {
+				interval = "\\emptyset";
+			}
+			if (parseFloat(checkArray[3]) === parseFloat(checkArray[2])) {
+				if (checkArray[1] === "(" || checkArray[4] === ")") {
+					interval = "\\emptyset";
+				} else {
+					interval = checkArray[2];
+				}
+			}
+
+			submission = submission.replace(myArray[0], interval);
+			return ParseMathHelpers.parseToInterval({submission, errors, messages});
+		}
+
+		submission = submission.replace("∪", " \\cup ");
+		return {submission, errors, messages};
+	};
+
+	/**
+	 * If a U is written between two intervals, replace it with a union symbol.
+	 *
+	 * This method also formats the words "and" and "or."
+	 *
+	 * @param {boolean} assumeIntervalNotation If true, rewrite all inequalities
+	 * and logic operators in interval notation.
+	 */
+	ParseMathHelpers.parseInterval = function (
+		{submission, errors, messages},
+		assumeIntervalNotation = false
+	) {
+		// Replacing all U with \\cup
+		var re = new RegExp("[)\\]]\\s*U\\s*[(\\[]", "i");
+		var myArray = submission.match(re);
+		if (myArray !== null) {
+			if (messages.indexOf("latex") === -1) {
+				messages.push("latex");
+			}
+			const restOfInterval = ParseMathHelpers.parseInterval({
+				submission: submission.substring(
+					myArray.index + myArray[0].length - 1,
+					submission.length
+				),
+				errors,
+				messages,
+			});
+			return {
+				...restOfInterval,
+				submission:
+					submission.substring(0, myArray.index + 1) +
+					"\\cup" +
+					restOfInterval.submission,
+			};
+		}
+		if (assumeIntervalNotation) {
+			re = new RegExp("<|>|(le)|(ge)|(or)|(and)");
+			// If we find the above in submission, then we need to parse it to interval
+			if (submission.match(re) !== null) {
+				submission = ParseMathHelpers.parseToInterval({
+					submission,
+					errors,
+					messages,
+				}).submission;
+			}
+			// If parsing to interval fails for whatever reason, we give them an error
+			if (submission.match(re) !== null) {
+				errors.push(ParseMathHelpers.messagesToUser["interval_notation"]);
+			} else {
+				return {submission, errors, messages};
+			}
+		} else {
+			// Wrapping \text around "and" and "or"
+			if (submission.indexOf("\\text{ and }") === -1) {
+				submission = submission.replace(
+					new RegExp("and", "g"),
+					"\\text{ and }"
+				);
+			}
+			if (submission.indexOf("\\text{ or }") === -1) {
+				submission = submission.replace(new RegExp("or", "g"), "\\text{ or }");
+			}
+		}
+
+		return {submission, errors, messages};
+	};
+
+	/**
+	 * Add curly brackets around exponents.
+	 */
+	ParseMathHelpers.parseExponent = function ({submission, errors, messages}) {
+		// Matches entire exponent
+		var re = new RegExp("\\^\\{(([^{}]|\\{.*?\\})+)\\}");
+		var myArray = submission.match(re);
+		var rest;
+		if (myArray !== null) {
+			const restOfSubmission = ParseMathHelpers.parseExponent({
+				submission: submission.substring(myArray.index + myArray[0].length),
+				errors,
+				messages,
+			}).submission;
+			submission =
+				submission.substring(0, myArray.index + myArray[0].length) +
+				restOfSubmission;
+			return {submission, errors, messages};
+		}
+
+		// Matches incomplete exponent with bracket in
+		re = new RegExp("\\^\\{");
+		myArray = submission.match(re);
+		if (myArray !== null) {
+			submission = submission + "}";
+			return {submission, errors, messages};
+		}
+
+		// Matches use of parentheses for exponent instead of bracket
+		re = new RegExp("\\^\\((([^()]|\\(.*?\\))+)\\)");
+		myArray = submission.match(re);
+		if (myArray !== null) {
+			const restOfSubmission = ParseMathHelpers.parseExponent({
+				submission: submission.substring(myArray.index + myArray[0].length),
+				errors,
+				messages,
+			}).submission;
+			submission =
+				submission.substring(0, myArray.index) +
+				"^{" +
+				myArray[1] +
+				"}" +
+				restOfSubmission;
+			if (messages.indexOf("latex") === -1) {
+				messages.push("latex");
+			}
+			return {submission, errors, messages};
+		}
+
+		// Matches incomplete exponent with paren
+		re = new RegExp("\\^\\(");
+		myArray = submission.match(re);
+		if (myArray !== null) {
+			submission =
+				submission.substring(0, myArray.index) +
+				"^{" +
+				submission.substring(
+					myArray.index + myArray[0].length,
+					submission.length
+				) +
+				"}";
+			messages.push(ParseMathHelpers.messagesToUser["multi_char_exponent"]);
+			return {submission, errors, messages};
+		}
+
+		/**
+		 * Matches case with no brackets. In LaTeX, the exponent would be the
+		 * first single character after the ^, but we make some exceptions.
+		 * - A negative exponent can have multiple characters ("-2").
+		 * - Numbers can have multiple digits ("100"), but not decimals.
+		 * - Ignore "^+", "^*", and "^/".
+		 */
+		re = new RegExp("\\^(\\-?[^+\\-*/(){} ]?[0-9]*)");
+		myArray = submission.match(re);
+		if (myArray !== null) {
+			// First character of rest is ^
+			rest = submission.substring(
+				myArray.index + myArray[0].length,
+				submission.length
+			);
+			submission =
+				submission.substring(0, myArray.index) + "^{" + myArray[1] + "}" + rest;
+			if (myArray[1].length > 1) {
+				if (messages.indexOf("latex") === -1) {
+					messages.push("latex");
+				}
+			}
+			return {submission, errors, messages};
+		}
+		return {submission, errors, messages};
+	};
+
+	/**
+	 * Catch common patterns for square roots and other roots, and format them
+	 * using the LaTeX `\sqrt`.
+	 */
+	ParseMathHelpers.parseRoot = function ({submission, errors, messages}) {
+		var re = new RegExp("(^|[^A-Za-z])rt[^A-Za-z]");
+		var myArray = submission.match(re);
+		if (myArray !== null) {
+			const restOfSubmission = ParseMathHelpers.parseRoot({
+				submission: submission.substring(
+					myArray.index + myArray[1].length + 2,
+					submission.length
+				),
+				errors,
+				messages,
+			}).submission;
+			submission =
+				submission.substring(0, myArray.index) +
+				myArray[1] +
+				"sqrt" +
+				restOfSubmission;
+		}
+
+		// Mangle things like \sqrtx.  We want that bad command to display in red.
+		// If we don't mangle, the last regex in the following array causes an empty radical followed by x.
+		submission = submission.replace(
+			new RegExp("\\\\?sqrt(?=[A-Za-z])", "g"),
+			"THISISAMANGLEDSQUAREROOT"
+		);
+
+		// Allows for formatting before user finishes typing command
+		var regexps = [
+			// Cases where user inputs or is in the process of inputting sqrt[x]{y}
+			new RegExp(
+				"\\\\?sqrt\\s*\\[(([^\\[\\]]|\\[.*?\\])+)\\]\\s*\\{(([^{}]|\\{.*?\\})*)\\}"
+			),
+			new RegExp("\\\\?sqrt\\s*\\[(([^\\[\\]]|\\[.*?\\])+)\\]\\s*\\{(.*)"),
+			// Cases where user inputs or is in the process of inputting sqrt[x](y)
+			new RegExp(
+				"\\\\?sqrt\\s*\\[(([^\\[\\]]|\\[.*?\\])+)\\]\\s*\\((([^()]|\\(.*?\\))*)\\)"
+			),
+			new RegExp("\\\\?sqrt\\s*\\[(([^\\[\\]]|\\[.*?\\])+)\\]\\s*\\((.*)"),
+			// Cases where user doesn't put any brackets around radicand (eg. sqrt[2]3)
+			new RegExp(
+				"\\\\?sqrt\\s*\\[(([^\\[\\]]|\\[.*?\\])+)\\]\\s*([^{}()+\\-*/ ]*)"
+			),
+			// Case where user is still typing root (eg. sqrt[2...)
+			new RegExp("\\\\?sqrt\\s*\\[((.*))()"),
+			// Cases where user inputs or is in the process of inputting sqrt{y}
+			new RegExp("\\\\?sqrt\\s*(())\\s*\\{(([^{}]|\\{.*?\\})*)\\}"),
+			new RegExp("\\\\?sqrt\\s*(())\\s*\\{(.*)"),
+			// Cases where user inputs or is in the process of inputting sqrt(y)
+			new RegExp("\\\\?sqrt\\s*(())\\s*\\((([^()]|\\(.*?\\))*)\\)"),
+			new RegExp("\\\\?sqrt\\s*(())\\s*\\((.*)"),
+			// Catching cases where user doesn't put brackets at all (eg. sqrt23)
+			new RegExp("\\\\?sqrt\\s*(())\\s*([^{}()+\\-*/ ]*)"),
+		];
+
+		for (var i = 0; i < regexps.length; i++) {
+			myArray = submission.match(regexps[i]);
+			if (myArray !== null) {
+				var root =
+					myArray[1].length === 0
+						? ""
+						: "[" +
+						  ParseMathHelpers.parseRoot({
+								submission: myArray[1],
+								errors,
+								messages,
+						  }).submission +
+						  "]";
+				var radicand =
+					"{" +
+					ParseMathHelpers.parseRoot({submission: myArray[3], errors, messages})
+						.submission +
+					"}";
+
+				const restOfSubmission = ParseMathHelpers.parseRoot({
+					submission: submission.substring(
+						myArray.index + myArray[0].length,
+						submission.length
+					),
+					errors,
+					messages,
+				}).submission;
+				submission =
+					submission.substring(0, myArray.index) +
+					"\\sqrt" +
+					root +
+					radicand +
+					restOfSubmission;
+				if ((i >= 2 && i <= 4) || i > 7) {
+					if (messages.indexOf("latex") === -1) {
+						messages.push("latex");
+					}
+				}
+				break;
+			}
+		}
+
+		// Unmangle \sqrtx
+		submission = submission.replace("THISISAMANGLEDSQUAREROOT", "\\sqrt");
+
+		return {submission, errors, messages};
+	};
+
+	/**
+	 * Format fractions using `\dfrac`.
+	 *
+	 * We assume that a few other methods have been called first.
+	 *
+	 * - `ParseMathHelpers.preprocess` replaced existing `dfrac`s with `frac`s.
+	 *
+	 * - `ParseMathHelpers.addSlash` formatted common symbols like `log` and
+	 *   `sin`. (We need to watch out for those because they can be used in
+	 *   fractions without bracketing.)
+	 *
+	 * - `ParseMathHelpers.parseRoot` formatted square roots, so we only need
+	 *   one regex to find them.
+	 */
+	ParseMathHelpers.parseFraction = function ({submission, errors, messages}) {
+		var regexps = [
+			// When user inputs slash with paren on both sides. eg. (x)/(y)
+			new RegExp(
+				"\\(((([^()]|\\(.*?\\))+))\\)\\s*/\\s*\\((([^()]|\\(.*?\\))*)\\)?"
+			),
+			// When user inputs slash with paren on numerator. eg. (x)/y
+			new RegExp(
+				"\\(((([^()]|\\(.*?\\))+))\\)\\s*/\\s*(-?([a-zA-Z0-9_.\\[\\^\\\\]|(\\]?\\{.*?\\})|(\\]\\{\\}))*)"
+			),
+			// When user inputs slash with paren on denominator. eg. x/(y)
+			new RegExp(
+				"(([a-zA-Z0-9_.\\\\]|(\\[[^\\[]*?\\]))+)\\s*/\\s*\\((([^()]|\\(.*?\\))*)\\)?"
+			),
+			// When user inputs slash with brackets on both sides. eg. [x]/[y]
+			new RegExp(
+				"\\[((([^\\[\\]]|\\[.*?\\])+))\\]\\s*/\\s*\\[(([^\\[\\]]|\\[.*?\\])*)\\]?"
+			),
+			// When user inputs slash with brackets on numerator. eg. [x]/y
+			new RegExp(
+				"\\[((([^\\[\\]]|\\[.*?\\])+))\\]\\s*/\\s*(-?([a-zA-Z0-9_.\\[\\^\\\\]|(\\]?\\{.*?\\})|(\\]\\{\\}))*)"
+			),
+			// When user inputs slash with brackets on denominator. eg. x/[y]
+			new RegExp(
+				"((([a-zA-Z0-9_.\\[\\]\\\\]+)))\\s*/\\s*\\[(([^\\[\\]]|\\[.*?\\])*)\\]?"
+			),
+			// When user inputs slash without paren or bracket. eg. x/y
+			new RegExp("((([\\\\a-zA-Z0-9]+)))\\s*/\\s*([a-zA-Z]|[0-9]+)"),
+			// Deals with sqrts in denominator like 1/\sqrt[3]{2}.
+			// Regular expressions 2-4 here deal with other functions like log.
+			new RegExp(
+				"((([a-zA_Z0-9]+)))\\s*\\/\\s*(\\\\sqrt(\\[\\d+\\])?\\{(\\w|\\\\pi)+\\})"
+			),
+			new RegExp(
+				"((([a-zA_Z0-9]+)))\\s*\\/\\s*(\\\\(log|ln|sin|tan|cos|csc|sec|cot)\\s*\\{(\\w|\\\\pi)+\\})"
+			),
+			new RegExp(
+				"((([a-zA_Z0-9]+)))\\s*\\/\\s*(\\\\(log|ln|sin|tan|cos|csc|sec|cot)\\s*\\((\\w|\\\\pi)+\\))"
+			),
+			new RegExp(
+				"((([a-zA_Z0-9]+)))\\s*\\/\\s*(\\\\(log|ln|sin|tan|cos|csc|sec|cot)[^A-Za-z](\\w|\\\\pi)*)"
+			),
+			new RegExp(
+				"(([a-zA-Z0-9_.\\\\]|(\\[[^\\[]*?\\]))+)\\s*/\\s*(-?([0-9.\\[\\^\\\\]|(\\]?\\{.*?\\})|(\\]\\{\\})|(\\\\?pi))*)"
+			),
+			new RegExp(
+				"(([^+\\-*/\\[\\]() ]|(\\[[^\\[]*?\\]))+\\})\\s*\\/\\s*(-?[A-Za-z]?([0-9\\[\\^\\\\]|(\\]?\\{.*?\\})|(\\]?\\(.*?\\))|(\\]\\{\\})|sqrt|cbrt|pi)*)"
+			),
+
+			// Allows for formatting before user finishes typing command
+			new RegExp(
+				"\\\\?frac\\s*{((([^{}]|\\{.*?\\})*))}\\s*{(([^{}]|\\{.*?\\})*)}"
+			),
+			new RegExp("\\\\?frac\\s*{((([^{}]|\\{.*?\\})*))}\\s*{(.*)"),
+			new RegExp("\\\\?frac\\s*{((([^{}]|\\{.*?\\})*))}?\\s*(.?)"),
+			new RegExp("\\\\?frac((([^a-zA-Z\t\n\r\f ])))\\s*(.?)"),
+			new RegExp("\\\\?frac\\s+(((.?)))\\s*{(.*)}"),
+			new RegExp("\\\\?frac\\s+(((.?)))\\s*{(.*)"),
+			new RegExp("\\\\?frac\\s+(((.?)))\\s*(.?)"),
+		];
+
+		for (var i = 0; i < regexps.length; i++) {
+			var myArray = submission.match(regexps[i]);
+			if (myArray !== null) {
+				const beforeFraction = ParseMathHelpers.parseFraction({
+					submission: submission.substring(0, myArray.index),
+					errors,
+					messages,
+				}).submission;
+				const numerator = ParseMathHelpers.parseFraction({
+					submission: myArray[1],
+					errors,
+					messages,
+				}).submission;
+				const denominator = ParseMathHelpers.parseFraction({
+					submission: myArray[4],
+					errors,
+					messages,
+				}).submission;
+				const afterFraction = ParseMathHelpers.parseFraction({
+					submission: submission.substring(
+						myArray.index + myArray[0].length,
+						submission.length
+					),
+					errors,
+					messages,
+				}).submission;
+				submission =
+					beforeFraction +
+					"\\dfrac{" +
+					numerator +
+					"}{" +
+					denominator +
+					"}" +
+					afterFraction;
+				break;
+			}
+		}
+		return {submission, errors, messages};
+	};
+
+	/**
+	 * Use `\left` and `\right` to format brackets and parentheses, and fill in
+	 * any close braces that haven't been typed yet.
+	 *
+	 * @TODO Sometimes we add `left` and `right` without backslashes, which are
+	 * filled in later by `ParseMathHelpers.addSlash`. Why?
+	 *
+	 * Assumes that all parentheses and brackets are literal, except for LaTeX
+	 *  arguments like the `[3]` in `\sqrt[3]{2}`. This should be true after
+	 *  running the other parsers, like `ParseMathHelpers.parseRoot` and
+	 *  `ParseMathHelpers.parseFraction`, that convert non-literal brackets to
+	 *  LaTeX notation.
+	 */
+	ParseMathHelpers.formatParen = function ({submission, errors, messages}) {
+		// Deal with square bracket in square roots
+		var re = new RegExp("sqrt\\s*\\[(([^\\[\\]]|\\[.*?\\])*)\\]");
+		var i;
+		var n;
+		while (true) {
+			var myArray = submission.match(re);
+			if (myArray === null) {
+				break;
+			}
+			submission =
+				submission.substring(0, myArray.index) +
+				"sqrt@lbracket@" +
+				myArray[1] +
+				"@rbracket@" +
+				submission.substring(
+					myArray.index + myArray[0].length,
+					submission.length
+				);
+		}
+
+		// Gets count for matching still open paren
+		var countopen = (submission.match(new RegExp("\\(|\\[", "g")) || []).length;
+		var countclose = (submission.match(new RegExp("\\)|\\]", "g")) || [])
+			.length;
+
+		// Reformatting paren / square brackets to use \left and \right
+		var openbrackets = ["(", "["];
+		var closebrackets = [")", "]"];
+		for (i = 0, n = openbrackets.length; i < n; i++) {
+			submission = submission.replace(
+				new RegExp("left\\" + openbrackets[i], "g"),
+				openbrackets[i]
+			);
+			submission = submission.replace(
+				new RegExp("\\" + openbrackets[i], "g"),
+				"left" + openbrackets[i]
+			);
+		}
+		for (i = 0, n = closebrackets.length; i < n; i++) {
+			submission = submission.replace(
+				new RegExp("right\\" + closebrackets[i], "g"),
+				closebrackets[i]
+			);
+			submission = submission.replace(
+				new RegExp("\\" + closebrackets[i], "g"),
+				"right" + closebrackets[i]
+			);
+		}
+		// Matches any paren that are still open
+		var lastIndex = submission.length;
+		for (i = 0, n = countopen - countclose; i < n; i++) {
+			var newIndex = Math.max(
+				submission.lastIndexOf("left(", lastIndex),
+				submission.lastIndexOf("left[", lastIndex)
+			);
+			submission =
+				submission.substring(0, newIndex + 5) +
+				"\\right." +
+				submission.substring(newIndex + 5, submission.length);
+		}
+		// Close any open curly braces that is still open
+		for (
+			i = 0,
+				n =
+					(submission.match(new RegExp("\\{", "g")) || []).length -
+					(submission.match(new RegExp("\\}", "g")) || []).length;
+			i < n;
+			i++
+		) {
+			submission += "}";
+		}
+		// Finish dealing with square bracket in square roots
+		submission = submission.replace(new RegExp("@lbracket@", "g"), "[");
+		submission = submission.replace(new RegExp("@rbracket@", "g"), "]");
+
+		return {submission, errors, messages};
+	};
+
+	/**
+	 * Interpret a short answer which may be text, LaTeX, or a combination.
+	 *
+	 * @param {string} initialSubmission The submitted text.
+	 *
+	 * @param {string[]} initialFlags A list of parser flags.
+	 *
+	 * - `interval` Favor interval notation. For instance, words like "and" and "or"
+	 *   are always replaced with symbols.
+	 *
+	 * - `matrix` If the text can be parsed as a JSON array, interpret it as a
+	 *   matrix.
+	 *
+	 * @returns three values.
+	 *
+	 * - `submission` The submitted text, edited to be valid LaTeX.
+	 *
+	 * - `errors` An array of messages regarding errors that might have interrupted
+	 *   parsing. These messages are user-facing.
+	 *
+	 * - `messages` An array of non-error messages (warnings and info). These
+	 *   messages are user-facing, except for `"latex"`, which is a placeholder for
+	 *   a message that shows the student the LaTeX code for their submission. That
+	 *   code is similar to `submission` but does not include `\left` and `\right`.
+	 */
+	const parseMath = function (initialSubmission, initialFlags) {
+		// Default behavior is to show answers in interval form
+		var showInterval = false;
+		// Default behavior is to show answers in matrix form
+		var showMatrix = false;
+
+		let response = {
+			submission: "",
+
+			// Logging all the errors
+			errors: [],
+
+			// Logging all the messages
+			messages: [],
+		};
+
+		function setFlags(flags) {
+			if (flags.indexOf("interval") !== -1) {
+				showInterval = true;
+			}
+			if (flags.indexOf("matrix") !== -1) {
+				showMatrix = true;
+			}
+		}
+
+		function run(submission, flags) {
+			response.submission = submission;
+			setFlags(flags);
+			response = ParseMathHelpers.checkUnicode(response);
+			response = ParseMathHelpers.findErrors(response);
+			if (response.errors.length > 0) {
+				return response;
+			}
+			if (showMatrix) {
+				response = ParseMathHelpers.parseMatrix(response);
+			}
+			response = ParseMathHelpers.preprocess(response);
+			response = ParseMathHelpers.addSlash(response);
+			response = ParseMathHelpers.replaceMistypedSign(response);
+			response = ParseMathHelpers.parseInterval(response, showInterval);
+			response = ParseMathHelpers.parseExponent(response);
+			response = ParseMathHelpers.parseRoot(response);
+			response = ParseMathHelpers.parseFraction(response);
+
+			// Do this before formatParen to save user from reading \left and \right
+			if (response.messages.indexOf("latex") !== -1) {
+				response.messages.pop("latex");
+				response.messages.push(
+					ParseMathHelpers.messagesToUser["latex"] + response.submission
+				);
+			}
+
+			response = ParseMathHelpers.formatParen(response);
+			response = ParseMathHelpers.addSlash(response);
+			return response;
+		}
+
+		return run(initialSubmission, initialFlags);
+	};
+
+	// Used on the live site.
+	const exported = {parseMath};
+
+	// Used by `math_renderer.test.js`.
+	const devExported = {parseMath, ParseMathHelpers};
+
+	if (typeof module !== "undefined") {
+		// eslint-disable-next-line no-undef
+		module.exports = devExported;
+	} else {
+		_.extend(AoPS, exported);
+	}
+})();

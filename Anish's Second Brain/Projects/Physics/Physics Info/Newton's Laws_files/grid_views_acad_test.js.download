@@ -1,0 +1,750 @@
+AoPS.Utils.initKeyChain(AoPS, "Grid", "Views");
+
+AoPS.Grid.Views = (function (Views) {
+	// - Declare the basic boiler plate that we use in almost
+	// every view.
+	// - Wrap the guts of those "basic" functions in helper
+	// methods so extending classes can use them if they need
+	// to override initialize or render
+	// - Make sure pre- and post-render hook methods always exist
+	Views.GridAcademyTestBase = AoPS.View.extend({
+		tplVars: {},
+		initialize: function (options) {
+			this.preinitializeHelper(options);
+			this.setOptions(options);
+			this.postinitializeHelper(options);
+			this.render();
+		},
+		setOptions: function (options) {
+			this.options = options;
+			if (options.router) {
+				this.router = options.router;
+			}
+			if (options.master) {
+				this.master = options.master;
+			}
+			if (options.jobBoardView) {
+				this.jobBoardView = options.jobBoardView;
+			}
+		},
+		render: function () {
+			return this.doRender();
+		},
+		doRender: function () {
+			// the guts of the render
+			this.prerenderHelper();
+			this.$el.html(this.getTemplate(this.template_id, this.tplVars));
+			this.postrenderHelper();
+			return this;
+		},
+		preinitializeHelper: function () {
+			// noop in base
+		},
+		postinitializeHelper: function () {
+			// noop in base
+		},
+		prerenderHelper: function () {
+			// noop in base
+		},
+		postrenderHelper: function () {
+			// noop in base
+		},
+	});
+
+	Views.ModalUtils = AoPS.View.extend({
+		showLoadingModal: function () {
+			var self = this;
+			self.loadingModal = AoPS.Ui.Modal.showMessage(
+				'<img src="/assets/images/logo-loader.gif" />',
+				{
+					closeX: false,
+					force_response: true,
+					frame_class: "loading-modal-frame",
+				}
+			);
+		},
+		closeLoadingModal: function () {
+			if (this.loadingModal) {
+				AoPS.Ui.Modal.closeParticularModal(this.loadingModal);
+				delete this.loadingModal;
+			}
+		},
+	});
+
+	// this.model is an instance of GridClass
+	Views.GridTabAcademyTest = Views.GridTab.extend({
+		template_id: "#grid-tab-test-tpl",
+		events: {
+			"click .submit": "submitTest",
+		},
+		preserveEl: true,
+		// Called from Router - do not remove
+		onAddToPage: function (obj) {
+			this.allow_stretch_redirect = true;
+			// TODO - Is there a way we can prevent re-rendering the whole thing when the test number changes?
+			if (obj.args.join("/") != this.options.args.join("/")) {
+				if (obj.args.length > 0) {
+					this.options.args = obj.args;
+					this.render();
+				} else {
+					Backbone.history.navigate(
+						this.options.history_tab_url +
+							"/" +
+							this.options.args.join("/") +
+							this.options.user_string,
+						{replace: true}
+					);
+					return;
+				}
+			}
+		},
+		// called from Router - do not remove
+		constructCrumbs: function () {
+			var crumbs = [];
+			if (this.vars.test) {
+				crumbs.push({
+					text: this.options.tab_caption + " Test " + this.vars.test.name,
+				});
+			}
+			return crumbs;
+		},
+		findTest: function (id) {
+			return Object.values(this.model.get("academy_tests")).find(function (
+				test
+			) {
+				return test.id == id;
+			});
+		},
+		findTests: function (lesson) {
+			return this.model.get("academy_tests").filterByLesson(lesson);
+		},
+		markAsViewed: function () {
+			console.log("markAsViewed");
+		},
+		// Entry point in this file.
+		loadFirst: function (success) {
+			// if test number specified in url, that number is used here,
+			// otherwise, defaults to the first lesson with a test
+			// (this.model.get("test_lesson_number"))
+			// TODO: What happens if there are no tests for the given lesson number?
+			this.vars.test_lesson_number = _.isUndefined(this.options.args[0])
+				? this.model.get("test_lesson_number")
+				: parseInt(this.options.args[0]);
+
+			this.tests = this.findTests(this.vars.test_lesson_number);
+			this.vars.class_string = this.model.get("class_string");
+			this.page_url =
+				this.options.base_tab_url + "/" + this.vars.test_lesson_number;
+			this.$el.html(this.getTemplate(this.template_id, this.vars));
+			this.renderTestSelectors();
+			this.renderTest();
+		},
+		renderTestSelectors: function () {
+			// TODO - test_lessons comes from the backend, but we don't really need it here
+			// so we should see if we can streamline - there's a way to get this info directly
+			// from the academy_tests collection.
+			_.each(
+				this.model.get("test_lessons"), // array of lesson numbers that have associated tests
+				_.bind(function (test_ids, lesson) {
+					var options = {
+						lessonNum: parseInt(lesson),
+						tests: this.findTests(lesson),
+						selectedLesson: this.vars.test_lesson_number,
+						user_string: this.options.user_string,
+						base_tab_url: this.options.base_tab_url,
+					};
+
+					this.$containers = this.$(".lesson-selector");
+					var $selectorEl = new Views.TestSelector(options).$el;
+					// TODO - Apparently we put these on the page twice - one is hidden.  Why?
+					this.$containers.each(
+						_.bind(function (index, el) {
+							$(el).append($selectorEl.clone());
+						})
+					);
+					// if we don't remove this, it prevents routing from working onclick
+					$selectorEl.remove();
+				}, this)
+			);
+		},
+		renderTest: function () {
+			var first_test = this.tests.first();
+			var lesson = this.vars.test_lesson_number;
+			var start_at = moment(first_test.get("test_at"));
+			var locked = first_test.get("locked");
+			var is_language_arts = this.model.get("is_language_arts");
+			var options = {
+				model: this.model,
+				open: first_test.get("open"),
+				display_solution: first_test.get("display_solution"),
+				solution: first_test.get("solution"),
+				lesson: lesson,
+				tests: this.findTests(lesson),
+				first_test: first_test,
+				start_at: start_at,
+			};
+			this.test_sections = new Views.GridTabTestSections(options);
+			this.$(".test-sections").html(this.test_sections.$el);
+			if (locked) {
+				this.locked = new Views.GridTabTestLocked(options);
+				this.$(".test-locked").html(this.locked.$el);
+			} else {
+				this.pdf = new Views.GridTabTestPdf(options);
+				// ignore-security-checks (not external input)
+				this.$(".test-pdf").html(this.pdf.$el);
+				this.problems = [];
+				this.dropzones = [];
+				options.tests.each(function (test) {
+					var id = test.get("id");
+					var test_options = Object.assign({}, options);
+					test_options.test = test;
+
+					this.instructions = new Views.GridTabTestInstructions(test_options);
+					// ignore-security-checks (not external input)
+					this.$(".test-instructions-" + id).html(this.instructions.$el);
+					if (!is_language_arts) {
+						this.problems[id] = new Views.GridTabTestProblems(test_options);
+						// ignore-security-checks (not external input)
+						this.$(".test-problems-" + id).html(this.problems[id].$el);
+					}
+					this.dropzones[test.id] = new Views.GridTabTestDropzone(test_options);
+					this.$(".test-dropzone-" + id).html(this.dropzones[test.id].$el);
+				}, this);
+			}
+		},
+	});
+
+	Views.TestSelector = Views.GridAcademyTestBase.extend({
+		template_id: "#grid-tab-test-selector-tpl",
+		tagName: "span",
+		className: "lesson",
+		postinitializeHelper: function () {
+			this.tests = this.options.tests;
+			this.lessonNum = this.options.lessonNum;
+			this.isSelected = this.lessonNum === this.options.selectedLesson;
+			this.name = this.tests.pluck("name").join("/");
+
+			this.user_string = this.options.user_string;
+			this.base_tab_url = this.options.base_tab_url;
+			this.href = this.buildSelectorHref();
+		},
+		prerenderHelper: function () {
+			this.tplVars = {
+				lesson: this.lessonNum, // TODO - DO WE NEED?
+				href: this.href,
+				selected: this.isSelected,
+				name: this.name,
+			};
+		},
+		postrenderHelper: function () {
+			this.$el.attr("lesson", this.lessonNum);
+		},
+		buildSelectorHref: function () {
+			return this.base_tab_url + "/" + this.lessonNum + this.user_string;
+		},
+	});
+
+	Views.GridTabTestSections = AoPS.View.extend({
+		template_id: "#grid-tab-test-sections-tpl",
+
+		initialize: function (options) {
+			this.options = options;
+			this.render();
+		},
+		render: function () {
+			this.vars = {};
+			this.vars.tests = this.options.tests.map(function (test) {
+				return {id: test.get("id")};
+			});
+			this.$el.html(this.getTemplate(this.template_id, this.vars));
+		},
+	});
+
+	Views.GridTabFormattingTipsModal = AoPS.View.extend({
+		template_id: "#grid-tab-formatting-tips-tpl",
+		className: "grid-tab-formatting-tips-modal-tpl",
+		initialize: function (problem) {
+			this.problem = problem.problem;
+			this.render();
+		},
+		render: function () {
+			this.$el.html(this.getTemplate(this.template_id, this.problem));
+			var $tips = this.$(".formatting-tips");
+			if ($tips.length && !$tips.hasClass("rendered")) {
+				if (window.MathJax) {
+					MathJax.Hub.Queue(["Typeset", MathJax.Hub, $tips.get(0)]);
+				}
+				$tips.addClass("rendered");
+			}
+		},
+	});
+
+	Views.GridAcadTestProblem = AoPS.View.extend({
+		template_id: "#grid-acad-test-problem-tpl",
+		className: "grid-acad-test-problem-tpl",
+		initialize: function (problem, answer, closed) {
+			this.problem = problem;
+			this.student_answer = answer;
+			this.closed = closed;
+			this.render();
+		},
+		events: {
+			"click .show-formatting-tips": "showFormattingTips",
+		},
+		render: function () {
+			this.vars = {};
+			this.vars.problem = this.problem;
+			this.vars.student_answer = this.student_answer;
+			this.vars.closed = this.closed;
+			this.$el.html(this.getTemplate(this.template_id, this.vars));
+		},
+		showFormattingTips: function (e) {
+			var popup = new Views.GridTabFormattingTipsModal({
+				problem: this.vars.problem,
+			});
+			popup.$el.showPlainModal({
+				width: "80%",
+				title: "Formatting Tips",
+				scrollable: true,
+				frame_class: "grid-tab-test-modal",
+				onClose: function () {
+					popup.close();
+				},
+			});
+		},
+	});
+
+	Views.GridTabTestLocked = AoPS.View.extend({
+		template_id: "#grid-tab-test-locked-tpl",
+		initialize: function (options) {
+			this.options = options;
+			this.render();
+		},
+		render: function () {
+			this.vars = {};
+			this.vars.unlock_date = this.options.start_at.format(
+				"dddd, MMMM Do, YYYY"
+			);
+
+			var course_id = this.options.model.get("course_id");
+			this.vars.isContest = course_id === "vacad-math-hscm";
+			this.$el.html(this.getTemplate(this.template_id, this.vars));
+		},
+	});
+
+	Views.GridTabTestInstructions = AoPS.View.extend({
+		template_id: "#grid-tab-test-instructions-tpl",
+		initialize: function (options) {
+			this.options = options;
+			this.render();
+		},
+		render: function () {
+			this.vars = {};
+			this.vars.instructions = this.options.test.get(
+				"online_test_instructions"
+			);
+			this.$el.html(this.getTemplate(this.template_id, this.vars));
+		},
+	});
+
+	Views.GridTabTestPdf = AoPS.View.extend({
+		template_id: "#grid-tab-test-pdf-tpl",
+		initialize: function (options) {
+			this.options = options;
+			this.render();
+		},
+		render: function () {
+			this.vars = {};
+			this.vars.tests = this.options.tests;
+			this.vars.name = this.vars.tests.pluck("name").join("/");
+			this.vars.has_pdf = false;
+			this.vars.has_answered = false;
+			this.vars.display_solution = this.options.display_solution;
+			this.vars.solution = this.options.solution;
+
+			this.vars.tests.each(function (test) {
+				if (test.get("display_pdf") && !this.vars.has_pdf) {
+					this.vars.has_pdf = test.get("display_pdf");
+				}
+
+				this.vars.has_answered =
+					this.vars.has_answered || test.get("has_answered");
+				this.vars.solution = this.vars.solution || test.get("solution");
+			}, this);
+			this.$el.html(this.getTemplate(this.template_id, this.vars));
+		},
+	});
+
+	Views.GridTabTestProblems = Views.ModalUtils.extend({
+		template_id: "#grid-tab-test-problems-tpl",
+		className: "grid-tab-test-problems",
+		initialize: function (options) {
+			this.options = options;
+			this.render();
+		},
+		render: function () {
+			var self = this;
+			this.vars = {};
+			this.vars.name = this.options.test.get("name");
+			this.vars.test_id = this.options.test.get("id");
+			this.vars.url = this.options.test.get("display_pdf");
+			this.vars.problems = this.options.test.get("problems");
+			this.vars.is_math = !this.options.model.get("course_id").includes("-la-");
+			this.lock_submit = false;
+
+			var answers = this.options.test.get("answers");
+			_.each(
+				this.vars.problems,
+				_.bind(function (problem, id) {
+					this.vars.problems[id].order = id + 1;
+					if (this.vars.problems[id].is_autograded === undefined) {
+						this.vars.problems[id].is_autograded = true;
+					}
+					this.vars.problems[id].answer = answers[id].value;
+					if (this.vars.problems[id].answer) {
+						this.lock_submit = true;
+					}
+				}, this)
+			);
+			this.vars.has_answered = this.options.test.get("has_answered");
+			this.vars.closed = !this.options.open || this.lock_submit;
+			this.$el.html(this.getTemplate(this.template_id, this.vars));
+
+			// We need to append to .problems-container. It won't be available til
+			// after event loop runs, so wrap it in setTimeout.
+			// Amanda may know how to do something better here.
+			setTimeout(function () {
+				self.$problemContainer = self.$(".problems-container");
+				_.each(self.vars.problems, function (problem, id) {
+					var problemView = new Views.GridAcadTestProblem(
+						self.vars.problems[id],
+						answers[id].value,
+						self.vars.closed
+					);
+					self.$problemContainer.append(problemView.$el);
+				});
+			}, 1);
+
+			this.$("#submit-" + this.options.test.id).click(
+				_.bind(function (e) {
+					this.studentAnswers = [];
+					_.each(
+						this.$(".grid-test-hidden-table-content input"),
+						_.bind(function (div) {
+							this.studentAnswers.push({
+								value: $(div).val(),
+								order: $(div).data("id"),
+								autograded: $(div).data("autograded"),
+							});
+						}, this)
+					);
+					this.showLoadingModal();
+					if (AoPS.bootstrap_data.uses_parser) {
+						this.model.checkExamAnswers(
+							this.options.test.id,
+							this.studentAnswers,
+							_.bind(function () {
+								this.showParserResponses();
+							}, this)
+						);
+					} else {
+						this.showParserResponses();
+					}
+				}, this)
+			);
+		},
+		showParserResponses: function () {
+			var self = this;
+			var popup = new Views.GridTabTestSubmitResponsesModal({
+				model: self.model,
+				answers: self.studentAnswers,
+				test_id: self.vars.test_id,
+			});
+			this.closeLoadingModal();
+			this.submitResponsesModal = popup.$el.showPlainModal({
+				close_on_button_click: false,
+				width: "80%",
+				title: "Submit Responses",
+				scrollable: true,
+				frame_class: "grid-tab-test-modal",
+				type: "buttons",
+				buttons: [
+					{text: "Cancel", value: false},
+					{text: "Submit", value: true},
+				],
+				onButtonClick: function (submit) {
+					AoPS.Ui.Modal.closeParticularModal(self.submitResponsesModal);
+					if (submit) {
+						self.showLoadingModal();
+						self.model.checkExamAnswers(
+							self.options.test.id,
+							self.studentAnswers,
+							_.bind(
+								function () {
+									self.closeLoadingModal();
+									self.render();
+								},
+								self.render,
+								self
+							),
+							true
+						);
+						this.lock_submit = true;
+					}
+				},
+			});
+		},
+		handleSubmit: function () {
+			if (this.model.campus_id === "virtual") {
+				this.handleParserSubmit();
+			} else {
+				this.handleStandardSubmit();
+			}
+		},
+		handleParserSubmit: function () {},
+		handleStandardSubmit: function () {},
+	});
+
+	Views.GridTabTestSubmitResponsesModal = AoPS.View.extend({
+		template_id: "#grid-tab-test-submit-responses-modal-tpl",
+		className: "grid-tab-test-submit-responses-modal-tpl",
+		initialize: function (options) {
+			this.model = options.model;
+			this.answers = options.answers;
+			this.test_id = options.test_id;
+			this.render();
+		},
+		render: function () {
+			this.vars = {
+				answers: this.answers,
+				problems: this.model
+					.get("academy_tests")
+					.get(this.test_id)
+					.get("problems"),
+				any_issues: false,
+				any_blank: false,
+			};
+			_.each(
+				this.vars.problems,
+				_.bind(function (problem, id) {
+					this.vars.problems[id].order = id + 1;
+					if (this.vars.problems[id].is_autograded === undefined) {
+						this.vars.problems[id].is_autograded = true;
+					}
+					if (this.vars.answers[id]) {
+						this.vars.answers[id].status_text =
+							this.vars.problems[id].status_text;
+						if (this.vars.answers[id].status_text) {
+							this.vars.any_issues = true;
+						}
+						if (this.vars.answers[id].value === "") {
+							this.vars.any_blank = true;
+						}
+					}
+				}, this)
+			);
+			this.$el.html(this.getTemplate(this.template_id, this.vars));
+		},
+	});
+
+	Views.GridTabTestDropzone = AoPS.View.extend({
+		template_id: "#grid-tab-test-dropzone-tpl",
+		initialize: function (options) {
+			this.options = options;
+			this.model = options.model;
+			this.render();
+		},
+		render: function () {
+			this.vars = {};
+			this.vars.has_pdf_upload = !this.options.model
+				.get("course_id")
+				.includes("vacad-");
+			this.vars.open = this.options.open;
+			this.vars.name = this.options.test.get("name");
+			this.vars.url = this.options.test.get("display_pdf");
+			this.vars.cdn_url = this.model.get("cdn_url");
+			this.vars.test_id = this.options.test.id;
+			this.$el.html(this.getTemplate(this.template_id, this.vars));
+			this.submissions = new Views.GridTabTestSubmissions(this.options);
+			this.$("#uploads" + this.vars.test_id + ".test-submissions").html(
+				this.submissions.$el
+			);
+			var self = this;
+			this.$("#drop" + this.vars.test_id + ".dropzone").dropzone({
+				url: "/m/class/exam-upload.php",
+				accept: function (file, done) {
+					var ext = file.name.split(".").pop().toLowerCase();
+					if (_.indexOf(["pdf", "jpg", "jpeg", "png"], ext) < 0) {
+						done("Error! Files of this type are not accepted.");
+					}
+					done();
+					$(window).trigger("resize");
+				},
+				sending: function (file, xhr, formData) {
+					formData.append("class_id", self.model.get("class_id"));
+					formData.append("user_id", self.model.get("perms").user.user_id);
+					formData.append("current_lesson", self.options.test.get("lesson"));
+					formData.append("test_id", self.vars.test_id);
+					$(window).trigger("resize");
+				},
+				maxFilesize: 16,
+				success: function (file, response) {
+					var data = JSON.parse(response);
+					if (data.error_code) {
+						AoPS.Ui.Modal.showAlert(data.error_msg);
+						this.removeFile(file);
+					} else {
+						file.exam_file_id = data.response.exam_file_id;
+						var current = self.model.get("academy_tests");
+						current
+							.get(self.vars.test_id)
+							.set("submissions", data.response.exam_uploads);
+						self.model.set("academy_tests", current);
+						$(file.previewElement).addClass("dz-success");
+					}
+					self.submissions.render();
+					$(window).trigger("resize");
+				},
+				error: function (file, error) {
+					if (error.substr(0, 15) === "File is too big") {
+						AoPS.Grid.Utils.CreateModalAlert(
+							"Your file is too large. You may only upload files up to 2 MB."
+						);
+					} else {
+						AoPS.Grid.Utils.CreateModalAlert(error);
+					}
+					this.removeFile(file);
+					$(window).trigger("resize");
+				},
+			});
+		},
+	});
+
+	Views.GridTabTestSubmissions = AoPS.View.extend({
+		template_id: "#grid-tab-test-submissions-tpl",
+		initialize: function (options) {
+			this.options = options;
+			this.model = options.model;
+			this.test = options.test;
+			this.render();
+		},
+		render: function () {
+			this.vars = {};
+			this.vars.open = this.options.open;
+			this.vars.cdn_url = this.model.get("cdn_url");
+			var test = this.test;
+			this.vars.submissions = test.get("submissions")
+				? Object.values(test.get("submissions"))
+				: [];
+			this.vars.submissions.sort(function (a, b) {
+				return parseInt(a.order) > parseInt(b.order) ? 1 : -1;
+			});
+			_.each(this.vars.submissions, function (submission, id) {
+				submission.display_order = id + 1;
+			});
+			if (this.vars.submissions && _.size(this.vars.submissions)) {
+				this.vars.submissions[0].first = true;
+				this.vars.submissions[_.size(this.vars.submissions) - 1].last = true;
+			}
+			this.$el.html(this.getTemplate(this.template_id, this.vars));
+			_.each(
+				this.vars.submissions,
+				_.bind(function (submission, id) {
+					this.$(".up" + submission.upload_id).click(
+						_.bind(function (e) {
+							this.model.swapExams(
+								this.test.get("id"),
+								submission.upload_id,
+								this.vars.submissions[submission.display_order - 2].upload_id,
+								this.test.get("lesson"),
+								_.bind(function () {
+									this.render();
+								}, this)
+							);
+						}, this)
+					);
+					this.$(".delete" + submission.upload_id).click(
+						_.bind(function (e) {
+							this.model.deleteExam(
+								this.test.get("id"),
+								submission.upload_id,
+								this.test.get("lesson"),
+								_.bind(function () {
+									this.render();
+								}, this)
+							);
+						}, this)
+					);
+					this.$(".down" + submission.upload_id).click(
+						_.bind(function (e) {
+							this.model.swapExams(
+								this.test.get("id"),
+								submission.upload_id,
+								this.vars.submissions[submission.display_order].upload_id,
+								this.test.get("lesson"),
+								_.bind(function () {
+									this.render();
+								}, this)
+							);
+						}, this)
+					);
+					this.$(".edit" + submission.upload_id).click(
+						_.bind(function (e) {
+							var popup = new Views.GridTabTestEditFilenameModal({
+								model: this.model,
+								submission: submission,
+							});
+							popup.$el.showPlainModal({
+								width: "60%",
+								title: "Edit Filename",
+								scrollable: true,
+								frame_class: "grid-tab-test-modal",
+								type: "buttons",
+								buttons: [{text: "Submit", value: "submit"}],
+								onButtonClick: _.bind(function () {
+									var filename = $("#new-filename").val();
+									if (filename) {
+										this.model.changeExamFilename(
+											this.test.get("id"),
+											submission.upload_id,
+											filename,
+											this.test.get("lesson"),
+											_.bind(function () {
+												this.render();
+											}, this)
+										);
+									}
+									popup.close();
+								}, this),
+								onClose: function () {
+									popup.close();
+								},
+							});
+						}, this)
+					);
+				}, this)
+			);
+		},
+	});
+
+	Views.GridTabTestEditFilenameModal = AoPS.View.extend({
+		template_id: "#grid-tab-test-edit-filename-modal-tpl",
+		className: "grid-tab-test-edit-filename-modal-tpl",
+		initialize: function (options) {
+			this.options = options;
+			this.model = options.model;
+			this.submission = options.submission;
+			this.render();
+		},
+		render: function () {
+			this.vars = {
+				cdn_url: this.model.get("cdn_url"),
+				url: this.submission.url,
+				filename: this.submission.filename,
+			};
+			this.$el.html(this.getTemplate(this.template_id, this.vars));
+		},
+	});
+
+	return Views;
+})(AoPS.Grid.Views);

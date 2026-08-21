@@ -1,0 +1,27 @@
+/* global Motors */
+
+$(function () {
+	var motorWrappers = $(".motor-wrapper");
+	var transcript = AoPS.bd.transcript;
+
+	$(".motor-wrapper").each(async (index) => {
+		var $motor_wrapper = $(motorWrappers[index]);
+		var id = $motor_wrapper.attr("message_id");
+
+		if (transcript && transcript[id] && transcript[id].motor) {
+			try {
+				var motor = JSON.parse(transcript[id].motor);
+				var motorJson = JSON.parse(motor.motor_json);
+
+				var staticView = await AoPS.Motors.Utils.generateStaticMotor(motorJson);
+				Motors.render(staticView, $motor_wrapper[0]);
+			} catch (e) {}
+		}
+	});
+
+	_.each($(".message .text.non-motor.nomathjax"), async (element) => {
+		await AoPS.Ecole.Utils.RenderPythonWindow($(element));
+	});
+
+	MathJax.Hub.Queue(["Typeset", MathJax.Hub, "grid"]);
+});

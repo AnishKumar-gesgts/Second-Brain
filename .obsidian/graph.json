@@ -1,0 +1,65 @@
+{
+  "collapse-filter": false,
+  "search": "",
+  "showTags": false,
+  "showAttachments": false,
+  "hideUnresolved": false,
+  "showOrphans": true,
+  "collapse-color-groups": true,
+  "colorGroups": [
+    {
+      "query": "path:\"Anish's Second Brain/Projects/Particle Physics\"",
+      "color": {
+        "a": 1,
+        "rgb": 16711680
+      }
+    },
+    {
+      "query": "path:\"Anish's Second Brain/Projects/Quantum\" (photonic OR photon OR SFWM)",
+      "color": {
+        "a": 1,
+        "rgb": 255
+      }
+    },
+    {
+      "query": "path:\"Anish's Second Brain/Projects/Quantum\"",
+      "color": {
+        "a": 1,
+        "rgb": 10494192
+      }
+    },
+    {
+      "query": "tag:#home  ",
+      "color": {
+        "a": 1,
+        "rgb": 54783
+      }
+    },
+    {
+      "query": "path:\"Tasks/Notion Tasks\" (file:Chemistry OR file:Choir OR file:English OR file:History)",
+      "color": {
+        "a": 1,
+        "rgb": 32768
+      }
+    },
+    {
+      "query": "path:\"Tasks/Notion Tasks\" (file:Calc OR file:Calculus OR file:\"F=ma\" OR file:Math OR file:Physics OR file:\"Physics C\")",
+      "color": {
+        "a": 1,
+        "rgb": 16753920
+      }
+    }
+  ],
+  "collapse-display": false,
+  "showArrow": false,
+  "textFadeMultiplier": -2.8,
+  "nodeSizeMultiplier": 1,
+  "lineSizeMultiplier": 1,
+  "collapse-forces": false,
+  "centerStrength": 0.429372768995411,
+  "repelStrength": 13.5264841805901,
+  "linkStrength": 0.597909229984702,
+  "linkDistance": 500,
+  "scale": 0.3628873738935641,
+  "close": true
+}

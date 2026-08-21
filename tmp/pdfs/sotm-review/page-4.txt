@@ -1,0 +1,19 @@
+4
+Vector Processes
+Now that there is a vector for magnitude in that plane, we need to work in the ground plane for direction calculations:
+First, convert ⃗l’s magnitude to a ground-relative vector, aka ⃗lx, and call it ⃗g to store ground velocity of the ball.
+∥⃗g∥= ∥⃗l∥cos(θ) = x
+t = x
+r
+g
+2(x −y)
+Since the stationary ground velocity of the ball would retain the heading of the position vector ⃗r,
+arg(⃗g) = ϕ = atan2(⃗ry, ⃗rx)
+This would mean that 0°is upfield and ϕ would increase counter-clockwise from that
+Then break it into components:
+⃗g = ∥⃗l(x, t)∥cos(ϕ)ˆı + ∥⃗l(y, t)∥sin(ϕ)ˆȷ
+This vector ⃗g is the field relative target velocity vector.
+Next we have to determine the robot’s field-relative velocity ⃗v Given a gyro reading of β, ⃗v can be calculated
+⃗v = ( ⃗vxcos(β) −⃗vysin(β −π
+2 ))ˆı
+4

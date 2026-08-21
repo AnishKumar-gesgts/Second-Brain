@@ -1,0 +1,6 @@
+AoPS.Constants = {
+	WRITING_SAVE_DEBOUNCE_MS: 2500,
+	ERROR_CANNOT_SAVE:
+		"Please copy and paste your response to another editor " +
+		"such as Word or Pages before attempting to refresh your browser.",
+};

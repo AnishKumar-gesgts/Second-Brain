@@ -1,0 +1,582 @@
+AoPS.Utils.initKeyChain(AoPS, "Grid", "Views");
+
+AoPS.Grid.Views = (function (Views) {
+	Views.GridTabReport = Views.GridTab.extend({
+		template_id: "#grid-tab-report-tpl",
+		postInitializePostRender: function (options) {
+			this.listenTo(
+				this.model,
+				"report_has_changed",
+				_.bind(function () {
+					this.reportView.updateAndPreserveExpanded(this.model.get("report"));
+				}, this)
+			);
+		},
+		constructCrumbs: function () {
+			return [
+				{
+					text: "Report",
+				},
+			];
+		},
+		renderHelper: function () {
+			this.reportView = new Views.GridReportFull({
+				model: this.model,
+				report: this.model.get("report"),
+			});
+			this.$el.append(this.reportView.$el);
+		},
+	});
+
+	Views.GridReportFull = AoPS.View.extend({
+		template_id: "#grid-report-full-tpl",
+		initialize: function (options) {
+			this.report = options.report;
+			this.render();
+		},
+		updateAndPreserveExpanded: function (report) {
+			var expanded = {};
+
+			if (this.overallView) {
+				expanded[this.overallView.options.caption] =
+					this.overallView.$el.hasClass("expanded");
+				this.overallView.remove();
+			}
+
+			if (this.lessonViews) {
+				_.each(
+					this.lessonViews,
+					_.bind(function (lessonView) {
+						expanded[lessonView.options.caption] =
+							lessonView.$el.hasClass("expanded");
+						lessonView.remove();
+					}, this)
+				);
+			}
+
+			this.report = report;
+			this.render();
+
+			if (this.overallView) {
+				if (expanded[this.overallView.options.caption]) {
+					this.overallView.$el.addClass("expanded");
+				}
+			}
+			if (this.lessonViews) {
+				_.each(
+					this.lessonViews,
+					_.bind(function (lessonView) {
+						if (expanded[lessonView.options.caption]) {
+							lessonView.$el.addClass("expanded");
+						}
+					}, this)
+				);
+			}
+			this.showOrHideExpandButton();
+		},
+		constructCrumbs: function () {
+			return [
+				{
+					text: "Report",
+				},
+			];
+		},
+		showOrHideExpandButton: function () {
+			if (
+				this.$(".grid-report-row").length <=
+				this.$(".grid-report-row.expanded").length
+			) {
+				this.$(".expand-all").hide();
+				this.$(".collapse-all").show();
+			} else {
+				this.$(".expand-all").show();
+				this.$(".collapse-all").hide();
+			}
+		},
+		render: function () {
+			this.$el.html(
+				this.getTemplate(
+					this.template_id,
+					_.extend(
+						{
+							lesson_units: this.model.get("lesson_units"),
+							has_la_performance_reports:
+								this.model.get("flavor").has_la_performance_reports,
+							has_optional: this.model.get("flavor").has_optional_progress_bars,
+							user_badges: this.model.get("master").getMyBadges(),
+							has_overall: this.model.get("flavor").has_overall,
+						},
+						this.report
+					)
+				)
+			);
+
+			this.$header = this.$("h2.header");
+			this.$header.append(
+				$("<span />")
+					.addClass("aops-font grid-antonio-trigger")
+					.text("3")
+					.click(
+						_.bind(function (e) {
+							e.preventDefault();
+							var bar_weights = "",
+								length = this.model.get("report").bars.length,
+								flavor = this.model.get("flavor"),
+								campus_id = this.model.get("campus_id");
+							_.each(this.model.get("report").bars, function (bar, key) {
+								var caption = bar.caption;
+								if (bar.key == "hw") {
+									if (flavor.has_wp) {
+										caption = "your Short‑Answer Challenge Problems";
+										if (flavor.has_ungraded) {
+											caption += " (and any Auto‑Graded Writing Problems)";
+										}
+									} else {
+										caption = "your Challenge Problems";
+									}
+								} else if (bar.key == "alc") {
+									caption = "your performance in Alcumus";
+								} else if (bar.key == "wp") {
+									caption = "your Graded Writing Problems";
+								}
+								bar_weights +=
+									bar.weight +
+									"% from " +
+									caption +
+									(key < length - 2 ? ", " : "") +
+									(key == length - 2 ? " and " : "");
+							});
+
+							var popup = new Views.GridAntonio(
+								_.extend(
+									{
+										model: this.model,
+										parentView: this,
+										bar_weights: bar_weights,
+										has_la_performance_reports:
+											this.model.get("flavor").has_la_performance_reports,
+										not_acad: campus_id === "web",
+										name: "report",
+									},
+									flavor
+								)
+							);
+							popup.$el.showPlainModal({
+								scrollable: true,
+								title: '<h1 class="grid-antonio-title">Your Report</h1>',
+								onClose: function () {
+									popup.close();
+								},
+							});
+						}, this)
+					)
+			);
+
+			if (this.model.get("flavor").has_overall) {
+				this.overallView = new Views.GridReportFullRow({
+					parentView: this,
+					model: this.model,
+					caption: "Overall",
+					overall: this.report.overall,
+					bars: this.report.bars,
+					shade: "past",
+					overallHeight: 24 + this.report.bars.length,
+					minibarHeight: this.report.bars.length
+						? 24 / this.report.bars.length
+						: 24,
+				});
+				this.$(".grid-report-table.overall").append(this.overallView.$el);
+			}
+
+			this.lessonViews = [];
+			this.is_expandable =
+				_.keys(this.model.get("flavor").report_bar_weights).length > 1;
+			_.each(
+				this.report.lessons,
+				_.bind(function (lesson) {
+					var shade = "current";
+					if (lesson.lesson < this.model.get("current_lesson")) {
+						shade = "past";
+					} else if (lesson.lesson > this.model.get("current_lesson")) {
+						shade = "future";
+					}
+					var options = {
+						parentView: this,
+						model: this.model,
+						caption: lesson.lesson,
+						overall: lesson.overall,
+						bars: _.clone(lesson.bars),
+						shade: shade,
+						test: lesson.bars[0].alt == "Test Results" ? "test" : "no-test",
+						overallHeight: 24 + lesson.bars.length,
+						minibarHeight: lesson.bars.length ? 24 / lesson.bars.length : 24,
+					};
+					_.each(
+						options.bars,
+						_.bind(function (minibar) {
+							var overall_minibar = _.findWhere(this.report.bars, {
+								key: minibar.key,
+							});
+							minibar.caption = overall_minibar.caption;
+						}, this)
+					);
+					if (
+						this.model.get("course_id") == "acad-1st-grade-math" &&
+						options.bars[0].test &&
+						options.bars[0].bao
+					) {
+						// overwrite test data for Math Level 1 bars and display BAO HW scores instead
+						delete options.bars[0].test;
+						delete options.bars[0].alt;
+						options.test = "no-test";
+
+						let bar_length = AoPS.Grid.Utils.CalculateBaoBarLength(
+							options.bars[0].bao.topics
+						);
+						options.bars[0].length = bar_length;
+						options.bars[0].color = AoPS.Grid.Utils.GetBarColor(bar_length);
+					}
+
+					this.lessonViews.push(new Views.GridReportFullRow(options));
+				}, this)
+			);
+			_.each(
+				this.lessonViews,
+				_.bind(function (lessonView) {
+					this.$(".grid-report-table.lessons").append(lessonView.$el);
+				}, this)
+			);
+
+			if (this.is_expandable) {
+				this.$(".expand-all").click(
+					_.bind(function (e) {
+						e.preventDefault();
+						this.$(".grid-report-row").addClass("expanded");
+						this.showOrHideExpandButton();
+					}, this)
+				);
+
+				this.$(".collapse-all")
+					.hide()
+					.click(
+						_.bind(function (e) {
+							e.preventDefault();
+							this.$(".grid-report-row").removeClass("expanded");
+							this.showOrHideExpandButton();
+						}, this)
+					);
+
+				this.$(".expand-optional").click(
+					_.bind(function (e) {
+						e.preventDefault();
+						if (!this.$(".grid-report-row").hasClass("expanded")) {
+							this.$(".grid-report-row").addClass("expanded");
+						}
+						this.$(
+							".grid-report-row.expanded .grid-report-minibar.optional"
+						).addClass("expanded");
+						this.showOrHideExpandButton();
+						$(".collapse-optional").show();
+						$(".expand-optional").hide();
+					}, this)
+				);
+
+				this.$(".collapse-optional").click(
+					_.bind(function (e) {
+						e.preventDefault();
+						this.$(
+							".grid-report-row.expanded .grid-report-minibar.optional"
+						).removeClass("expanded");
+						$(".collapse-optional").hide();
+						$(".expand-optional").show();
+					}, this)
+				);
+			} else {
+				this.$(".expand-all, .collapse-all").hide();
+				_.each(
+					this.lessonViews,
+					_.bind(function (lessonView) {
+						lessonView.$el.addClass("expanded");
+						lessonView.$(".clickable").removeClass("clickable");
+					}, this)
+				);
+			}
+		},
+	});
+
+	Views.GridReportFullRow = AoPS.View.extend({
+		template_id: "#grid-report-full-row-tpl",
+		className: "grid-report-row",
+		initialize: function (options) {
+			this.options = options;
+			this.render();
+		},
+		render: function () {
+			this.$el.html(this.getTemplate(this.template_id, this.options));
+
+			_.each(
+				this.options.bars,
+				_.bind(function (minibar) {
+					var bar_length =
+						minibar.test &&
+						!(
+							this.options.caption <=
+								this.model.get("current_lesson") -
+									(this.model.get("is_virtual") ? 2 : 1) ||
+							this.model.get("current_lesson") <
+								this.model.get("current_lesson_true")
+						)
+							? 0
+							: minibar.length;
+					var classes =
+						"grid-report-minibar aops-rogb-bar aops-rogb-" + minibar.color;
+					if (minibar.optional) {
+						classes += " optional";
+					}
+					var $div = $("<div />")
+						.append($("<span />").addClass("overlay"))
+						.addClass(classes)
+						.css({
+							height: this.options.minibarHeight + "px",
+							width: bar_length + "%",
+						});
+					var $outer = $("<div />")
+						.addClass("aops-rogb-bar-outer clickable")
+						.append($div)
+						.appendTo(this.$(".aops-rogb-container"));
+
+					if (minibar.true_weight != 0 || minibar.optional) {
+						$outer.hover(
+							_.bind(function () {
+								var minibarHeaderText = minibar.alt || minibar.caption;
+
+								if (
+									this.model.get("flavor").has_la_performance_reports &&
+									minibar.hasOwnProperty("vars")
+								) {
+									minibarHeaderText =
+										minibar.vars.name +
+										" " +
+										(minibar.caption != "Exam" ? minibar.caption : "");
+								}
+								var $header = $("<div />").text(minibarHeaderText);
+								var $body = null;
+								var $footer = $("<div />").text(
+									(minibar.weight > 0
+										? minibar.weight + "% of"
+										: "Not included in") +
+										" your " +
+										(parseInt(this.options.caption) ? "weekly" : "overall") +
+										" score"
+								);
+
+								if (minibar.topics) {
+									$body = $("<table />");
+									_.each(minibar.topics, function (topic) {
+										var $tr = $("<tr />").appendTo($body);
+										$tr.append($("<td />").text(topic.name));
+										$tr.append(
+											AoPS.Grid.Utils.CreateProgressBar(
+												$("<td />").addClass("grid-report-bar-general"),
+												topic
+											)
+										);
+									});
+								} else if (minibar.test) {
+									var tests = [];
+									_.each(
+										minibar.test.tests,
+										_.bind(function (t) {
+											if (t.weight > 0) {
+												tests.push({
+													caption: t.name,
+													score:
+														t.denom &&
+														(this.options.caption <=
+															this.model.get("current_lesson") -
+																(this.model.get("is_virtual") ? 2 : 1) ||
+															this.model.get("current_lesson") <
+																this.model.get("current_lesson_true"))
+															? t.num.toString() + " of " + t.denom.toString()
+															: "Your score is not available.",
+													gorilla: minibar.test.gorilla_num,
+												});
+											}
+										}, this)
+									);
+
+									$body = $("<table />");
+									_.each(tests, function (t) {
+										$("<tr />")
+											.append($("<td />").text(t.caption))
+											.append($("<td />").text(t.score))
+											.appendTo($body);
+										if (t.gorilla) {
+											$("<tr />")
+												.append($("<td />").text("Beast"))
+												.append($("<td />").text(t.gorilla.toString()))
+												.appendTo($body);
+										}
+									});
+								} else if (minibar.bao) {
+									$body = $("<table />");
+									_.each(minibar.bao.topics, function (bao) {
+										var $tr = $("<tr />").appendTo($body);
+										var $stars = $("<td />");
+
+										$tr
+											.append($("<td />").text(bao.displayName))
+											.append($stars);
+										for (var n = 0; n < 3; n++) {
+											$stars.append(
+												$("<div />")
+													.addClass(
+														"hw-blocks-star hw-blocks-star-" +
+															(n < bao.stars ? "on" : "off")
+													)
+													.html("&#9733;")
+											);
+										}
+									});
+								} else if (minibar.probs) {
+									$body = $("<table />");
+									_.each(minibar.probs, function (probs) {
+										var score = [],
+											technical = [],
+											style = [];
+										_.each(probs.problems, function (problem) {
+											if (!_.isUndefined(problem.score)) {
+												score.push(
+													_.isNull(problem.score) ? "?" : problem.score
+												);
+											} else {
+												technical.push(
+													_.isNull(problem.technical) ? "?" : problem.technical
+												);
+												style.push(
+													_.isNull(problem.style) ? "?" : problem.style
+												);
+											}
+										});
+										if (score.length) {
+											$("<tr />")
+												.append($("<td />").text(probs.caption))
+												.append($("<td />").text(score.join(", ")))
+												.appendTo($body);
+										}
+										if (technical.length) {
+											$("<tr />")
+												.append($("<td />").text("Writing Technical"))
+												.append($("<td />").text(technical.join(", ")))
+												.appendTo($body);
+										}
+										if (style.length) {
+											$("<tr />")
+												.append($("<td />").text("Writing Style"))
+												.append($("<td />").text(style.join(", ")))
+												.appendTo($body);
+										}
+									});
+								} else if (minibar.vars) {
+									$body = $("<table />");
+									$("<tr />")
+										.append($("<td />").text(minibar.caption))
+										.append(
+											$("<td />").text(
+												(minibar.vars.score ? minibar.vars.score : 0) +
+													" out of " +
+													(minibar.vars.max_score ? minibar.vars.max_score : 0)
+											)
+										)
+										.appendTo($body);
+								}
+								if (minibar.color != "hide") {
+									this.showMouseOver(
+										$div,
+										$header,
+										$body,
+										this.options.bars.length > 1 ? $footer : null
+									);
+								}
+							}, this),
+							_.bind(function () {
+								this.hideMouseOver();
+							}, this)
+						);
+					}
+				}, this)
+			);
+
+			this.$overall = this.$(".grid-report-overall");
+			this.$overall.parent().hover(
+				_.bind(function () {
+					var $header = $("<div />").text(
+						parseInt(this.options.caption)
+							? this.model.get("lesson_units").singular +
+									" " +
+									this.options.caption +
+									" Overall Score"
+							: "Your Overall Score"
+					);
+					var $footer = $("<div />").text("Click to expand...");
+					var $body = null;
+					if (this.options.overall.is_wp_limited) {
+						$body = $("<div />").text(
+							"Your weekly progress bar will remain orange until the writing problem is attempted. " +
+								"The weekly composite bar will never turn green or blue in a week where you do not attempt the writing problem."
+						);
+						$body.addClass("grid-fg-orange").css({"max-width": "30em"});
+					}
+					this.showMouseOver(this.$overall, $header, $body, $footer);
+				}, this),
+				_.bind(function () {
+					this.hideMouseOver();
+				}, this)
+			);
+
+			this.$el.click(
+				_.bind(function () {
+					if (this.options.parentView.is_expandable) {
+						this.$el.toggleClass("expanded");
+						this.options.parentView.showOrHideExpandButton();
+						if (window.getSelection().getRangeAt(0).getClientRects.length > 0) {
+							window.getSelection().removeAllRanges();
+						}
+					}
+				}, this)
+			);
+		},
+		hideMouseOver: function () {
+			$(".grid-report-mouseover").remove();
+		},
+		showMouseOver: function ($anchor, $header, $body, $footer) {
+			var $mouseOver = $("<div />").addClass("grid-report-mouseover");
+
+			if ($header) {
+				$mouseOver.append($header.addClass("header"));
+			}
+			if ($body) {
+				$mouseOver.append($body.addClass("body"));
+			}
+			if ($footer) {
+				$mouseOver.append($footer.addClass("footer"));
+			}
+
+			this.hideMouseOver();
+			$mouseOver.appendTo($("body")).show();
+			if ($anchor.offset().top + 50 > $(window).height()) {
+				$mouseOver.offset({
+					top: $anchor.offset().top - $mouseOver.height() - 24,
+					left: $anchor.offset().left + 10,
+				});
+			} else {
+				$mouseOver.offset({
+					top: $anchor.offset().top + $anchor.height() + 5,
+					left: $anchor.offset().left + 10,
+				});
+			}
+		},
+	});
+
+	return Views;
+})(AoPS.Grid.Views);

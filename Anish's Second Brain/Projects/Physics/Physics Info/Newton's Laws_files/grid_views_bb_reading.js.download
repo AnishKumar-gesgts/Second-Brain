@@ -1,0 +1,873 @@
+AoPS.Utils.initKeyChain(AoPS, "Grid", "Views");
+
+AoPS.Grid.Views = (function (Views) {
+	Views.GridTabBBReading = Views.GridTab.extend({
+		template_id: "#grid-tab-bb-reading-tpl",
+		onAddToPage: function (obj) {
+			if (obj.args.join("/") != this.options.args.join("/")) {
+				if (obj.args.length > 0) {
+					this.options.args = obj.args;
+					this.render();
+				} else {
+					Backbone.history.navigate(
+						this.options.history_tab_url +
+							"/" +
+							this.options.args.join("/") +
+							this.options.user_string,
+						{replace: true}
+					);
+					return;
+				}
+			}
+		},
+		preserveEl: true,
+		loadFirst: function (success) {
+			if (this.bank) {
+				this.loadSecond(success);
+			} else {
+				this.lessonHasLoaded = {};
+				this.problemViews = {};
+				this.$el.addClass("grid-tab-bb-reading grid-tab-assignments");
+				this.model.fetchBookBankObject(
+					_.bind(function (bank) {
+						this.bank = bank;
+						this.loadSecond(success);
+					}, this)
+				);
+			}
+		},
+		loadQuizProblems: function (quiz_id, success) {
+			if (_.isUndefined(this.debouncedUpdateHasChanged)) {
+				this.debouncedUpdateHasChanged = _.debounce(
+					_.bind(this.updateHasChanged, this),
+					500
+				);
+			}
+			this.model.get("master").executeWhenReadingQuizLoaded(
+				quiz_id,
+				_.bind(function (problem_ids) {
+					_.each(
+						problem_ids,
+						_.bind(function (problem_id) {
+							var problem = this.model
+								.get("problems")
+								.findWhere({problem_id: problem_id});
+							if (problem) {
+								if (_.isUndefined(this.problemViews[problem_id])) {
+									this.problemViews[problem_id] =
+										new Views.GridTabAssignmentsCronus({
+											model: problem,
+											parentView: this,
+										});
+								}
+								this.problemViews[problem_id].render(true);
+								this.attachedProblemViews.push(this.problemViews[problem_id]);
+							}
+						}, this)
+					);
+
+					if (_.isFunction(success)) {
+						success(this.attachedProblemViews);
+					}
+				}, this)
+			);
+		},
+		updateBank: function (bank) {
+			var has_changed = false;
+			_.each(
+				bank,
+				_.bind(function (val, key) {
+					this.bank[key] = val;
+					has_changed = true;
+				}, this)
+			);
+			if (has_changed) {
+				if (this.innerView && _.isFunction(this.innerView.onUpdateBank)) {
+					this.determineSelectedUnit();
+					this.innerView.onUpdateBank();
+				} else {
+					this.render();
+				}
+			}
+		},
+		updateUserUnitData: function (options) {
+			AoPS.Grid.Utils.ajax_runner.run(
+				"get_class_book_bank_user_data",
+				_.extend(
+					{
+						class_id: this.model.get("class_id"),
+						user_id: this.model.get("perms").user.user_id,
+					},
+					options
+				),
+				_.bind(function (ok, data) {
+					if (data.error_code) {
+						AoPS.Grid.Utils.CreateModalAlert(data.error_msg);
+					} else if (ok) {
+						this.bank.my_units = data.response.my_units;
+						this.render();
+					}
+				}, this)
+			);
+		},
+		updateSchedule: function (unit_id, book_id) {
+			AoPS.Grid.Utils.ajax_runner.run(
+				"get_class_book_bank_object",
+				{
+					class_id: this.model.get("class_id"),
+					user_id: this.model.get("perms").user.user_id,
+					action: "change-book",
+					unit_id: unit_id,
+					book_id: book_id,
+				},
+				_.bind(function (ok, data) {
+					if (data.error_code) {
+						AoPS.Grid.Utils.CreateModalAlert(data.error_msg);
+					} else if (ok) {
+						this.bank = data.response.bank;
+						this.render();
+					}
+				}, this)
+			);
+		},
+		loadSecond: function (success) {
+			this.vars.lesson = _.isUndefined(this.options.args[0])
+				? this.options.homework_lesson
+				: parseInt(this.options.args[0]);
+			this.determineSelectedUnit();
+
+			this.vars.class_string = this.model.get("class_string");
+			this.vars.user_string = this.model.get("master").get("user_string");
+
+			this.vars.can_edit_class_transcript =
+				this.model.get("perms").me.can_edit_class_transcript;
+			this.vars.lesson_units = this.model.get("lesson_units");
+
+			if ((this.attachedProblemViews || []).length) {
+				_.each(
+					this.attachedProblemViews,
+					_.bind(function (view) {
+						view.$el.detach();
+					}, this)
+				);
+			}
+			this.attachedProblemViews = [];
+
+			if (this.lessonHasLoaded[this.vars.lesson]) {
+				success();
+			} else {
+				this.$el.html(this.getTemplate(this.template_id, this.vars));
+				this.$selectors = this.$(".lesson-selector");
+				this.$inner = this.$(".inner");
+
+				this.renderBBSelector();
+				this.resizeLessonContext();
+				this.$inner
+					.css({padding: "10px 5px"})
+					.text(
+						"Loading " +
+							this.vars.lesson_units.singular +
+							" " +
+							this.vars.lesson +
+							" Reading..."
+					);
+
+				this.lessonHasLoaded[this.vars.lesson] = true;
+				success();
+			}
+		},
+		prerenderHelper: function () {
+			if (_.isUndefined(this.allProblemViews)) {
+				this.allProblemViews = new Backbone.Collection();
+			}
+
+			if (!_.isUndefined(this.weeklyProblemViews)) {
+				_.each(this.weeklyProblemViews, function (pv) {
+					pv.$el.detach();
+				});
+			}
+			this.weeklyProblemViews = [];
+
+			if (
+				_.isUndefined(
+					(this.lesson = this.model
+						.get("lessons")
+						.findWhere({lesson: this.vars.lesson}))
+				)
+			) {
+				this.lesson = this.model
+					.get("lessons")
+					.findWhere({lesson: this.options.homework_lesson});
+				this.vars.lesson = this.options.homework_lesson;
+				this.determineSelectedUnit();
+			}
+			this.options.args[0] = this.vars.lesson;
+		},
+		constructCrumbs: function () {
+			if (this.lesson) {
+				return [
+					{
+						text:
+							this.options.tab_caption +
+							" " +
+							this.model.get("lesson_units").singular +
+							" " +
+							this.lesson.get("lesson"),
+					},
+				];
+			} else {
+				return [];
+			}
+		},
+		renderHelper: function () {
+			if (!this.model.get("master").get("grid_data").config.homework_active) {
+				this.$el
+					.html("")
+					.append(
+						$("<div />")
+							.addClass("error-box")
+							.text(
+								this.model.get("master").get("grid_data").config
+									.homework_disabled_msg
+							)
+					);
+				return;
+			}
+
+			this.lesson = this.model
+				.get("lessons")
+				.findWhere({lesson: this.vars.lesson});
+			this.$selectors = this.$(".lesson-selector");
+
+			this.$header = this.$(".lesson-header");
+			this.$plist_hdr = this.$(".problem-list-header");
+			this.$inner = this.$(".inner");
+			this.$copyright = this.$(".copyright-notice");
+
+			this.renderBBSelector();
+
+			if (_.isFunction(this.renderHeader)) {
+				this.renderHeader();
+				this.listenTo(
+					this.model,
+					"report_has_changed",
+					_.bind(function () {
+						this.$header.find("tr").remove();
+						this.renderHeader();
+					}, this)
+				);
+			} else {
+				this.$header.parent().hide();
+			}
+
+			this.renderBookUnits();
+
+			$(window).on("resize", _.bind(this.resizeLessonContext, this));
+			this.resizeLessonContext();
+		},
+		determineSelectedUnit: function () {
+			var row = _.findWhere(this.bank.lessons, {lesson: this.vars.lesson});
+
+			this.vars.selected_unit = null;
+			this.vars.selected_unit_is_released = 0;
+			this.vars.selected_unit_lesson = 0;
+			this.vars.selected_unit_first_lesson = 0;
+			if (row) {
+				var unit = _.findWhere(this.bank.units, {id: row.unit_id});
+				if (unit) {
+					var first_row = _.findWhere(this.bank.lessons, {
+						lesson: this.vars.lesson,
+						unit_lesson: 1,
+					});
+					this.vars.selected_unit = unit;
+					this.vars.selected_unit_is_released = row.is_released;
+					this.vars.selected_unit_lesson = row.unit_lesson;
+					this.vars.selected_unit_first_lesson = first_row
+						? first_row.lesson
+						: this.vars.lesson - row.unit_lesson + 1;
+				}
+			}
+
+			this.vars.selected_book = null;
+			this.vars.selected_book_is_locked = 0;
+			if (this.vars.selected_unit) {
+				var my_unit = _.findWhere(this.bank.my_units, {
+					unit_id: this.vars.selected_unit.id,
+				});
+				if (my_unit) {
+					var my_book = _.findWhere(this.vars.selected_unit.books, {
+						id: my_unit.book_id,
+					});
+					if (my_book) {
+						this.vars.selected_book = my_book;
+						this.vars.selected_book_is_locked = my_unit.is_locked;
+					}
+				}
+			}
+		},
+		renderBBSelector: function () {
+			this.renderSelector(this.vars.lesson);
+			this.$(".lesson-selector .lesson").removeClass("unified");
+			if (this.vars.selected_unit) {
+				_.each(
+					this.bank.lessons,
+					_.bind(function (l) {
+						if (l.unit_id == this.vars.selected_unit.id) {
+							this.$(
+								".lesson-selector .lesson[lesson='" + l.lesson + "']"
+							).addClass("unified");
+						}
+					}, this)
+				);
+			}
+		},
+		renderHeader: function () {},
+		/**
+		 * controls what problems are shown on the page
+		 */
+		renderBookUnits: function () {
+			if (this.innerView) {
+				this.updateHasChanged();
+				this.innerView.remove();
+			}
+			this.innerView = new Views.GridTabBBReadingLesson({
+				model: this.model,
+				parentView: this,
+				tabView: this,
+			});
+
+			this.$inner.html("").append(this.innerView.$el);
+		},
+		fetchSelectorHref: function (i) {
+			return this.options.base_tab_url + "/" + i + this.options.user_string;
+		},
+		attachDueDate: function () {},
+		updateHasChanged: function () {
+			this.model.get("master").resetNagController();
+			_.each(
+				this.problemViews,
+				_.bind(function (pv) {
+					var isVisible = pv.$el.is(":visible");
+					if (!isVisible) {
+						return;
+					}
+
+					if (pv.problemSubViews && pv.problemSubViews["FreeResponse"]) {
+						if (
+							pv.problemSubViews["FreeResponse"].editing &&
+							pv.problemSubViews["FreeResponse"].hasChanged()
+						) {
+							this.model.get("master").setNagController({
+								should_nag: true,
+								$scroll:
+									this.model.get("master").get("nag_controller").$scroll ||
+									pv.$el,
+							});
+						}
+					}
+
+					if (pv.problemSubViews && pv.problemSubViews["ShortAnswer"]) {
+						if (
+							pv.problemSubViews["ShortAnswer"].isNotEmpty() &&
+							pv.problemSubViews["ShortAnswer"].hasChanged() &&
+							!pv.problemSubViews["ShortAnswer"].model.get("done_at")
+						) {
+							this.model.get("master").setNagController({
+								should_nag: true,
+								$scroll:
+									this.model.get("master").get("nag_controller").$scroll ||
+									pv.$el,
+							});
+						}
+					}
+				}, this)
+			);
+		},
+	});
+
+	Views.GridTabBBView = AoPS.View.extend({
+		initialize: function (options) {
+			this.options = options;
+			this.tabView = options.tabView;
+			this.parentView = options.parentView;
+			this.vars = {};
+
+			if (_.isFunction(this.postInitializePreRender)) {
+				this.postInitializePreRender();
+			}
+			this.render();
+			if (_.isFunction(this.postInitializePostRender)) {
+				this.postInitializePostRender();
+			}
+		},
+		render: function (skipLoad) {
+			if (
+				_.isFunction(this.loadFirst) &&
+				(_.isUndefined(skipLoad) || !skipLoad)
+			) {
+				this.loadFirst(
+					_.bind(function () {
+						this.render(true);
+					}, this)
+				);
+			} else {
+				if (_.isFunction(this.prerenderHelper)) {
+					this.prerenderHelper();
+				}
+				this.$el.html(this.getTemplate(this.template_id, this.vars));
+				if (_.isFunction(this.renderHelper)) {
+					this.renderHelper();
+				}
+			}
+		},
+	});
+
+	Views.GridTabBBReadingLesson = Views.GridTabBBView.extend({
+		template_id: "#grid-tab-bb-reading-lesson-tpl",
+		upper_template_id: "#grid-tab-bb-reading-lesson-upper-tpl",
+		prerenderHelper: function () {
+			this.lesson = this.model
+				.get("lessons")
+				.findWhere({lesson: this.tabView.vars.lesson});
+
+			this.vars.lesson = this.tabView.vars.lesson;
+			this.vars.unit = this.tabView.vars.selected_unit;
+			this.vars.unit_is_released = this.tabView.vars.selected_unit_is_released;
+			this.vars.my_unit = this.vars.unit
+				? _.findWhere(this.tabView.bank.my_units, {
+						unit_id: this.vars.unit.id,
+				  })
+				: null;
+			this.vars.unit_lesson = this.tabView.vars.selected_unit_lesson;
+			this.vars.unit_first_lesson =
+				this.tabView.vars.selected_unit_first_lesson;
+
+			this.vars.quizzes = [];
+			this.vars.books = _.map(
+				(this.vars.unit || {}).books || [],
+				function (book) {
+					return _.extend(
+						{
+							author_fmt: AoPS.Grid.Utils.ArrayToCommaSeparatedString(
+								_.map(book.author, function (author) {
+									return (
+										(author.given || "") +
+										(author.given ? " " : "") +
+										author.family
+									);
+								})
+							),
+							has_reading_levels: book.level_lexile || book.level_f_and_p,
+							schedule_mode_is_custom: book.schedule_mode == "custom",
+							schedule_mode_is_preset: book.schedule_mode == "preset",
+							type_is_primary: book.type == "primary",
+						},
+						book
+					);
+				}
+			);
+			this.vars.book = this.tabView.vars.selected_book
+				? _.findWhere(this.vars.books, {id: this.tabView.vars.selected_book.id})
+				: null;
+
+			if (this.vars.book && this.vars.book.schedule_mode_is_preset) {
+				this.processPresetSchedule();
+			} else if (this.vars.book && this.vars.book.schedule_mode_is_custom) {
+				this.processCustomSchedule();
+			} else {
+				this.vars.schedule = null;
+			}
+
+			this.vars.num_quizzes = this.vars.quizzes.length;
+			this.vars.num_quizzes_is_plural = this.vars.num_quizzes > 1;
+
+			// Per T44881, we don't lock books
+			this.vars.book_is_choosable = true;
+			this.vars.book_is_locked = this.tabView.vars.selected_book_is_locked;
+			this.vars.can_instruct =
+				!this.model.get("perms").user.is_impersonated &&
+				this.model.get("perms").user.can_instruct;
+			this.vars.is_first_lesson =
+				this.vars.lesson == this.vars.unit_first_lesson;
+
+			this.vars.due_at = this.vars.due_at || this.lesson.get("due_at");
+			this.vars.due_at_fmt =
+				this.vars.due_at_fmt || this.lesson.get("due_at_fmt");
+			this.vars.due_at_should_be_shown = this.model.shouldShowDate(
+				this.vars.due_at
+			);
+
+			this.vars.to_release_at =
+				this.vars.to_release_at || this.lesson.get("to_release_at");
+			this.vars.to_release_at_fmt =
+				this.vars.to_release_at_fmt || this.lesson.get("to_release_at_fmt");
+			this.vars.to_release_at_should_be_shown = this.model.shouldShowDate(
+				this.vars.to_release_at
+			);
+
+			if (this.vars.unit) {
+				var selected_lesson = _.reduce(
+					this.tabView.bank.lessons,
+					_.bind(function (carry, item) {
+						if (!carry && item.unit_id == this.vars.unit.id) {
+							var lesson = this.model
+								.get("lessons")
+								.findWhere({lesson: item.lesson});
+							if (
+								lesson &&
+								(!lesson.get("released_at") ||
+									item.unit_lesson == this.tabView.bank.lessons.length)
+							) {
+								carry = lesson;
+							}
+						}
+						return carry;
+					}, this),
+					null
+				);
+
+				this.vars.disp_release_at =
+					(selected_lesson ? selected_lesson.get("to_release_at") : null) ||
+					this.vars.to_release_at;
+				this.vars.disp_release_at_fmt =
+					(selected_lesson ? selected_lesson.get("to_release_at_fmt") : null) ||
+					this.vars.to_release_at_fmt;
+			} else {
+				this.vars.disp_release_at = this.vars.to_release_at;
+				this.vars.disp_release_at_fmt = this.vars.to_release_at_fmt;
+			}
+			this.vars.disp_release_at_should_be_shown = this.model.shouldShowDate(
+				this.vars.disp_release_at
+			);
+
+			this.vars.lesson_units = this.model.get("lesson_units");
+			this.vars.is_optional =
+				this.model.get("campus_id") !== "web" &&
+				!_.some(this.vars.books, function (book) {
+					return book.type === "primary";
+				}) &&
+				this.options.parentView.options.tab_hash === "bb-reading";
+		},
+		processPresetSchedule: function () {
+			this.vars.schedule = [];
+			_.each(
+				this.vars.book.schedule_data,
+				_.bind(function (row) {
+					var quiz = _.findWhere(this.vars.book.quizzes, {id: row.quiz_id});
+					if (quiz) {
+						var mine = this.tabView.bank.my_quizzes[quiz.id];
+						var computed_lesson =
+							(
+								_.findWhere(this.tabView.bank.lessons, {
+									unit_id: this.vars.unit.id,
+									unit_lesson: row.lesson,
+								}) || {}
+							).lesson || this.vars.unit_first_lesson + row.lesson - 1;
+						this.vars.schedule.push(
+							_.extend({}, quiz, {
+								lesson: row.lesson,
+								computed_lesson: computed_lesson,
+								is_current_lesson: this.vars.unit_lesson == row.lesson,
+								is_assigned: this.vars.unit_lesson == row.lesson,
+								is_in_progress:
+									this.vars.unit_lesson == row.lesson ||
+									(mine && mine.is_started),
+								is_completed:
+									mine &&
+									mine.num_completed &&
+									mine.num_completed >= mine.num_total,
+							})
+						);
+					}
+				}, this)
+			);
+
+			_.each(
+				_.where(this.tabView.bank.lessons, {unit_id: this.vars.unit.id}),
+				_.bind(function (lesson) {
+					if (!_.findWhere(this.vars.schedule, {lesson: lesson.unit_lesson})) {
+						this.vars.schedule.push({
+							id: 0,
+							lesson: lesson.unit_lesson,
+							computed_lesson: lesson.lesson,
+							is_current_lesson: this.vars.unit_lesson == lesson.unit_lesson,
+						});
+					}
+				}, this)
+			);
+
+			this.vars.schedule.sort(
+				_.bind(function (a, b) {
+					if (a.lesson == b.lesson) {
+						return a.index - b.index;
+					} else {
+						return a.lesson - b.lesson;
+					}
+				}, this)
+			);
+			this.vars.quizzes = _.filter(
+				this.vars.schedule,
+				_.bind(function (quiz) {
+					return quiz.id && quiz.is_current_lesson;
+				}, this)
+			);
+			this.vars.lesson_can_have_quizzes = this.vars.quizzes.length > 0;
+
+			if (this.vars.schedule) {
+				var first_lesson = this.model
+					.get("lessons")
+					.findWhere({lesson: _.first(this.vars.schedule).computed_lesson});
+				var last_lesson = this.model
+					.get("lessons")
+					.findWhere({lesson: _.last(this.vars.schedule).computed_lesson});
+				if (first_lesson) {
+					this.vars.to_release_at_fmt = first_lesson.get("to_release_at_fmt");
+				}
+				if (last_lesson) {
+					this.vars.due_at_fmt = last_lesson.get("due_at_fmt");
+				}
+			}
+		},
+		processCustomSchedule: function () {
+			this.vars.num_selectable =
+				(
+					_.findWhere(this.vars.book.schedule_data, {
+						lesson: this.vars.unit_lesson,
+					}) || {}
+				).num || 0;
+			this.vars.lesson_can_have_quizzes = this.vars.num_selectable > 0;
+			this.vars.num_selected = 0;
+			this.vars.num_selectable_is_plural = this.vars.num_selectable > 1;
+
+			this.vars.my_quizzes = _.map(
+				this.vars.book.quizzes,
+				_.bind(function (quiz) {
+					var mine = this.tabView.bank.my_quizzes[quiz.id];
+					return _.extend({}, quiz, {
+						lesson: null,
+						is_current: false,
+						is_assigned: false,
+						is_in_progress: false,
+						is_completed:
+							mine &&
+							mine.num_completed &&
+							mine.num_completed >= mine.num_total,
+					});
+				}, this)
+			);
+			this.vars.my_schedule = [];
+			this.vars.quizzes = [];
+
+			_.each(
+				this.tabView.bank.lessons,
+				_.bind(function (l) {
+					var limit =
+						(
+							_.findWhere(this.vars.book.schedule_data, {
+								lesson: l.unit_lesson,
+							}) || {}
+						).num || 0;
+					if (l.unit_id == this.vars.unit.id) {
+						this.vars.my_schedule.push({
+							lesson: l.unit_lesson,
+							quiz_ids: _.reduce(
+								(
+									_.findWhere(
+										this.vars.my_unit.data[
+											"custom_schedule_" + this.vars.book.id
+										] || [],
+										{
+											lesson: l.unit_lesson,
+										}
+									) || {}
+								).quiz_ids || [],
+								_.bind(function (quiz_ids, quiz_id) {
+									if (quiz_ids.length < limit) {
+										var my_quiz = _.findWhere(this.vars.my_quizzes, {
+											id: quiz_id,
+										});
+										var mine = this.tabView.bank.my_quizzes[quiz_id];
+										if (my_quiz && !my_quiz.is_assigned) {
+											my_quiz.is_assigned = true;
+											if (l.lesson == this.vars.lesson) {
+												my_quiz.is_current = true;
+												my_quiz.is_in_progress = true;
+												this.vars.quizzes.push(my_quiz);
+												this.vars.num_selected++;
+											} else if (mine && mine.is_started) {
+												my_quiz.is_in_progress = true;
+											}
+											quiz_ids.push(quiz_id);
+										}
+									}
+									return quiz_ids;
+								}, this),
+								[]
+							),
+						});
+					}
+				}, this)
+			);
+
+			this.vars.quizzes.sort(
+				_.bind(function (a, b) {
+					return a.index - b.index;
+				}, this)
+			);
+			this.vars.has_finished_quizzes =
+				this.vars.quizzes.length > 0 &&
+				_.filter(this.vars.quizzes, function (quiz) {
+					return !quiz.is_completed;
+				}).length == 0;
+		},
+		handleCustomSchedule: function () {
+			var row = _.findWhere(this.vars.my_schedule, {
+				lesson: this.vars.unit_lesson,
+			});
+			_.each(
+				this.$(".quiz.custom-quiz-schedule-individual"),
+				_.bind(function (el) {
+					var $el = $(el);
+					var quiz_id = parseInt($(el).attr("quiz_id"));
+					var submit = _.bind(function () {
+						this.tabView.updateUserUnitData({
+							action: "set-custom-schedule",
+							unit_id: this.vars.unit.id,
+							book_id: this.vars.book.id,
+							data: JSON.stringify(this.vars.my_schedule),
+						});
+					}, this);
+
+					if (
+						this.vars.num_selectable > this.vars.num_selected &&
+						!$el.hasClass("assigned")
+					) {
+						$el
+							.find(".padded")
+							.addClass("ecole-clickable")
+							.click(
+								_.bind(function () {
+									row.quiz_ids = _.uniq(row.quiz_ids.concat([quiz_id])).slice(
+										0,
+										this.vars.num_selectable
+									);
+									submit();
+								}, this)
+							);
+					} else if (
+						this.vars.num_selectable > 0 &&
+						$el.hasClass("assigned") &&
+						$el.hasClass("current") &&
+						!$el.hasClass("completed")
+					) {
+						$el
+							.find(".padded")
+							.addClass("ecole-clickable")
+							.click(
+								_.bind(function () {
+									row.quiz_ids = _.without(row.quiz_ids, quiz_id);
+									submit();
+								}, this)
+							);
+					} else if (!$el.hasClass("completed")) {
+						$el.addClass("gray");
+					}
+				}, this)
+			);
+		},
+		renderQuiz: function (quiz) {
+			var $el = this.$(".reading-quiz-inner[quiz_id='" + quiz.id + "']");
+			this.tabView.loadQuizProblems(
+				quiz.id,
+				_.bind(function (views) {
+					$el.html("");
+					if (views.length) {
+						_.each(
+							views,
+							_.bind(function (view) {
+								$el.append(view.$el);
+							}, this)
+						);
+					} else {
+						$el.append(
+							$("<p />")
+								.addClass("indented")
+								.append($("<b />").text(quiz.name))
+								.append(": Available " + this.vars.disp_release_at_fmt)
+						);
+					}
+				}, this)
+			);
+		},
+		renderHelper: function () {
+			if (_.isUndefined(this.$upper)) {
+				this.$upper = $("<div />")
+					.css("margin-top", "10px")
+					.html(this.getTemplate(this.upper_template_id, this.vars))
+					.prependTo(this.$el);
+
+				if (this.vars.quizzes) {
+					_.each(this.vars.quizzes, _.bind(this.renderQuiz, this));
+				}
+			}
+
+			this.$(".change-book").click(
+				_.bind(function () {
+					var popup = new Views.GridTabBBReadingChooseBook({
+						model: this.model,
+						parentView: this,
+						tabView: this.tabView,
+					});
+					popup.options.modal = popup.$el.showPlainModal({
+						scrollable: true,
+						onClose: function () {
+							popup.close();
+						},
+					});
+				}, this)
+			);
+
+			if (this.vars.book && this.vars.book.schedule_mode_is_custom) {
+				this.handleCustomSchedule();
+			}
+		},
+		onUpdateBank: function () {
+			this.prerenderHelper();
+			this.$upper.html(this.getTemplate(this.upper_template_id, this.vars));
+			this.renderHelper();
+		},
+	});
+
+	Views.GridTabBBReadingChooseBook = Views.GridTabBBView.extend({
+		template_id: "#grid-tab-bb-reading-choose-book-tpl",
+		className: "grid-tab-bb-choose-book",
+		prerenderHelper: function () {
+			_.extend(this.vars, this.parentView.vars);
+		},
+		renderHelper: function () {
+			_.each(
+				this.$(".book-selection"),
+				_.bind(function (el) {
+					var $el = $(el);
+					$el.click(
+						_.bind(function () {
+							this.tabView.updateUserUnitData({
+								action: "change-book",
+								unit_id: this.vars.unit.id,
+								book_id: parseInt($el.attr("book_id")),
+							});
+							AoPS.Ui.Modal.removeModal(this.options.modal);
+						}, this)
+					);
+				}, this)
+			);
+			this.$(".grid-btn").click(
+				_.bind(function () {
+					AoPS.Ui.Modal.removeModal(this.options.modal);
+				}, this)
+			);
+		},
+	});
+
+	return Views;
+})(AoPS.Grid.Views);

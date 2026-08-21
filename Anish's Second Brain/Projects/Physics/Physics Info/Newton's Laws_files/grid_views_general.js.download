@@ -1,0 +1,1508 @@
+AoPS.Utils.initKeyChain(AoPS, "Grid", "Views");
+
+/**
+ * Stub function for phpBB parser -- calls to onImageLoad are embedded in script lines.
+ */
+// eslint-disable-next-line no-unused-vars
+function onImageLoad() {}
+
+AoPS.Grid.Views = (function (Views) {
+	/**
+	 * A tab-like view is a container that can host items inside them. It is almost
+	 * always an actual tab defined in `crypt_tabs`, but in Self-Paced classes, we
+	 * use a tab-like container to host Alcumus and eBooks.
+	 */
+	Views.GridTabLikeView = AoPS.View.extend({
+		template_id: "#grid-tab-like-tpl",
+		vars: {},
+		initialize: function (options) {
+			var selected =
+				options.tab_selected ||
+				this.model.get("master").get("crypt_tabs").findWhere({hash: "blank"});
+			var displayed = options.tab_displayed || selected;
+			var class_string = this.model.get("class_string");
+			this.options = _.extend(
+				{
+					args: [],
+					tab_selected: selected,
+					tab_displayed: displayed,
+					base_class_url: "/" + AoPS.router_root + "/" + class_string,
+					history_class_url: "/" + class_string,
+					cmty_base: "/" + class_string + "/" + displayed.get("url"),
+					displayed_lesson: Math.min(
+						this.model.get("current_lesson"),
+						this.model.get("max_disp_lesson")
+					),
+					homework_lesson: Math.min(
+						this.model.get("homework_lesson"),
+						this.model.get("max_disp_lesson")
+					),
+					user_string: this.model.get("master").get("user_string"),
+					base_tab_url:
+						"/" +
+						AoPS.router_root +
+						"/" +
+						class_string +
+						"/" +
+						selected.get("url"),
+					history_tab_url: "/" + class_string + "/" + selected.get("url"),
+					tab_caption: selected.get("caption"),
+					tab_hash: selected.get("hash"),
+					tab_url: selected.get("url"),
+					tab_prototype: selected.get("prototype_name"),
+					base_tab_disp_url:
+						"/" +
+						AoPS.router_root +
+						"/" +
+						class_string +
+						"/" +
+						displayed.get("url"),
+					history_tab_disp_url: "/" + class_string + "/" + displayed.get("url"),
+					tab_disp_caption: displayed.get("caption"),
+					tab_disp_hash: displayed.get("hash"),
+					tab_disp_url: displayed.get("url"),
+					tab_disp_prototype: displayed.get("prototype_name"),
+				},
+				options
+			);
+
+			var className =
+				"grid-tab-" +
+				this.options.tab_prototype
+					.replace(/([A-Z])/g, function ($1) {
+						return "_" + $1.toLowerCase();
+					})
+					.replace(/^\_/, "");
+			this.$el.addClass(className);
+
+			if (_.isFunction(this.postInitializePreRender)) {
+				this.postInitializePreRender();
+			}
+			this.render();
+			if (_.isFunction(this.postInitializePostRender)) {
+				this.postInitializePostRender();
+			}
+		},
+		preserveEl: true,
+		render: function (skipLoad) {
+			if (!this.preserveEl || _.isUndefined(this.alreadyRendered)) {
+				this.$el.html('<div style="padding: 10px 15px">Loading...</div>');
+				this.alreadyRendered = true;
+			}
+			if (
+				_.isFunction(this.loadFirst) &&
+				(_.isUndefined(skipLoad) || !skipLoad)
+			) {
+				this.loadFirst(
+					_.bind(function () {
+						this.render(true);
+						Backbone.trigger("reset_breadcrumbs");
+					}, this)
+				);
+			} else {
+				if (_.isFunction(this.prerenderHelper)) {
+					this.prerenderHelper();
+				}
+				this.$el.html(this.getTemplate(this.template_id, this.vars));
+				if (_.isFunction(this.renderHelper)) {
+					this.renderHelper();
+				}
+				if (
+					this.model.get("master").get("grid_data").session
+						.logged_in_and_initialized &&
+					this.model.get("show_honor_modal")
+				) {
+					this.forceHonorModal();
+				}
+			}
+		},
+		forceHonorModal: function () {},
+		renderSelector: function () {},
+		resizeLessonContext: function () {},
+	});
+
+	// As stated above, GridTab is a tab-like view. Shocked pikachu.
+	Views.GridTab = Views.GridTabLikeView.extend({
+		template_id: "#grid-tab-empty-tpl",
+		className: "grid-tab-panel",
+		suppressHonorModal: false,
+		preserveEl: false,
+		forceHonorModal: function () {
+			if (AoPS.bd.is_halper) {
+				return;
+			}
+			if (!this.model.get("honor")) {
+				this.model.set(
+					"honor",
+					new Views.GridForceHonorModal({
+						model: this.model,
+						base_class_url: this.options.base_class_url,
+					})
+				);
+			} else if (this.model.get("honor").options.modal) {
+				AoPS.Ui.Modal.removeModal(this.model.get("honor").options.modal);
+				this.model.get("honor").options.modal = null;
+			}
+			if (!this.suppressHonorModal) {
+				this.model.get("honor").options.modal = this.model
+					.get("honor")
+					.$el.showPlainModal({
+						scrollable: true,
+						force_response: true,
+						closeX: false,
+					});
+			}
+		},
+		renderSelector: function (current_lesson) {
+			if (!current_lesson) {
+				current_lesson = this.options.displayed_lesson;
+			}
+			this.lessons = {};
+			_.each(
+				_.range(
+					this.model.get("min_lesson"),
+					this.model.get("max_disp_lesson") + 1
+				),
+				_.bind(function (i) {
+					this.lessons[i] = {
+						lesson: i,
+						$el: $("<span />").addClass("lesson").attr("lesson", i),
+						$link: $("<a />").text(i),
+					};
+					this.lessons[i].$link.attr({
+						nav_grid: true,
+						href: this.fetchSelectorHref(i),
+					});
+					if (i < current_lesson) {
+						this.lessons[i].$link.addClass("past");
+					} else if (i == current_lesson) {
+						this.lessons[i].$link.addClass("current");
+					}
+					if (this.vars.lesson == i) {
+						this.lessons[i].$link.addClass("selected");
+					}
+					this.lessons[i].$el.append(this.lessons[i].$link);
+					this.$selectors.each(
+						_.bind(function (index, el) {
+							$(el).append(this.lessons[i].$el.clone());
+						}, this)
+					);
+					this.lessons[i].$el.remove();
+				}, this)
+			);
+		},
+		resizeLessonContext: function () {
+			if (
+				$("#grid").width() >=
+				120 +
+					36 *
+						(this.model.get("max_disp_lesson") -
+							this.model.get("min_lesson") +
+							1)
+			) {
+				this.$(".lesson-selector.standard").removeClass("hidden");
+				this.$(".lesson-selector.stacking").addClass("hidden");
+			} else {
+				this.$(".lesson-selector.standard").addClass("hidden");
+				this.$(".lesson-selector.stacking").removeClass("hidden");
+			}
+		},
+	});
+
+	Views.GridHeader = AoPS.View.extend({
+		template_id: "#grid-header-tpl",
+		className: "grid-header atop-the-community",
+		events: {
+			"click #classroom-button": "classroomDispatch",
+			"click #classroom-panic-button": "classroomPanic",
+			"click .btn-video-meeting": "doVideo",
+		},
+		initialize: function (options) {
+			this.options = _.extend({}, options);
+			this.options.base_class_url =
+				"/" + AoPS.router_root + "/" + this.model.get("class_string");
+			this.options.user_string = this.model.get("master").get("user_string");
+			if (_.isFunction(this.postInitializePreRender)) {
+				this.postInitializePreRender();
+			}
+			this.render();
+			if (_.isFunction(this.postInitializePostRender)) {
+				this.postInitializePostRender();
+			}
+		},
+		render: function () {
+			this.vars = {
+				grid_warning_msg: this.model.get("master").get("grid_data").config
+					.grid_warning_msg,
+				ie_version: AoPS.Grid.Utils.DetectIE(),
+			};
+
+			this.$el.html(this.getTemplate(this.template_id, this.vars));
+
+			this.$info = this.$(".info");
+			this.$selector = this.$(".selector");
+
+			this.createCanvasInfo();
+			this.createStatusMessages();
+			if (this.model.get("perms").me.can_access) {
+				if (
+					this.model.get("is_self_paced") &&
+					this.vars.ie_version &&
+					this.vars.ie_version < 12
+				) {
+					// Don't show tab links. We have IE time!
+				} else if (
+					!this.model.get("is_sp_nova") ||
+					(this.model.get("perms").user.sp &&
+						this.model.get("perms").user.sp.started &&
+						(this.model.get("perms").user.is_impersonated ||
+							!this.model.get("perms").user.sp.ended))
+				) {
+					this.createTabLinks();
+				}
+			}
+		},
+		createCanvasInfo: function () {
+			this.canvasInfo = new Views.GridCanvasInfo({
+				model: this.model,
+				headerView: this,
+			});
+			this.$info.append(this.canvasInfo.$el);
+		},
+		createTabLinks: function () {
+			this.tabs = {};
+			this.num_tabs = 0;
+			this.model.get("my_grid_tabs").each(
+				_.bind(function (tab) {
+					var hash = tab.get("hash"),
+						url = tab.get("url"),
+						caption = tab.get("caption");
+					var link =
+						this.options.base_class_url + "/" + url + this.options.user_string;
+					this.tabs[hash] = {
+						hash: hash,
+						url: url,
+						caption: caption,
+					};
+					if (caption) {
+						this.tabs[hash].$link = $("<a />")
+							.attr({nav_grid: true, href: link})
+							.text(caption)
+							.appendTo(this.$selector);
+					}
+					this.num_tabs++;
+				}, this)
+			);
+			$(window).on("resize", _.bind(this.resizeTabContext, this));
+			this.resizeTabContext();
+		},
+		selectTab: function (displayed) {
+			var selected = null;
+			_.each(this.tabs, function (tab) {
+				if (!_.isUndefined(tab.$link)) {
+					if (displayed == tab.hash || displayed == tab.url) {
+						tab.$link.addClass("selected");
+						selected = tab.hash;
+					} else {
+						tab.$link.removeClass("selected");
+					}
+				}
+			});
+			if (_.isNull(selected)) {
+				var firstTab = _.first(
+					_.filter(this.tabs, function (tab) {
+						return !_.isUndefined(tab.$link);
+					})
+				);
+				if (firstTab) {
+					firstTab.$link.addClass("selected");
+				}
+			}
+		},
+		createStatusMessages: function () {
+			if (this.model.get("perms").user.is_impersonated) {
+				var my_user = this.model.get("perms").user;
+				var $target = this.model.get("is_sp_nova") ? this.$el : this.$info;
+				$target.append(
+					$("<div />")
+						.addClass("error-box")
+						.text(
+							"You are viewing " +
+								my_user.username +
+								" (" +
+								my_user.user_id +
+								"). This user is" +
+								(my_user.can_access || my_user.is_enrolled ? "" : " NOT") +
+								" in this class. "
+						)
+						.append(
+							$("<a />")
+								.attr("href", this.options.base_class_url)
+								.text("[Clear]")
+						)
+				);
+			}
+
+			if (!this.model.get("master").get("grid_data").session.logged_in) {
+				if (
+					this.model.get("master").get("grid_data").session.academy_logged_in
+				) {
+					this.$el.append(
+						$("<div />").text("You are not signed in with a student account.")
+					);
+				} else {
+					this.$el.append(
+						$("<div />").text("You need to sign in to access this page.")
+					);
+				}
+			} else if (!this.model.get("perms").me.initialized) {
+				this.$el.append(
+					$("<div />").html(
+						"Finish setting up your account to access this class."
+					)
+				);
+				AoPS.Initialize.display({escapable: false});
+			} else if (
+				this.model.get("is_self_paced") &&
+				this.vars.ie_version &&
+				this.vars.ie_version < 12
+			) {
+				this.$el.append(
+					$("<div />").html(
+						"Self paced classes are optimized for recent versions of Chrome, Firefox, Safari and Edge. " +
+							"Please switch to one of these browsers to access your class."
+					)
+				);
+			} else if (this.model.get("is_sp_nova")) {
+				if (
+					!this.model.get("perms").user.sp ||
+					!this.model.get("perms").me.can_access
+				) {
+					this.$el.append(
+						$("<div />").html(
+							"You are not enrolled in this class. You can find your current enrollments at " +
+								'<a href="/school/my-classes">My Classes</a>.'
+						)
+					);
+				} else if (
+					!this.model.get("perms").user.sp.start &&
+					!this.model.get("perms").user.sp.started
+				) {
+					this.$el.append(
+						$("<div />").text(
+							"Your enrollment is not yet complete. Please contact us to complete your enrollment."
+						)
+					);
+				} else if (!this.model.get("perms").user.sp.started) {
+					this.$el.append(
+						$("<div />").text(
+							"Access to this class begins on " +
+								moment(this.model.get("perms").user.sp.start).format(
+									"dddd, MMMM D"
+								) +
+								"."
+						)
+					);
+				} else if (this.model.get("perms").user.sp.ended) {
+					if (this.model.get("perms").user.is_impersonated) {
+						this.$el.append(
+							$("<div />").html("Note: Access to this class has ended!")
+						);
+					} else if (this.model.get("perms").user.is_free_trial) {
+						var course_id = this.model.get("course_id");
+						this.$el.append(
+							$("<div />").html(
+								"Your free trial to " +
+									this.model.get("class_name") +
+									" has ended. If you would like to enroll in the full version of this class, please " +
+									'<a href="/school/course/' +
+									course_id +
+									'/upgrade">click here</a> and complete your enrollment.'
+							)
+						);
+					} else {
+						this.$el.append(
+							$("<div />").html(
+								"Your access to " +
+									this.model.get("class_name") +
+									" has ended. If you need extra time to complete this class, please email " +
+									'<a href="mailto:student-services@aops.com">student-services@aops.com</a>'
+							)
+						);
+					}
+				}
+			} else if (
+				!this.model.get("is_sp_nova") &&
+				!this.model.get("perms").me.can_access
+			) {
+				var is_closed = this.model.get("is_closed");
+				var is_open = this.model.get("is_open");
+				var is_enrolled = this.model.get("perms").me.is_enrolled;
+				if (is_closed) {
+					this.$el.append(
+						$("<div />").text(
+							"This class has ended. You can find your current enrollments at "
+						)
+					);
+				} else if (!is_open && is_enrolled) {
+					this.$el.append(
+						$("<div />").html(
+							"<p>Coming soon! This class is not open yet. It will open on " +
+								this.model.get("open_at") +
+								".</p>For now, you can find your current enrollments at "
+						)
+					);
+				} else {
+					this.$el.append(
+						$("<div />").text(
+							"You are not enrolled in this class. You can find your current enrollments at "
+						)
+					);
+				}
+
+				if (this.model.get("campus_id") == "web") {
+					this.$el
+						.children()
+						.last()
+						.append('<a href="/school/my-classes">My Classes</a>.');
+				} else {
+					this.$el
+						.children()
+						.last()
+						.append('<a href="/my-academy">My Academy</a>.');
+				}
+			}
+		},
+		resizeTabContext: function () {
+			if ($(window).width() >= 88 * this.num_tabs) {
+				this.$el.removeClass("collapsed");
+			} else {
+				this.$el.addClass("collapsed");
+			}
+		},
+		classroomDispatch: function () {
+			this.model.classroomDispatch(
+				_.bind(this.redirectOfficeHours, this),
+				_.bind(this.redirectClass, this)
+			);
+		},
+		classroomPanic: function () {
+			var classId = this.model.get("class_id");
+			var className = this.model.get("class_name");
+			var message = "(No panic message provided.)";
+			var $textarea = $("<textarea class='panic-message'></textarea>").on(
+				"input",
+				function () {
+					message = $textarea.val();
+				}
+			);
+			var $form = $("<div></div>")
+				.append(
+					"<p>Write your panic message for " +
+						className +
+						" (" +
+						classId +
+						"):</p>"
+				)
+				.append($textarea)
+				.append('<p>Then click "OK" to panic!</p>');
+			AoPS.Ui.Modal.showConfirmQuick(
+				$form,
+				_.bind(function (confirmed) {
+					if (confirmed) {
+						this.model.doPanic(classId, message);
+					}
+				}, this)
+			);
+		},
+		doVideo: function (e) {
+			if (e.target.dataset) {
+				$.post("/m/class/ajax.php", {
+					a: "log-attendance",
+					class_id: e.target.dataset.classId,
+				});
+			}
+
+			return true;
+		},
+		redirectOfficeHours: function () {
+			var popup = new Views.GridOfficeHoursModal({
+				model: this.model,
+			});
+			popup.$el.showPlainModal({
+				scrollable: true,
+				onClose: function () {
+					popup.close();
+				},
+			});
+		},
+		redirectClass: function (class_id, class_name) {
+			var popup = new Views.GridRedirectClassModal({
+				model: this.model,
+				new_class_id: class_id,
+				new_class_name: class_name,
+			});
+			popup.$el.showPlainModal({
+				scrollable: true,
+				onClose: function () {
+					popup.close();
+				},
+			});
+		},
+	});
+
+	Views.GridLoading = AoPS.View.extend({
+		template_id: "#grid-loading-tpl",
+		className: "grid-loading",
+		initialize: function (options) {
+			this.options = options;
+			this.render();
+		},
+		render: function () {
+			this.$el.html(this.getTemplate(this.template_id));
+		},
+	});
+
+	Views.GridOfficeHoursModal = AoPS.View.extend({
+		template_id: "#grid-office-hour-redirect-modal-tpl",
+		className: "grid-office-hour-redirect-modal",
+		initialize: function (options) {
+			this.options = options;
+			this.render();
+		},
+		render: function () {
+			this.$el.html(
+				this.getTemplate(this.template_id, {
+					class_id: this.model.attributes.class_id,
+				})
+			);
+		},
+	});
+
+	Views.GridRedirectClassModal = AoPS.View.extend({
+		template_id: "#grid-class-redirect-modal-tpl",
+		className: "grid-class-hour-redirect-modal",
+		initialize: function (options) {
+			this.options = options;
+			this.render();
+		},
+		render: function () {
+			this.$el.html(
+				this.getTemplate(this.template_id, {
+					class_id: this.model.attributes.class_id,
+					class_name: this.model.attributes.name,
+					new_class_id: this.options.new_class_id,
+					new_class_name: this.options.new_class_name,
+				})
+			);
+		},
+	});
+
+	Views.GridCanvasInfo = AoPS.View.extend({
+		template_id: "#grid-canvas-info-tpl",
+		className: "grid-canvas-info",
+		initialize: function () {
+			this.render();
+
+			// Sample event - Listen for class name changes and re-render
+			this.listenTo(this.model, "change:class_name", this.render);
+		},
+		render: function () {
+			this.vars = {
+				class_id: this.model.get("class_id"),
+				course_id: this.model.get("course_id"),
+				class_name: this.model.get("class_name"),
+				class_string: this.model.get("class_string"),
+				is_self_paced: this.model.get("is_self_paced"),
+				should_display: this.model.get("should_display"),
+				show_classroom_link: this.model.get("show_classroom_link"),
+				video_meeting: this.model.get("video_meeting"),
+				academy_tests: this.model.get("academy_tests"),
+				show_some_classroom_link:
+					this.model.get("show_classroom_link") ||
+					this.model.get("video_meeting"),
+				is_virtual: this.model.get("is_virtual"),
+				is_academy: this.model.get("campus_id") != "web",
+				instructor_name: this.model.get("instructor_name"),
+				is_free_trial_enrollment: AoPS.bd.is_free_trial_enrollment,
+				class_days:
+					this.model.get("num_weekdays") <= 1
+						? moment(this.model.get("date_start_at")).format("dddd")
+						: "",
+				classroom_name: this.model.get("classroom_name"),
+				is_woot: AoPS.Utils.isMathWootCourse(this.model.get("course_id")),
+				start_date: moment(this.model.get("date_start_at")).format(
+					"MMM D, YYYY"
+				),
+				end_date: moment(this.model.get("date_end_at")).format("MMM D, YYYY"),
+				class_time: this.model.get("class_time"),
+			};
+
+			if (this.vars.is_woot && this.model.get("my_schedule")) {
+				var my_schedule = this.model.get("my_schedule");
+				this.vars.dates = my_schedule.hasOwnProperty(0)
+					? my_schedule[0].dates
+					: my_schedule[1].dates;
+				this.vars.dates.forEach(function (day) {
+					day.header_info =
+						new Date(moment(day.date).format("MMM D, YYYY"))
+							.toString()
+							.split(" ")[0] +
+						" " +
+						day.time_fmt;
+				});
+			}
+
+			if (this.model.get("instructor2_name")) {
+				this.vars.instructor_name += " & " + this.model.get("instructor2_name");
+			}
+
+			this.$el.html(this.getTemplate(this.template_id, this.vars));
+
+			if (this.vars.video_meeting) {
+				this.$(".grid-video-meeting-help").click(
+					_.bind(function () {
+						AoPS.Grid.Utils.CreateModalAlert(
+							$("<div />")
+								.css("max-width", "600px")
+								.html(this.vars.video_meeting.help)
+						);
+					}, this)
+				);
+				if (!this.vars.video_meeting.in_session && !this.vars.is_academy) {
+					AoPS.Grid.Utils.CreateTooltip(
+						this.$(".btn-video-meeting"),
+						$("<div />")
+							.append(
+								$("<p />").text(
+									"This link only appears because you have instructor privileges."
+								)
+							)
+							.append(
+								$("<p />").text(
+									"Otherwise, it would only show up close to class time."
+								)
+							)
+					);
+				}
+			}
+
+			if (_.isFunction(this.renderHelper)) {
+				this.renderHelper();
+			}
+		},
+	});
+
+	/**
+	 * If anybody wants to know the lore of why it's called Antonio, it's because:
+	 * Modals have masks => Mask of Zorro => Antonio Banderas
+	 *
+	 * Name pre-dates AoPS 3, when there was no site-wide reliable modal library.
+	 */
+	Views.GridAntonio = AoPS.View.extend({
+		className: "grid-antonio",
+		initialize: function (options) {
+			this.options = options;
+			this.render();
+		},
+		render: function () {
+			this.$el.html(
+				this.getTemplate(
+					"#grid-antonio-" + this.options.name + "-tpl",
+					this.options
+				)
+			);
+		},
+	});
+
+	Views.GridForceHonorModal = AoPS.View.extend({
+		template_id: "#grid-force-honor-modal-tpl",
+		className: "grid-force-honor-modal",
+		vars: {},
+		initialize: function (options) {
+			this.options = options;
+			this.render();
+		},
+		render: function () {
+			this.vars.class_id = this.model.get("class_id");
+			this.vars.class_string = this.model.get("class_string");
+			this.vars.class_name = this.model.get("class_name");
+			this.vars.honor_url = this.options.base_class_url + "/honor";
+			if (this.model.get("campus_id") != "web") {
+				this.template_id = "#grid-force-academy-honor-modal-tpl";
+				this.className = "grid-force-academy-honor-modal";
+			}
+			this.$el.html(this.getTemplate(this.template_id, this.vars));
+			this.$(".agree").click(
+				_.bind(function (e) {
+					e.preventDefault();
+					this.model.acceptHonorCode(
+						_.bind(function () {
+							var text =
+								"Thank you for agreeing to our honor code. You can find more info " +
+								'<a nav_grid href="' +
+								this.vars.honor_url +
+								'">here</a>.';
+							AoPS.Ui.Modal.removeModal(this.options.modal);
+							this.options.modal = null;
+							AoPS.Grid.Utils.CreateModalAlert(text);
+						}, this)
+					);
+				}, this)
+			);
+			this.$(".more").click(
+				_.bind(function (e) {
+					e.preventDefault();
+					this.model.displayMoreInfoHonorCode();
+				}, this)
+			);
+		},
+	});
+
+	Views.GridTabHonor = Views.GridTab.extend({
+		template_id: "#grid-tab-honor-tpl",
+		/* template_id : '#grid-tab-overview-honor-code-tpl', */
+		className: "grid-tab-panel",
+		vars: {},
+		constructCrumbs: function () {
+			return [
+				{
+					text: "Honor Code",
+				},
+			];
+		},
+		suppressHonorModal: true,
+		loadFirst: function (success) {
+			if (_.isUndefined(this.vars.honor_code)) {
+				this.$el.addClass("grid-honor-code");
+				this.model.fetchHonorCode(
+					_.bind(function (honor_code) {
+						this.vars.honor_code = honor_code;
+						this.render(true);
+					}, this)
+				);
+			} else {
+				this.render(true);
+			}
+		},
+		prerenderHelper: function () {
+			this.vars.class_id = this.model.get("class_id");
+			this.vars.class_string = this.model.get("class_string");
+			this.vars.class_name = this.model.get("class_name");
+			this.vars.selected_url = this.options.base_tab_url;
+			this.vars.selected_tab_caption = this.options.tab_caption;
+			this.vars.show_honor_modal = this.model.get("show_honor_modal");
+		},
+		renderHelper: function (honor_code) {
+			if (this.model.get("is_sp_nova")) {
+				AoPS.Grid.Utils.MakeAopsScrollBar(this.$el);
+			}
+			this.$(".agree").click(
+				_.bind(function (e) {
+					e.preventDefault();
+					this.model.acceptHonorCode(
+						_.bind(function () {
+							AoPS.Grid.Utils.CreateModalAlert(
+								"Thank you for agreeing to our honor code."
+							);
+							this.render(honor_code);
+						}, this)
+					);
+				}, this)
+			);
+		},
+	});
+
+	Views.GridTabPythonBook = Views.GridTab.extend({
+		template_id: "#grid-tab-python-book-tpl",
+		constructCrumbs: function () {
+			return [
+				{
+					text: "Textbook",
+				},
+			];
+		},
+		prerenderHelper: function () {
+			if (this.options.args.length) {
+				this.select(parseInt(this.options.args[0]));
+			}
+			this.vars.selected =
+				_.findWhere(this.model.get("my_python_book_locations"), {
+					is_selected: 1,
+				}) || this.model.get("my_python_book_locations").first();
+			this.vars.aops_url = this.model
+				.get("master")
+				.get("grid_data").config.aops_url;
+		},
+		renderHelper: function () {
+			var self = this;
+			this.$python_book_iframe = this.$el.find(".python-book-iframe");
+			if (!this.$python_book_iframe || !this.$python_book_iframe[0]) {
+				return;
+			}
+			if (!this.has_set_window_listeners) {
+				this.setUpResizeCalculations();
+			}
+			this.setIframeHeight();
+
+			this.$python_book_iframe.on("load", function (e) {
+				self.setIframeHeight();
+				self.$python_book_iframe
+					.contents()
+					.find("a")
+					.click(function () {
+						self.setIframeScrollToZero;
+					});
+				self.$python_book_iframe
+					.contents()
+					.find("body")
+					.css("overflow-y", "hidden");
+				self.$python_book_iframe.scroll(self.setIframeHeightFromScroll);
+			});
+		},
+		select: function (chapter) {
+			var selected = _.findWhere(this.model.get("my_python_book_locations"), {
+				chapter: chapter,
+			});
+			if (selected) {
+				_.each(this.model.get("my_python_book_locations"), function (loc) {
+					loc.is_selected = loc.chapter == chapter ? 1 : 0;
+				});
+				this.model.setPythonBookLocation(chapter);
+			}
+		},
+		onAddToPage: function (obj) {
+			if (obj.args.join("/") != this.options.args.join("/")) {
+				this.options.args = obj.args;
+				this.render();
+			}
+		},
+
+		setUpResizeCalculations: function () {
+			var self = this;
+			window.addEventListener("click", function () {
+				self.setIframeHeight();
+			});
+			window.addEventListener("keydown", function () {
+				self.setIframeHeight();
+			});
+			window.addEventListener("scroll", function () {
+				self.setIframeHeightFromScroll();
+			});
+		},
+
+		setIframeHeight: function () {
+			var newHeight = $(this.$python_book_iframe[0].contentDocument)
+				.find("body")
+				.first()
+				.height();
+			if (!newHeight) {
+				return;
+			}
+			var currentScrollTop = $("body").scrollTop();
+			this.$python_book_iframe.height(newHeight + 10);
+			$("body").scrollTop(currentScrollTop);
+		},
+		setIframeHeightFromScroll: function () {
+			if (
+				window.pageYOffset < 500 ||
+				window.pageYOffset + window.innerHeight >= $("body").height() - 500
+			) {
+				this.setIframeHeight();
+			}
+		},
+		setIframeScrollToZero: function () {
+			window.scrollTo(0, 0);
+			this.setIframeHeight();
+		},
+	});
+
+	Views.GridTabForum = Views.GridTab.extend({
+		template_id: "#grid-tab-forum-tpl",
+		onAddToPage: function (obj) {
+			this.allow_stretch_redirect = true;
+			if (this.model.get("forum_id") === 0) {
+				return;
+			}
+			// Must come before subsequent stuff.
+			AoPS.fixFooter();
+
+			if (this.cmty_view) {
+				this.cmty_view.onAddToPage(obj);
+			}
+
+			/**
+      Previous code is below; RR changed to above after realizing that moving fixFooter earlier dealt with issues.
+        Leaving code below as place to start if heights of windows become weird problem in forum - grid in future.
+
+      if (!this.on_initial_load) {
+        this.cmty_view.onAddToPage(obj);
+      } else {
+        this.cmty_view.parseWindowSize();
+        this.on_initial_load = false;
+      }
+      **/
+		},
+		onRemoveFromPage: function () {
+			if (this.model.get("forum_id") === 0) {
+				return;
+			}
+			if (this.cmty_view) {
+				this.cmty_view.onRemoveFromPage();
+			}
+		},
+		prerenderHelper: function () {},
+		constructCrumbs: function () {
+			return [
+				{
+					text: "Message Board",
+				},
+			];
+		},
+		renderHelper: function () {
+			var url,
+				forum_id = this.model.get("forum_id");
+			if (forum_id === 0) {
+				this.$el.append(
+					'<div class="cmty-on-grid-error">This class does not have a forum attached yet.</div>'
+				);
+				return;
+			}
+			if (this.options.args.length === 0) {
+				url = "";
+			} else {
+				url = this.options.args[0].split("_")[0];
+			}
+
+			if (AoPS.Community) {
+				this.cmty_view = new AoPS.Community.EmbeddableForum.View({
+					category_id: forum_id, // replace with forum_id after conversion fixed
+					url: url,
+					url_router_base: "/class",
+					url_cmty_path: this.options.cmty_base,
+					push_state_attribute: "nav_grid",
+					fetchHeightAdjustment: function () {
+						return $(".grid-header").outerHeight() + 5; // + 10 to nudge off bottom
+					},
+				});
+				this.cmty_view.$el.addClass("cmty-on-grid");
+
+				this.on_initial_load = true;
+				this.$el.append(this.cmty_view.$el);
+			}
+		},
+	});
+
+	Views.GridTabWOOTPotD = Views.GridTab.extend({
+		template_id: "#grid-tab-potd-tpl",
+		loadFirst: function (success) {
+			this.page_url =
+				"/" + AoPS.router_root + "/" + this.model.get("class_string") + "/potd";
+			this.page_feed_heading = "POTD Discussions";
+
+			if (!this.model.has("potd_data")) {
+				var self = this;
+
+				this.$loader = AoPS.Page.buildLoader();
+				this.$el.append(this.$loader);
+
+				this.model.fetchPotdData({
+					onFinish: function (data) {
+						self.$loader.detach();
+						success();
+					},
+				});
+				return;
+			} else {
+				this.render(true);
+			}
+		},
+		events: {
+			"click .grid-open-page-feed": "onClickOpenFeed",
+		},
+		constructCrumbs: function () {
+			if (
+				_.isUndefined(this.vars.is_current_problem) ||
+				this.vars.is_current_problem
+			) {
+				return [
+					{
+						text: "POTD",
+					},
+				];
+			} else {
+				return [
+					{
+						text: "POTD",
+						url: this.options.base_tab_url,
+					},
+					{
+						text:
+							this.vars.active_problem.day +
+							", " +
+							this.vars.active_problem.date_str,
+					},
+				];
+			}
+		},
+		prerenderHelper: function () {
+			var potd_data = this.model.get("potd_data"),
+				current_problem = potd_data.current_problem,
+				potd_problem = current_problem;
+			if (this.options.args.length > 0) {
+				potd_problem = this.model.fetchPotd(parseInt(this.options.args[0]));
+			}
+
+			this.vars = {
+				weeks: potd_data.weeks,
+				class_string: this.model.get("class_string"),
+				is_physics: potd_data.class_type === "physics",
+			};
+			this.vars.problem_found = potd_problem != null;
+
+			if (this.vars.problem_found) {
+				this.vars.active_problem = potd_problem;
+				this.vars.is_current_problem = potd_problem == current_problem;
+			}
+		},
+		onAddToPage: function (obj) {
+			if (obj.args.join("/") != this.options.args.join("/")) {
+				this.options.args = obj.args;
+				_.each(this.homework, function (hw) {
+					hw.remove();
+				});
+				this.render();
+			}
+			window.scrollTo(0, 0);
+		},
+		setPageFeed: function () {
+			AoPS.Feed.setPageFeed(
+				this.model.get("forum_id"),
+				this.page_url,
+				this.page_feed_heading
+			);
+		},
+		onClickOpenFeed: function (e) {
+			if (this.vars.problem_found) {
+				if (this.vars.active_problem.cmty_problem_topic_id > 0) {
+					// AoPS.Feed.openTopic(this.vars.active_problem.cmty_problem_topic_id);
+					AoPS.Feed.openTopicSetFeed(
+						this.vars.active_problem.cmty_problem_topic_id,
+						this.model.get("forum_id"),
+						this.page_url,
+						this.page_feed_heading
+					);
+				} else {
+					// WHAT TO DO ON FAIL
+				}
+			}
+		},
+	});
+
+	Views.GridTabMessages = Views.GridTab.extend({});
+
+	Views.GridTabHandouts = Views.GridTab.extend({
+		template_id: "#grid-tab-handouts-tpl",
+		constructCrumbs: function () {
+			return [
+				{
+					text: "Handouts",
+				},
+			];
+		},
+		prerenderHelper: function () {
+			this.vars.handouts = [];
+			_.each(
+				this.model
+					.get("handouts")
+					.filter(function (handout) {
+						return (
+							(handout.get("order") >= 10 &&
+								["grid", "tex"].indexOf(handout.get("type")) >= 0) ||
+							(handout.get("order") == 5 && "special" == handout.get("type"))
+						);
+					})
+					.sort(function (handout_1, handout_2) {
+						if (handout_1.get("week") !== handout_2.get("week")) {
+							return handout_1.get("week") > handout_2.get("week") ? 1 : -1;
+						}
+						if (handout_1.get("order") !== handout_2.get("order")) {
+							return handout_1.get("order") > handout_2.get("order") ? 1 : -1;
+						}
+						return handout_1.get("crypt_order") > handout_2.get("crypt_order")
+							? 1
+							: -1;
+					}),
+				_.bind(function (handout) {
+					this.vars.handouts.push(handout.attributes);
+				}, this)
+			);
+			this.vars.handouts = _.groupBy(this.vars.handouts, "week");
+			this.vars.is_academy = this.model.get("campus_id") != "web";
+			// The linter objects on the premise that "Academy" is not defined.
+			// However, if "Academy" is not defined, this will not error, it will return false.
+			// Hence, I disabled the linter for this one line.
+			/* eslint-disable */
+			this.vars.is_physical_campus =
+				typeof Academy !== "undefined" && !Academy.isVirtual;
+			/* eslint-enable */
+			this.vars.lesson_units = this.model.get("lesson_units");
+		},
+		renderHelper: function () {
+			_.each(
+				this.vars.handouts,
+				_.bind(function (handouts, week) {
+					var $title = this.$(".title" + week);
+					var expanded = false;
+					$title
+						.append(
+							$("<img />")
+								.addClass("expand")
+								.attr(
+									"src",
+									AoPS.bootstrap_data.aops_url +
+										"/m/class/images/writing-tab-expand.svg"
+								)
+						)
+						.append(
+							$("<img />")
+								.addClass("collapse")
+								.attr(
+									"src",
+									AoPS.bootstrap_data.aops_url +
+										"/m/class/images/writing-tab-collapse.svg"
+								)
+								.hide()
+						);
+					this.$(".packet" + week).click(
+						_.bind(function () {
+							this.$(".handout" + week).toggle();
+							$title.find(expanded ? ".collapse" : ".expand").hide();
+							$title.find(expanded ? ".expand" : ".collapse").show();
+							expanded = !expanded;
+						}, this)
+					);
+					var color =
+						Object.keys(this.vars.handouts).indexOf(week) % 2 == 1
+							? "#e1e1e1 !important"
+							: "#f2f2f2 !important";
+					this.$(".packet" + week)
+						.find("td")
+						.css("background-color", color);
+					this.$(".handout" + week)
+						.find("td")
+						.css("background-color", color);
+				}, this)
+			);
+		},
+	});
+
+	Views.GridTabVideo = Views.GridTab.extend({
+		template_id: "#grid-tab-video-tpl",
+		constructCrumbs: function () {
+			return [
+				{
+					text:
+						"Videos " +
+						this.model.get("lesson_units").singular +
+						" " +
+						this.model.get("navigator_current_lesson"),
+				},
+			];
+		},
+		setNavigatorCurrentLesson: function () {
+			var lesson;
+			var lesson_number;
+
+			if (this.options.args.length > 0) {
+				lesson_number = parseInt(this.options.args[0]);
+				lesson = this.model.get("lessons").findWhere({
+					lesson: lesson_number,
+				});
+
+				if (_.isUndefined(lesson)) {
+					lesson_number = this.options.displayed_lesson;
+				}
+			} else {
+				lesson_number = this.options.displayed_lesson;
+			}
+
+			this.model.set("navigator_current_lesson", lesson_number);
+			this.vars.lesson = lesson_number;
+		},
+		// Here we set the video we are highlighting; must be done
+		//   before any video rendering.
+		setEmbeddedVideo: function () {
+			var nav_lesson = this.model.get("navigator_current_lesson"),
+				vid_index = 0,
+				lesson,
+				videos = this.model.get("videos"),
+				video;
+
+			lesson = this.model.get("lessons").findWhere({
+				lesson: nav_lesson,
+			});
+			if (_.isUndefined(lesson)) {
+				lesson = this.model.get("lessons").findWhere({
+					lesson: this.options.displayed_lesson,
+				});
+			}
+
+			videos = lesson.get("videos");
+			if (videos.length == 0) {
+				this.onNoVideos();
+				return;
+			}
+			if (this.options.args.length == 2) {
+				video = _.findWhere(videos, {
+					video_id: parseInt(this.options.args[1]),
+				});
+				if (_.isUndefined(video)) {
+					vid_index = 0;
+					video = videos[0];
+				} else {
+					vid_index = video.video_index;
+				}
+			} else {
+				video = videos[0];
+			}
+
+			this.video_id = lesson.get("videos")[vid_index].video_id;
+			this.model.set("embedded_video_data", video);
+			if (this.initialized) {
+				// Have to go through the render function once before a reveal,
+				//  hence the initialized check.
+				this.revealVideos();
+			}
+		},
+		onNoVideos: function () {
+			if (this.hasOwnProperty("video_carousel")) {
+				this.video_carousel.$el.hide();
+				this.video_title.$el.hide();
+				this.video_view.$el.hide();
+			}
+			this.$el.append(this.$no_videos);
+			this.has_videos = false;
+		},
+		revealVideos: function () {
+			if (!this.carousel_constructed) {
+				this.constructVideos();
+			}
+			this.$no_videos.detach();
+
+			this.video_carousel.$el.show();
+			this.video_title.$el.show();
+			this.video_view.$el.show();
+			this.has_videos = true;
+		},
+		onAddToPage: function (obj) {
+			if (obj.args.join("/") != this.options.args.join("/")) {
+				if (obj.args.length > 0) {
+					this.options.args = obj.args;
+					this.setNavigatorCurrentLesson();
+					this.setEmbeddedVideo();
+				} else {
+					Backbone.history.navigate(
+						this.model.get("class_string") +
+							"/video/" +
+							this.options.args.join("/") +
+							this.model.get("master").get("user_string"),
+						{replace: true}
+					);
+					return;
+				}
+			}
+			this.$header.text(
+				this.model.get("lesson_units").singular +
+					" " +
+					this.model.get("navigator_current_lesson") +
+					" Videos"
+			);
+
+			if (this.carousel_constructed) {
+				this.video_carousel.onAddToPage();
+			}
+			// We only want to rerender the selector here.
+			//  The video views rerender automatically with a resetting
+			//  of model properties.
+			this.$selectors.find(".lesson").empty();
+			this.renderSelector();
+		},
+		onRemoveFromPage: function () {
+			if (this.carousel_constructed) {
+				this.video_carousel.onRemoveFromPage();
+			}
+		},
+		fetchSelectorHref: function (i) {
+			return this.options.base_tab_url + "/" + i;
+		},
+		prerenderHelper: function () {
+			this.initialized = false;
+			this.has_videos = true;
+			this.carousel_constructed = false;
+			this.$no_videos = $(
+				'<div class="grid-video-none">No videos this week.</div>'
+			);
+			this.setNavigatorCurrentLesson();
+			this.setEmbeddedVideo();
+
+			this.vars.lesson = _.isUndefined(this.options.args[0])
+				? this.options.displayed_lesson
+				: parseInt(this.options.args[0]);
+			if (
+				_.isUndefined(
+					(this.lesson = this.model
+						.get("lessons")
+						.findWhere({lesson: this.vars.lesson}))
+				)
+			) {
+				this.lesson = this.model
+					.get("lessons")
+					.findWhere({lesson: this.options.displayed_lesson});
+				this.vars.lesson = this.options.displayed_lesson;
+			}
+			this.page_feed_heading =
+				this.model.get("lesson_units").singular +
+				" " +
+				this.lesson.get("lesson") +
+				" Videos";
+			// TODO SET THIS
+			this.page_url =
+				"/" +
+				AoPS.router_root +
+				"/" +
+				this.model.get("class_string") +
+				"/videos/" +
+				this.lesson.get("lesson");
+
+			this.vars.lesson_units = this.model.get("lesson_units");
+			this.options.args[0] = this.vars.lesson;
+		},
+		renderHelper: function () {
+			this.lesson = this.model
+				.get("lessons")
+				.findWhere({lesson: this.vars.lesson});
+			this.$selectors = this.$(".lesson-selector");
+
+			this.$inner = this.$(".inner");
+			if (this.lesson) {
+				this.lesson.markAsViewed();
+			}
+			this.renderSelector();
+
+			this.$inner.append($("<h3 />"));
+			this.$header = this.$inner.find("h3");
+			this.initialized = true;
+			if (_.isNull(this.model.get("embedded_video_data"))) {
+				this.onNoVideos();
+			} else {
+				this.constructVideos();
+			}
+
+			$(window).on("resize", _.bind(this.resizeLessonContext, this));
+			this.resizeLessonContext();
+		},
+
+		/**
+		 * We can only build the videos on a week in which there are videos,
+		 *  so we have to do some trickery to call the constructors only when
+		 *  we have videos.
+		 **/
+		constructVideos: function () {
+			this.video_carousel = new AoPS.Videos.Views.GridVideoNavigatorView({
+				model: this.model,
+			});
+
+			this.$el.append(this.video_carousel.$el);
+
+			this.video_title = new Views.GridVideoTopBar({
+				model: this.model,
+			});
+
+			this.$el.append(this.video_title.$el);
+
+			this.video_view = new AoPS.Videos.Views.EmbeddedVideoView({
+				model: this.model,
+				should_autoplay: false,
+			});
+
+			this.$el.append(this.video_view.$el);
+			this.carousel_constructed = true;
+		},
+		events: {
+			"click .lesson-header .grid-start-topic": "onClickStartTopic",
+			"click .lesson-header .grid-open-page-feed": "onClickOpenFeed",
+		},
+		setPageFeed: function () {
+			var title;
+			if (AoPS.Feed) {
+				if (!this.has_videos) {
+					AoPS.Feed.hidePageFeed();
+				} else {
+					title = this.model.get("embedded_video_data").video_title;
+					AoPS.Feed.setPageFeed(
+						this.model.get("forum_id"),
+						this.video_title.getTargetUrl(),
+						title
+					);
+				}
+			}
+		},
+	});
+	if (AoPS.Videos) {
+		Views.GridVideoTopBar = AoPS.Videos.Views.IntroEmbeddedVideoView.extend({
+			onClickOpenFeed: function (e) {
+				var title = this.model.get("embedded_video_data").video_title;
+				if (AoPS.Feed) {
+					AoPS.Feed.openPageFeed(
+						this.model.get("forum_id"),
+						this.getTargetUrl(),
+						title
+					);
+				}
+			},
+			setPageFeed: function () {
+				var title = this.model.get("embedded_video_data").video_title;
+				if (AoPS.Feed) {
+					AoPS.Feed.setPageFeed(
+						this.model.get("forum_id"),
+						this.getTargetUrl(),
+						title
+					);
+				}
+			},
+			getTargetUrl: function () {
+				return (
+					"/" +
+					AoPS.router_root +
+					"/" +
+					this.model.get("class_string") +
+					"/clip/" +
+					this.model.get("embedded_video_data").video_id
+				);
+			},
+			onClickNewTopic: function (e) {
+				var nav_lesson = this.model.get("navigator_current_lesson"),
+					visible_tag =
+						this.model.get("lesson_units").singular +
+						" " +
+						nav_lesson +
+						" Videos";
+
+				if (AoPS.Feed) {
+					AoPS.Feed.startNewTopic({
+						category_id: this.model.get("forum_id"),
+						tags: ["videos"],
+						linked_tag: visible_tag,
+						subtitle: this.model.get("embedded_video_data").video_title,
+						target_text:
+							"the video " + this.model.get("embedded_video_data").video_title,
+						target_url: this.getTargetUrl(),
+					});
+				}
+			},
+		});
+	}
+
+	return Views;
+})(AoPS.Grid.Views);

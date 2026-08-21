@@ -1,0 +1,1666 @@
+/* global pythonTool, Motors */
+
+AoPS.Utils.initKeyChain(AoPS, "Grid", "Views");
+
+AoPS.Grid.Views = (function (Views) {
+	Views.GridTabOverview = Views.GridTab.extend({
+		template_id: "#grid-tab-overview-tpl",
+		constructCrumbs: function () {
+			if (this.subhash == "survey") {
+				return [
+					{
+						text: "Survey",
+					},
+				];
+			} else if (this.subhash == "honor") {
+				return [
+					{
+						text: "Honor Code",
+					},
+				];
+			} else if (
+				AoPS.Utils.isWootCourse(this.model.get("course_id")) &&
+				this.subhash == "shirt"
+			) {
+				return [
+					{
+						text: "T-Shirt",
+					},
+				];
+			} else {
+				return [];
+			}
+		},
+		prerenderHelper: function () {
+			this.vars.class_name = this.model.get("class_name");
+		},
+		renderHelper: function () {
+			this.subhash = _.first(this.options.args);
+			this.$inner = this.$(".inner");
+
+			this.suppressHonorModal = false;
+			if (this.subhash == "survey") {
+				this.survey = new Views.GridTabOverviewSurvey(
+					_.extend(this.options, {model: this.model})
+				);
+				this.model.fetchSurvey(_.bind(this.survey.render, this.survey));
+				this.$inner.append(this.survey.$el);
+			} else if (this.subhash == "honor") {
+				this.honor_code = new Views.GridTabHonor(
+					_.extend(this.options, {model: this.model})
+				);
+				this.honor_code.render();
+				this.$inner.append(this.honor_code.$el);
+			} else if (
+				AoPS.Utils.isWootCourse(this.model.get("course_id")) &&
+				this.subhash == "shirt"
+			) {
+				this.shirt = new Views.GridTabOverviewShirt(
+					_.extend(this.options, {model: this.model})
+				);
+				this.model.fetchShirt({}, _.bind(this.shirt.render, this.shirt));
+				this.$inner.append(this.shirt.$el);
+			} else {
+				this.announce = new Views.GridTabOverviewAnnouncements(
+					_.extend(this.options, {model: this.model})
+				);
+				this.announce.render();
+				this.$inner.append(this.announce.$el);
+
+				this.schedule = new Views.GridTabOverviewSchedule(
+					_.extend(this.options, {model: this.model})
+				);
+				this.schedule.render();
+				this.$inner.append(this.schedule.$el);
+				if (this.schedule.hasReportProgress) {
+					this.listenTo(
+						this.model,
+						"change:report",
+						_.bind(function () {
+							this.schedule.render();
+						}, this)
+					);
+				}
+
+				if (
+					this.model.get("can_class_switch") ||
+					this.model.get("perms").user.drop_hash
+				) {
+					this.changer = new Views.GridTabOverviewChanger(
+						_.extend(this.options, {
+							model: this.model,
+						})
+					);
+					this.changer.render();
+					this.$inner.append(this.changer.$el);
+				}
+
+				if (!this.model.get("my_grid_tabs").findWhere({url: "handouts"})) {
+					this.handouts = new Views.GridTabOverviewHandouts(
+						_.extend(this.options, {model: this.model})
+					);
+					this.handouts.render();
+					this.$inner.append(this.handouts.$el);
+				}
+			}
+		},
+		onAddToPage: function (obj) {
+			if (obj.args.join("/") != this.options.args.join("/")) {
+				this.options.args = obj.args;
+				this.render();
+			}
+		},
+	});
+
+	/**
+	 * View for WOOT shirt page
+	 */
+	Views.GridTabOverviewShirt = AoPS.View.extend({
+		template_id: "#grid-tab-overview-shirt-tpl",
+		className: "grid-shirt",
+		vars: {},
+		initialize: function (options) {
+			this.options = options;
+		},
+
+		render: function (data) {
+			this.vars.class_id = this.model.get("class_id");
+			this.vars.class_string = this.model.get("class_string");
+			this.vars.class_name = this.model.get("class_name");
+
+			this.vars = _.extend(this.vars, data);
+			this.vars.show_submit = !this.vars.error && this.vars.submission;
+			this.vars.can_submit = this.model.get("show_woot_shirt_form");
+
+			// Determine if the phone number should display in the submission information
+			// Phone number should display only if country is outside the United States.
+			if (this.vars.show_submit) {
+				let country = "";
+				for (const entry of this.vars.submission) {
+					if (entry.key === "country") {
+						country = entry.value;
+					}
+				}
+
+				if (!country || country === "US" || country === "United States") {
+					this.vars.submission = this.vars.submission.filter(
+						(item) => item.key !== "phone"
+					);
+				}
+			}
+
+			this.vars.moment_available = null;
+			if (this.model.get("woot_shirt_start_at")) {
+				this.vars.moment_available = AoPS.Grid.Utils.SqlDateToMoment(
+					this.model.get("woot_shirt_start_at")
+				);
+				if (
+					moment().format("YYYY-MM-DD") <=
+					this.vars.moment_available.format("YYYY-MM-DD")
+				) {
+					this.vars.available =
+						this.vars.moment_available.format("dddd, MMM D, YYYY");
+				}
+			}
+
+			this.vars.moment_deadline = null;
+			if (this.model.get("woot_shirt_end_at")) {
+				this.vars.moment_deadline = AoPS.Grid.Utils.SqlDateToMoment(
+					this.model.get("woot_shirt_end_at")
+				);
+				this.vars.deadline =
+					this.vars.moment_deadline.format("dddd, MMM D, YYYY");
+			}
+
+			this.$el.html(this.getTemplate(this.template_id, this.vars));
+
+			this.$form = this.$("form.shirt");
+
+			// Find current country value. Display phone field if not US.
+			for (var entry of this.vars.form) {
+				if (entry.key === "country") {
+					if (entry.value === "" || entry.value === "US") {
+						$("#tr-phone").hide();
+					} else {
+						$("#tr-phone").show();
+					}
+				}
+			}
+
+			// If user changes the country, toggle the phone field as needed.
+			this.$form.on("change", "#country", (event) => {
+				if (event.target.value === "US") {
+					this.$form.find("#tr-phone").hide();
+				} else {
+					this.$form.find("#tr-phone").show();
+				}
+			});
+
+			this.$(".btn.submit").click((e) => {
+				e.preventDefault();
+				AoPS.Ui.Modal.showConfirm(
+					"Are you sure you want to save your information?",
+					(confirm) => {
+						if (confirm) {
+							var submit = {};
+							_.each(
+								this.$form.serializeArray(),
+								(item) => (submit[item.name] = item.value)
+							);
+							this.model.fetchShirt(submit, _.bind(this.render, this));
+						}
+					},
+					{confirm_button_ok: "Yes", confirm_button_cancel: "No"}
+				);
+			});
+		},
+	});
+
+	Views.GridTabOverviewSurvey = AoPS.View.extend({
+		template_id: "#grid-tab-overview-survey-tpl",
+		className: "grid-survey",
+		vars: {},
+		initialize: function (options) {
+			this.options = options;
+		},
+		submitForm: function () {
+			var questionHashList = [];
+			_.each(this.vars.survey, function (group) {
+				_.each(group.questions, function (question) {
+					if (!question.is_multi_select) {
+						questionHashList.push(question.hash);
+					}
+				});
+			});
+			var areAllRadiosAnswered = questionHashList.every(function (hash) {
+				return this.$('input[name="' + hash + '"]:checked').length > 0;
+			});
+			var areAllTextareasAnswered = _.reduce(
+				this.$("textarea"),
+				function (carry, textarea) {
+					return carry && $(textarea).val().trim().length > 0;
+				},
+				true
+			);
+
+			AoPS.Ui.Modal.showConfirm(
+				areAllRadiosAnswered && areAllTextareasAnswered
+					? "Are you sure you want to submit? You can only submit your survey once."
+					: "It seems like you haven't answered all of the questions.\n" +
+							"Once you submit, you won't be able to edit your responses anymore. Are you sure you want to submit the survey?",
+				_.bind(function (confirm) {
+					if (confirm) {
+						var submit = {
+							general: this.$('textarea[name="general"]').val(),
+						};
+
+						if (this.$('textarea[name="instructor"]').length) {
+							submit.instructor = this.$('textarea[name="instructor"]').val();
+						}
+
+						if (this.vars.is_virtual_summer) {
+							submit.summer_most = this.$('textarea[name="summer_most"]').val();
+							submit.summer_least = this.$(
+								'textarea[name="summer_least"]'
+							).val();
+						}
+
+						_.each(
+							this.vars.survey,
+							_.bind(function (group) {
+								_.each(
+									group.questions,
+									_.bind(function (question) {
+										if (question.is_multi_select) {
+											// Multi-select questions need to be assembled from multiple checkboxes.
+											var selected = [];
+											_.each(question.values, function (value) {
+												var subkey = question.hash + "_has_" + value;
+												if (
+													this.$('input[name="' + subkey + '"]:checked').length
+												) {
+													submit[subkey] = 1;
+													selected.push(value);
+												} else {
+													submit[subkey] = 0;
+												}
+											});
+											submit[question.hash] = selected.join(";");
+										} else {
+											var $radio = this.$(
+												'input[name="' + question.hash + '"]:checked'
+											);
+											submit[question.hash] = $radio.length
+												? parseInt($radio.val())
+												: -1;
+										}
+									}, this)
+								);
+							}, this)
+						);
+						if (this.vars.is_woot) {
+							submit.woot_wants_to_grade = this.$(
+								'select[name="woot_wants_to_grade"]'
+							).val().length
+								? parseInt(this.$('select[name="woot_wants_to_grade"]').val())
+								: -1;
+							submit.woot_grad_year = this.$(
+								'input[name="woot_grad_year"]'
+							).val().length
+								? parseInt(this.$('input[name="woot_grad_year"]').val())
+								: -1;
+						}
+						this.model.submitSurvey(
+							submit,
+							_.bind(function () {
+								Backbone.history.navigate(this.model.get("class_string"), {
+									trigger: true,
+								});
+								$("html, body")
+									.animate(
+										{
+											scrollTop: 0,
+										},
+										200
+									)
+									.promise()
+									.done(function () {
+										AoPS.Grid.Utils.CreateModalAlert(
+											"Thank you for your feedback."
+										);
+									});
+							}, this)
+						);
+					}
+				}, this),
+				{
+					confirm_button_ok: "Yes",
+					confirm_button_cancel: "No",
+					max_width: "400px",
+				}
+			);
+		},
+		prerenderHelper: function () {
+			this.vars.is_available = this.model.get("show_class_survey");
+			this.vars.is_completed =
+				this.model.get("show_class_survey") &&
+				this.model.get("survey_completed");
+			this.vars.is_submittable =
+				this.model.get("show_class_survey") &&
+				!this.model.get("survey_completed");
+		},
+		render: function (survey) {
+			this.vars.class_id = this.model.get("class_id");
+			this.vars.class_string = this.model.get("class_string");
+			this.vars.class_name = this.model.get("class_name");
+			this.vars.survey = _.map(survey, function (survey_item) {
+				return _.extend(
+					_.object([["hash_is_" + survey_item.hash, true]]),
+					survey_item
+				);
+			});
+
+			this.prerenderHelper();
+
+			this.vars.is_woot = AoPS.Utils.isMathWootCourse(
+				this.model.get("course_id")
+			);
+			this.vars.is_academy = this.model.get("campus_id") !== "web";
+			this.vars.is_virtual_summer =
+				this.model.get("is_virtual") &&
+				this.model.get("course_id").includes("summer");
+
+			this.$el.html(this.getTemplate(this.template_id, this.vars));
+
+			this.createHoverTargets();
+			this.createRemainingCounters();
+
+			this.$("form").submit(function (e) {
+				e.preventDefault();
+			});
+
+			this.$(".btn.submit").click(
+				_.bind(function (e) {
+					e.preventDefault();
+					this.submitForm();
+				}, this)
+			);
+		},
+		createRemainingCounters: function () {
+			// Enforce that 2000 char limit
+			_.each(
+				this.$("textarea"),
+				_.bind(function (textarea) {
+					var $textarea = $(textarea);
+					$textarea.on(
+						"input",
+						_.bind(function () {
+							var textLength = $textarea.val().length;
+							var remaining = 2000 - textLength;
+							var $remaining = this.$("." + $textarea.attr("name") + "-chars");
+
+							$remaining.text(remaining);
+							if (remaining <= 100) {
+								$remaining.addClass("near-char-limit");
+							} else {
+								$remaining.removeClass("near-char-limit");
+							}
+						}, this)
+					);
+				}, this)
+			);
+		},
+		createHoverTargets: function () {
+			// We want to enable large click targets.
+			// We can't do this with a big label because our click target
+			// spans multiple rows inside a table.
+			_.each(
+				this.vars.survey,
+				_.bind(function (group) {
+					_.each(
+						group.questions,
+						_.bind(function (question) {
+							var $table = this.$(".hash-is-" + question.hash);
+
+							_.each(
+								_.range(1, 1 + question.values.length),
+								_.bind(function (col) {
+									var $column = $table.find("tr td:nth-child(" + col + ")");
+									var $input = $column.find("input");
+
+									// Give hover effect!
+									$column.hover(
+										function () {
+											$column.addClass("hovering");
+										},
+										function () {
+											$column.removeClass("hovering");
+										}
+									);
+
+									if ($input.length) {
+										// Clicking on the column is like clicking on the $input.
+										$column.click(function () {
+											$input.click();
+										});
+
+										// Prevent $input click from causing $column click to fire.
+										$input.click(function (e) {
+											e.stopPropagation();
+										});
+									}
+								}, this)
+							);
+						}, this)
+					);
+				}, this)
+			);
+		},
+	});
+
+	Views.GridTabOverviewAnnouncements = AoPS.View.extend({
+		template_id: "#grid-tab-overview-announcements-tpl",
+		vars: {},
+		initialize: function (options) {
+			this.options = options;
+		},
+		render: function () {
+			this.vars.class_id = this.model.get("class_id");
+			this.vars.class_string = this.model.get("class_string");
+			this.vars.class_name = this.model.get("class_name");
+			this.vars.collection_id = this.model.get("collection_id");
+			this.vars.campus_id = this.model.get("campus_id");
+			this.vars.announcements = this.model.get("announcements");
+
+			this.calculateMostRecentLesson();
+			this.vars.most_recent_lesson_number = this.most_recent_lesson
+				? this.most_recent_lesson.get("lesson")
+				: 1;
+
+			this.vars.is_language_arts =
+				this.model.get("hw_antonio_template") == "language-arts";
+			this.vars.has_problems = this.model.get("problems").length > 0;
+			this.vars.is_academy = this.model.get("campus_id") != "web";
+			this.vars.is_virtual = this.model.get("is_virtual");
+			this.vars.aops_url = AoPS.bootstrap_data.aops_url;
+
+			this.vars.should_show_academy_contest = this.model.get(
+				"should_show_academy_contest"
+			);
+			this.vars.handouts = [];
+			_.each(
+				_.sortBy(
+					this.model.get("handouts").filter(function (handout) {
+						return handout.get("order") < 10 && handout.get("order") != 5;
+					}),
+					function (handout) {
+						return handout.get("order");
+					}
+				),
+				_.bind(function (handout) {
+					this.vars.handouts.push(handout.attributes);
+				}, this)
+			);
+
+			if (this.vars.handouts.length > 0) {
+				var is_2020_summer =
+					this.model.get("class_string").search("-summer") != -1 &&
+					this.model.get("date_start_at").substring(0, 4) == "2020";
+				if (is_2020_summer) {
+					this.vars.text_before_handout =
+						"Please print these course materials:";
+				} else {
+					this.vars.text_before_handout = "Please Read:";
+				}
+			} else {
+				this.vars.text_before_handout = "";
+			}
+
+			this.vars.show_class_survey = this.model.get("show_class_survey");
+			this.vars.survey_completed = this.model.get("survey_completed");
+			this.vars.show_woot_shirt_form =
+				AoPS.Utils.isWootCourse(this.model.get("course_id")) &&
+				this.model.get("show_woot_shirt_form");
+			this.vars.woot_shirt_submitted = this.model.get("woot_shirt_submitted");
+			this.vars.multi_handouts = this.vars.handouts.length > 1;
+			this.vars.has_handouts = this.vars.handouts.length > 0;
+			this.vars.can_instruct = this.model.get("perms").me.can_instruct;
+			this.vars.can_admin = this.model.get("perms").me.can_admin;
+			this.vars.has_honor = this.model.get("flavor").has_honor;
+			this.vars.is_assistant =
+				this.model.get("perms").me.is_enrolled_as_assistant;
+
+			this.calculateNextLesson();
+
+			this.vars.video_meeting_documents = this.getVideoMeetingDocuments();
+
+			this.vars.show_fractional =
+				this.vars.next_lesson ||
+				(this.vars.can_instruct && this.vars.video_meeting_documents);
+
+			this.$el.html(this.getTemplate(this.template_id, this.vars));
+		},
+		getVideoMeetingDocuments: function () {
+			var next_lesson = this.next_lesson && this.next_lesson.get("lesson");
+			var video_meeting_documents = this.model.get("video_meeting_documents");
+
+			if (video_meeting_documents && next_lesson) {
+				return video_meeting_documents[next_lesson];
+			}
+
+			return null;
+		},
+		calculateMostRecentLesson: function () {
+			if (
+				this.model.get("lessons").filter(function (lesson) {
+					return lesson.get("date_start_at") !== lesson.get("date_end_at");
+				}).length === 0
+			) {
+				this.most_recent_lesson = _.first(
+					_.filter(
+						_.sortBy(this.model.attributes.lessons.models, (l) =>
+							l.get("date_end_at")
+						).reverse(),
+						(l) => l.get("classes_ended")
+					)
+				);
+			}
+		},
+		calculateNextLesson: function () {
+			if (
+				this.model.get("lessons").filter(function (lesson) {
+					return lesson.get("date_start_at") != lesson.get("date_end_at");
+				}).length == 0
+			) {
+				this.next_lesson = _.first(
+					_.sortBy(
+						this.model.get("lessons").filter(function (lesson) {
+							return (
+								!lesson.get("classes_ended") &&
+								lesson.get("date_start_at") == lesson.get("date_end_at")
+							);
+						}),
+						function (lesson) {
+							return lesson.get("date_start_at");
+						}
+					)
+				);
+			}
+
+			if (this.next_lesson && this.next_lesson.get("dates").length) {
+				var first_date = _.first(this.next_lesson.get("dates"));
+				var first_mome = moment(
+					first_date.date + " " + first_date.time_start_at
+				);
+
+				if (this.model.shouldShowDate(first_mome)) {
+					this.vars.next_lesson = {
+						topic: this.next_lesson.get("topic"),
+						date: first_mome.format("ddd, MMM D, YYYY"),
+						time: first_date.time_fmt,
+					};
+				}
+			}
+		},
+	});
+
+	Views.GridTabOverviewChanger = AoPS.View.extend({
+		template_id: "#grid-tab-overview-changer-tpl",
+		vars: {},
+		initialize: function (options) {
+			this.options = options;
+
+			this.vars.class_id = this.model.get("class_id");
+			this.vars.drop_hash = this.model.get("perms").user.drop_hash;
+			this.vars.can_class_switch = this.model.get("can_class_switch");
+			this.vars.can_student_class_switch = this.model.get(
+				"can_student_class_switch"
+			);
+
+			if (this.model.get("perms").user.is_impersonated) {
+				this.vars.user_string =
+					"?user_id=" + this.model.get("perms").user.user_id;
+			} else {
+				this.vars.user_string = "";
+			}
+		},
+		render: function () {
+			this.$el.html(this.getTemplate(this.template_id, this.vars));
+		},
+	});
+
+	Views.GridTabOverviewHandouts = AoPS.View.extend({
+		template_id: "#grid-tab-overview-handouts-tpl",
+		vars: {},
+		initialize: function (options) {
+			this.options = options;
+		},
+		render: function () {
+			this.vars.class_name = this.model.get("class_name");
+			this.vars.handouts = [];
+			_.each(
+				_.sortBy(
+					this.model.get("handouts").filter(function (handout) {
+						return handout.get("order") >= 10 && handout.get("type") == "grid";
+					}),
+					function (handout) {
+						return handout.get("order");
+					}
+				),
+				_.bind(function (handout) {
+					this.vars.handouts.push(handout.attributes);
+				}, this)
+			);
+			this.vars.lesson_units = this.model.get("lesson_units");
+			this.$el.html(this.getTemplate(this.template_id, this.vars));
+		},
+	});
+
+	Views.GridTabOverviewSchedule = AoPS.View.extend({
+		template_id: "#grid-tab-overview-schedule-tpl",
+		className: "grid-tab-overview-schedule",
+		initialize: function (options) {
+			this.options = options;
+		},
+		render: function () {
+			this.vars = {
+				class_string: this.model.get("class_string"),
+				class_id: this.model.get("class_id"),
+				is_woot: AoPS.Utils.isMathWootCourse(this.model.get("course_id")),
+				schedule: [],
+				rand: Math.floor(Math.random() * 2),
+				reading_flavors: [],
+				lesson_units: this.model.get("lesson_units"),
+				is_academy: this.model.get("campus_id") !== "web",
+				is_virtual: this.model.get("is_virtual"),
+				displays_recording_url: false,
+				aops_url: AoPS.bootstrap_data.aops_url,
+				can_instruct: this.model.get("perms").me.can_instruct,
+			};
+
+			this.model.get("lessons").each(
+				_.bind(function (lessonModel) {
+					var lesson = AoPS.Grid.Utils.BackboneModelToObject(lessonModel);
+					if (lesson.lesson <= this.model.get("max_disp_schedule")) {
+						lesson.$readings = [];
+						if (lesson.readings && !_.isNull(lesson.python_book_chapter)) {
+							var $python = $("<div />").addClass("subreading standard");
+							$python.append(
+								$("<a />")
+									// ignore-security-checks
+									.text($("<span />").html(lesson.readings).text())
+									.attr({
+										nav_grid: 1,
+										href:
+											this.options.base_class_url +
+											"/python-book/" +
+											lesson.python_book_chapter +
+											this.options.user_string,
+									})
+							);
+							lesson.$readings.push($python);
+							this.vars.reading_flavors.push("standard");
+						} else {
+							if (
+								lesson.ebook_readings &&
+								this.model.get("perms").user.can_ebook
+							) {
+								lesson.$readings.push(
+									lessonModel
+										.parseReading(
+											lesson.ebook_readings,
+											this.options.user_string
+										)
+										.addClass("subreading ebook")
+								);
+								this.vars.reading_flavors.push("ebook");
+							}
+
+							if (
+								lesson.readings &&
+								(this.model.get("perms").me.can_admin ||
+									!lesson.$readings.length)
+							) {
+								var $standard = $("<div />")
+									.addClass("subreading standard")
+									// ignore-security-checks
+									.html(lesson.readings);
+								lesson.$readings.push($standard);
+								this.vars.reading_flavors.push("standard");
+							}
+						}
+						lesson.dates = _.reduce(
+							lesson.dates,
+							_.bind(function (carry, item) {
+								if (
+									this.model.shouldShowDate(
+										item.date + " " + item.time_start_at
+									)
+								) {
+									item.start_time = item.time_fmt.split(" ")[0] + " ET";
+									carry.push(item);
+								}
+								return carry;
+							}, this),
+							[]
+						);
+
+						lesson.show_recording_url =
+							this.vars.is_virtual && !!lesson.video_meeting_recap_url;
+						this.vars.displays_recording_url =
+							this.vars.displays_recording_url || lesson.show_recording_url;
+						this.vars.schedule.push(lesson);
+						this.last = lesson;
+					}
+				}, this)
+			);
+			this.vars.schedule = _.sortBy(this.vars.schedule, "date_start_at");
+			this.vars.can_edit_class_transcript =
+				this.model.get("perms").me.can_edit_class_transcript;
+
+			this.$el.html(this.getTemplate(this.template_id, this.vars));
+			this.vars.reading_flavors = _.uniq(this.vars.reading_flavors);
+			_.each(
+				this.vars.schedule,
+				_.bind(function (lesson) {
+					var $readings = this.$(
+						"tr.lesson-row-" + lesson.lesson + " td.readings"
+					);
+					_.each(lesson.$readings, function ($el) {
+						$readings.append($el);
+					});
+
+					var $td;
+					if (!this.vars.is_academy) {
+						$td = this.$("tr.lesson-row-" + lesson.lesson + " td.transcripts");
+						_.each(
+							lesson.dates,
+							_.bind(function (date) {
+								var $div = $("<div />").appendTo($td);
+								_.each(
+									date.sections,
+									_.bind(function (instance) {
+										var caption;
+										if (date.sections.length > 1) {
+											caption = instance.section;
+										} else if (lesson.display_lesson) {
+											caption =
+												this.model.get("lesson_units").singular +
+												" " +
+												lesson.display_lesson;
+										} else {
+											caption = "Transcript";
+										}
+										var $cell = $("<span />")
+											.addClass("instance")
+											.appendTo($div);
+										if (lesson.classes_ended && instance.has_transcript) {
+											$cell.append(
+												$("<a />")
+													.attr({
+														nav_grid: true,
+														href:
+															this.options.base_class_url +
+															"/transcript/" +
+															instance.instance_id +
+															this.options.user_string,
+													})
+													.append($("<span />").addClass("aops-font").text("p"))
+													.append($("<span />").text(caption))
+											);
+											if (this.vars.can_edit_class_transcript) {
+												$cell.append(
+													$("<a />")
+														.addClass("edit-link")
+														.attr({
+															target: "_blank",
+															href:
+																"/class/transcripter/" + instance.instance_id,
+														})
+														.append(
+															$("<span />").addClass("aops-font").text("L")
+														)
+												);
+											}
+										} else if (
+											instance.class_ended &&
+											this.vars.can_edit_class_transcript
+										) {
+											$cell.append(
+												$("<a />")
+													.addClass("edit-link")
+													.attr({
+														target: "_blank",
+														href: "/class/transcripter/" + instance.instance_id,
+													})
+													.append($("<strong />").text("Edit " + caption))
+													.append($("<span />").addClass("aops-font").text("L"))
+											);
+										}
+									}, this)
+								);
+							}, this)
+						);
+					} else {
+						$td = this.$("tr.lesson-row-" + lesson.lesson + " td.class-notes");
+						var handout = this.model.get("handouts").findWhere({
+							type: "note",
+							order: 100 * lesson.lesson,
+						});
+						if (handout) {
+							this.vars.has_class_notes = true;
+							$td.prepend("<br />");
+							$td.prepend(
+								$("<a />")
+									.text(handout.get("name"))
+									.addClass("edit-link")
+									.attr({
+										target: "_blank",
+										href: handout.get("url"),
+									})
+							);
+						}
+					}
+				}, this)
+			);
+
+			if (this.vars.is_academy && !this.vars.has_class_notes) {
+				if (!this.vars.displays_recording_url) {
+					this.$(".class-notes").hide();
+				}
+			}
+
+			if (this.vars.reading_flavors.length > 1) {
+				_.each(
+					this.$("tr.header-row th.readings"),
+					_.bind(function (th) {
+						var active,
+							setActive = _.bind(function (index) {
+								active = index;
+								$(th)
+									.text("Readings (" + this.vars.reading_flavors[active] + ")")
+									.addClass("ecole-clickable");
+								this.$(".readings .subreading").hide();
+								this.$(
+									".readings .subreading." + this.vars.reading_flavors[active]
+								).show();
+							}, this);
+						setActive(_.random(0, this.vars.reading_flavors.length - 1));
+						$(th).click(
+							_.bind(function () {
+								setActive((active + 1) % this.vars.reading_flavors.length);
+							}, this)
+						);
+					}, this)
+				);
+			} else if (!this.vars.reading_flavors.length) {
+				this.$(".readings").hide();
+			}
+
+			if (
+				this.model.get("my_grid_tabs").findWhere({prototype_name: "Report"}) &&
+				this.model.get("report")
+			) {
+				var $th_progress = $("<th />")
+					.html('Progress <span class="aops-font">3</span>')
+					.addClass("progress")
+					.appendTo(this.$(".header-row"));
+				var is_wp_limited = false;
+				_.each(
+					this.model.get("report").lessons,
+					_.bind(function (lesson) {
+						if (this.$(".lesson-row-" + lesson.lesson).length) {
+							var $td = $("<td />")
+								.addClass("progress grid-report-bar-general")
+								.appendTo(this.$(".lesson-row-" + lesson.lesson));
+							if (
+								this.model.get("course_id") == "acad-1st-grade-math" &&
+								lesson.bars[0].test &&
+								lesson.bars[0].bao
+							) {
+								// special logic for Math Level 1 test bars
+								let bar_length = AoPS.Grid.Utils.CalculateBaoBarLength(
+									lesson.bars[0].bao.topics
+								);
+								let overall = {
+									length: bar_length,
+									color: AoPS.Grid.Utils.GetBarColor(bar_length),
+								};
+								// Overwrite test data from the model and display the score for BAO HW instead
+								AoPS.Grid.Utils.CreateProgressBar($td, overall);
+							} else {
+								AoPS.Grid.Utils.CreateProgressBar($td, lesson.overall);
+							}
+							if (lesson.overall.is_wp_limited) {
+								is_wp_limited = true;
+								this.addWpLimitedPopup($td, true, false);
+							}
+						}
+					}, this)
+				);
+				this.addWpLimitedPopup($th_progress, is_wp_limited, true);
+				this.hasReportProgress = true;
+			}
+		},
+		addWpLimitedPopup: function ($el, is_wp_limited, is_overall) {
+			var $inner = $("<div />").css({"max-width": "35em"});
+			if (is_overall) {
+				$inner.append(
+					$("<p />").text(
+						"This bar shows your Overall Weekly progress bar in this course. For more " +
+							"information about your progress, please visit your Report tab."
+					)
+				);
+			}
+			if (is_wp_limited) {
+				$inner.append(
+					$("<p />")
+						.addClass("grid-fg-orange")
+						.text(
+							"Your weekly progress bar will remain orange until the writing problem is attempted. " +
+								"The weekly composite bar will never turn green or blue in a week where you do not attempt the writing problem."
+						)
+				);
+			}
+			var $tip = AoPS.Grid.Utils.CreateTooltip($el, $inner).css({
+				padding: "3px 12px",
+			});
+			$el.addClass("ecole-clickable").click(function () {
+				$tip.remove();
+				$inner.showModal({
+					scrollable: false,
+					title: "Your Progress",
+					type: "alert",
+				});
+			});
+		},
+	});
+
+	Views.GridTabTranscript = Views.GridTab.extend({
+		template_id: "#grid-tab-transcript-tpl",
+		className: "grid-tab-panel grid-no-transcript",
+		constructCrumbs: function () {
+			return [
+				{
+					text: this.transcript_title.crumb,
+				},
+			];
+		},
+		gotoTargetLine: function () {
+			var $target,
+				target_line =
+					this.options.args.length > 2 ? parseInt(this.options.args[2]) : 0;
+			this.$(".grid-transcript-row").removeClass("grid-highlighted-line");
+			if (target_line > 0) {
+				$target = $('a[name="row' + target_line + '"]');
+				$target.parent().addClass("grid-highlighted-line");
+				if (!_.isUndefined($target) && $target.length > 0) {
+					$("html, body").animate(
+						{
+							scrollTop: $target.first().offset().top,
+						},
+						200
+					);
+				}
+			} else {
+				$("html, body").animate(
+					{
+						scrollTop: 0,
+					},
+					200
+				);
+			}
+		},
+		// Need this for navigating page via direct links in feed.
+		// Can't rely on setArguments because we need to scroll even when the
+		//  args don't change.
+		onAddToPage: function (obj) {
+			this.options.args = obj.args;
+			this.gotoTargetLine();
+		},
+		postInitializePreRender: function () {
+			this.loaded_transcripts = {};
+
+			this.instance_id = this.options.instance_id;
+			this.instance_data = this.model.findDataFromInstanceId(this.instance_id);
+			this.lesson = this.instance_data.lesson;
+
+			this.transcript_title = {
+				crumb:
+					"Transcript " +
+					(_.isNull(this.lesson.get("display_lesson"))
+						? ""
+						: this.model.get("lesson_units").singular +
+						  " " +
+						  this.lesson.get("display_lesson") +
+						  " ") +
+					this.instance_data.date_obj.date_fmt,
+				long:
+					(_.isNull(this.lesson.get("display_lesson"))
+						? ""
+						: this.model.get("lesson_units").singular +
+						  " " +
+						  this.lesson.get("display_lesson") +
+						  " ") +
+					"(" +
+					this.instance_data.date_obj.date_fmt +
+					") " +
+					"Class Transcript " +
+					(this.instance_data.date_obj.multi_section === 1
+						? "(Section " + this.instance_data.section_obj.section + ")"
+						: "") +
+					" - " +
+					this.lesson.get("topic"),
+				short:
+					(_.isNull(this.lesson.get("display_lesson"))
+						? ""
+						: this.model.get("lesson_units").singular +
+						  " " +
+						  this.lesson.get("display_lesson") +
+						  " ") +
+					this.instance_data.date_obj.date_fmt +
+					" " +
+					"Transcript",
+				feed:
+					(_.isNull(this.lesson.get("display_lesson"))
+						? ""
+						: this.model.get("lesson_units").singular +
+						  " " +
+						  this.lesson.get("display_lesson") +
+						  " ") +
+					this.instance_data.date_obj.date_fmt +
+					" " +
+					"Transcript",
+			};
+		},
+		prerenderHelper: function () {
+			this.vars.transcript_title_long = this.transcript_title.long;
+			this.vars.title = this.lesson.get("topic");
+			this.vars.section =
+				this.instance_data.date_obj.multi_section === 1
+					? "(Section " + this.instance_data.section_obj.section + ")"
+					: "";
+			this.vars.overview_url = this.options.base_class_url + "/overview";
+			this.vars.date = this.instance_data.date_obj.date_fmt;
+			this.page_feed_heading = this.transcript_title.feed;
+			this.page_url =
+				"/" +
+				AoPS.router_root +
+				"/" +
+				this.model.get("class_string") +
+				"/transcript/" +
+				this.instance_id;
+		},
+		renderHelper: function () {
+			this.$inner = this.$(".inner");
+
+			this.transcript_view = new AoPS.Grid.Views.Transcript({
+				model: this.lesson,
+				my_class: this.model,
+				parent: this,
+				instance_id: this.instance_id,
+				transcript_title: this.transcript_title,
+			});
+			this.$inner.append(this.transcript_view.$el);
+
+			this.gotoTargetLine();
+		},
+		fetchSelectorHref: function (i) {
+			return this.options.base_tab_url + "/" + i;
+		},
+		events: {
+			"click h3 .grid-start-topic": "onClickStartTopic",
+			"click h3 .grid-open-page-feed": "onClickOpenFeed",
+			"click .transcript-show-all": "onClickShowAll",
+			"click .transcript-show-some": "onClickShowSome",
+			"click .transcript-show-none": "onClickShowNone",
+		},
+
+		setPageFeed: function () {
+			AoPS.Feed.setPageFeed(
+				this.model.get("forum_id"),
+				this.page_url,
+				this.page_feed_heading
+			);
+		},
+
+		onClickStartTopic: function () {
+			var visible_tag = this.transcript_title.feed;
+
+			// check if this forum is shared
+			var has_shared_forum = this.model.get("has_shared_forum") || false;
+			var shared_forum_data = this.model.get("shared_forum_data") || false;
+
+			var tags = [];
+			var linked_tag = visible_tag;
+			var target_text =
+				"the " +
+				this.model.get("lesson_units").singular +
+				" " +
+				this.lesson.get("lesson") +
+				" Transcript";
+
+			// if shared forum, prepend short text to the transcript linked tag
+			if (has_shared_forum && shared_forum_data.prefix_class_name_tag) {
+				var tag_prepend_str = shared_forum_data.prefix_class_name_tag + " ";
+				linked_tag = tag_prepend_str + linked_tag;
+				// also add this to the target text (for target link)
+				target_text =
+					"the " +
+					tag_prepend_str +
+					" " +
+					this.model.get("lesson_units").singular +
+					" " +
+					this.lesson.get("lesson") +
+					" Transcript";
+			}
+
+			// if shared forum, add class name tag
+			if (has_shared_forum && shared_forum_data.tag_linked_topics) {
+				tags.push(shared_forum_data.tag_linked_topics);
+			}
+
+			// if current and linked urls don't match, hide link
+			var hidden_tags = [];
+			if (
+				has_shared_forum &&
+				shared_forum_data.hide_target_links_to_diff_classes
+			) {
+				hidden_tags.push("hide_target_links_to_diff_classes");
+			}
+
+			AoPS.Feed.startNewTopic({
+				category_id: this.model.get("forum_id"),
+				tags: tags,
+				linked_tag: linked_tag,
+				subtitle: this.page_feed_heading,
+				target_url: this.page_url,
+				target_text: target_text,
+				hidden_tags: hidden_tags,
+			});
+		},
+		onClickOpenFeed: function () {
+			AoPS.Feed.openPageFeed(
+				this.model.get("forum_id"),
+				this.page_url,
+				this.page_feed_heading
+			);
+		},
+		onClickShowAll: function () {
+			this.$inner.removeClass("transcript-show-some");
+			this.$inner.removeClass("transcript-show-none");
+		},
+		onClickShowSome: function () {
+			this.$inner.addClass("transcript-show-some");
+			this.$inner.removeClass("transcript-show-none");
+		},
+		onClickShowNone: function () {
+			this.$inner.removeClass("transcript-show-some");
+			this.$inner.addClass("transcript-show-none");
+		},
+	});
+
+	Views.Transcript = AoPS.View.extend({
+		template_id: "#grid-transcript-tpl",
+
+		className: "transcript",
+
+		initialize: function (options) {
+			this.my_class = options.my_class;
+			this.parent = options.parent;
+			this.instance_id = options.instance_id;
+
+			this.transcript_title = options.transcript_title;
+
+			this.target_url_base =
+				"/" +
+				AoPS.router_root +
+				"/" +
+				this.my_class.get("class_string") +
+				"/transcript/" +
+				this.instance_id;
+			this.$loader = AoPS.Page.buildLoader();
+			this.loadTranscript();
+		},
+
+		renderMotorMessages: function () {
+			var motorWrappers = $(".motor-wrapper");
+			$(".motor-wrapper").each(async (index) => {
+				var $motor_wrapper = $(motorWrappers[index]);
+				var id = $motor_wrapper.attr("message_id");
+
+				if (this.motors && this.motors[id] && this.motors[id].motor) {
+					try {
+						var motor = JSON.parse(this.motors[id].motor);
+						var motorJson = JSON.parse(motor.motor_json);
+						var staticView = await AoPS.Motors.Utils.generateStaticMotor(
+							motorJson
+						);
+						Motors.render(staticView, $motor_wrapper[0]);
+					} catch (e) {}
+				}
+			});
+		},
+
+		renderPythonMessages: function () {
+			_.each(
+				this.$(".grid-transcript-row .msg.non-motor.text"),
+				async (element) => {
+					await AoPS.Grid.Utils.RenderPythonWindow($(element));
+				}
+			);
+		},
+
+		loadTranscript: function () {
+			var self = this;
+
+			this.$el.append(this.$loader);
+			this.model.get("master").loadTranscript({
+				instance_id: this.instance_id,
+				onFinish: function (data) {
+					self.$loader.detach();
+					if (data.transcript_data.length > 0) {
+						self.transcript_data = data.transcript_data;
+						self.use_mathjax = data.use_mathjax;
+						self.num_viewed = data.num_viewed;
+
+						self.motors = {};
+						for (var msg of self.transcript_data) {
+							if (msg.motor) {
+								self.motors[msg.es5db_id] = msg;
+							}
+						}
+						self.buildTranscript();
+					} else {
+						self.appendNoTranscriptMessage();
+					}
+				},
+			});
+		},
+
+		buildTranscript: function () {
+			this.parent.$el.removeClass("grid-no-transcript");
+
+			this.$el.html(
+				this.getTemplate(this.template_id, {
+					rows: this.transcript_data,
+					num_viewed: this.num_viewed,
+					num_viewed_is_singular: this.num_viewed === 1,
+					show_num_viewed: this.model.get("class").get("perms").me.can_instruct,
+				})
+			);
+
+			this.parent.gotoTargetLine();
+			if (this.use_mathjax && window.MathJax) {
+				MathJax.Hub.Queue(["Typeset", MathJax.Hub, "grid"]);
+			}
+
+			$(".pywindow").each(function (idx, elem) {
+				pythonTool.addCodeSource(elem.id);
+			});
+
+			this.renderMotorMessages();
+			this.renderPythonMessages();
+		},
+
+		appendNoTranscriptMessage: function () {
+			this.$el.append(
+				'<div class="cmty-on-grid-error">Sorry, no transcript available yet.</div>'
+			);
+		},
+
+		events: {
+			"click .grid-start-topic": "onClickStartTopic",
+			"click .grid-open-page-feed": "onClickOpenFeed",
+		},
+
+		onClickOpenFeed: function (e) {
+			var row_id = e.currentTarget.getAttribute("row"),
+				target_url = this.target_url_base + "/" + row_id,
+				title = this.transcript_title.feed;
+
+			AoPS.Feed.openPageFeed(this.my_class.get("forum_id"), target_url, title);
+		},
+
+		/**
+		 * When user starts a conversation connected to a line, we push the line into the community.
+		 **/
+		parseLineForCommunity: function (obj) {
+			if (_.isUndefined(obj)) {
+				return "";
+			}
+
+			// We're not ready to put motors in the community.
+			if (obj.is_motor) {
+				return "";
+			}
+			// Neither are we ready to put iframes in the community.
+			var iframeRegex = /^\s*<iframe[^<>]*>\s*<\/iframe>\s*$/;
+			if (obj.message.match(iframeRegex)) {
+				return "";
+			}
+
+			if (obj.message.match(/^\/(python|pywindow|pymarkup)/i)) {
+				var PMT = AoPS.Grid.Utils.PythonMarkupTools;
+
+				var pyMessage = PMT.processPythonTagFromMessageText(
+					$("<div />")
+						// ignore-security-checks
+						.html(obj.message)
+						.text()
+						.replace(/\u00a0/g, " "),
+					{postProcess: true}
+				);
+
+				if ((pyMessage || {}).tag) {
+					return (
+						'[quote="' +
+						obj.speaker +
+						'"]' +
+						PMT.outputTextFromPythonParsedMessage(pyMessage, {
+							tagStyle: "bbcode",
+							excludeCommands: "all",
+						}) +
+						"[/quote]\n"
+					);
+				}
+			}
+
+			var message_bbcode = obj.message;
+			message_bbcode = _.escape(message_bbcode);
+
+			// if (message_bbcode.search('class="pywindow"') != -1)
+			// {
+			//  message_bbcode = "[pywindow]" + message_bbcode + "[/pywindow]";
+			// }
+			//message_bbcode = message_bbcode.replace(/<div.*?>|<\/div>/g,''); //ignore other divs
+			message_bbcode = message_bbcode.replace(
+				/<textarea .*?>|<\/textarea>/g,
+				""
+			); //ignore blob of textarea within pywindow
+			message_bbcode = message_bbcode.replace(/<button .*?>Run<\/button>/g, "");
+			message_bbcode = message_bbcode.replace(
+				/<button .*?>Pop Out<\/button>/g,
+				""
+			);
+			message_bbcode = message_bbcode.replace(
+				/<button .*?>Reset<\/button>/g,
+				""
+			);
+			message_bbcode = message_bbcode.replace(/<canvas .*?>|<\/canvas>/g, "");
+			message_bbcode = message_bbcode.replace(/<pre id=".*?" .*?><\/pre>/g, ""); // ignore <pre tags associated with pywindow
+
+			message_bbcode = message_bbcode.replace(
+				/<span class="bold">(.*?)<\/span>/g,
+				function (match, a, b, c) {
+					return "[b]" + a + "[/b]";
+				}
+			);
+			message_bbcode = message_bbcode.replace(
+				/<span class="italic">(.*?)<\/span>/g,
+				function (match, a, b, c) {
+					return "[i]" + a + "[/i]";
+				}
+			);
+			message_bbcode = message_bbcode.replace(
+				/\{\\bf(.*?)\}/g,
+				function (match, a, b, c) {
+					return "[b]" + a + "[/b]";
+				}
+			);
+			message_bbcode = message_bbcode.replace(
+				/\{\\it(.*?)\}/g,
+				function (match, a, b, c) {
+					return "[i]" + a + "[/i]";
+				}
+			);
+			message_bbcode = message_bbcode.replace(
+				/\\emph\{(.*?)\}/g,
+				function (match, a, b, c) {
+					return "[b]" + a + "[/b]";
+				}
+			);
+			message_bbcode = message_bbcode.replace(
+				/<b>(.*?)<\/b>/g,
+				function (match, a, b, c) {
+					return "[b]" + a + "[/b]";
+				}
+			);
+			message_bbcode = message_bbcode.replace(
+				/<i>(.*?)<\/i>/g,
+				function (match, a, b, c) {
+					return "[i]" + a + "[/i]";
+				}
+			);
+			message_bbcode = message_bbcode.replace(
+				/<u>(.*?)<\/u>/g,
+				function (match, a, b, c) {
+					return "[u]" + a + "[/u]";
+				}
+			);
+			message_bbcode = message_bbcode.replace(
+				/<a href="(.*?)".*?>(.*?)<\/a>/g,
+				function (match, a, b, c) {
+					return "[url=" + a + "]" + b + "[/url]";
+				}
+			);
+
+			message_bbcode = message_bbcode.replace(
+				/<div.*?class="pywindow".*?>(.*)<\/div>/,
+				function (match, a, b, c) {
+					return "[pywindow]" + a + "[/pywindow]"; //catch what's in pywindow div tag
+				}
+			);
+			message_bbcode = message_bbcode.replace(/<div.*?>|<\/div>/g, ""); //ignore other divs
+
+			message_bbcode = message_bbcode.replace(/<span .*?>|<\/span>/g, "");
+			message_bbcode = message_bbcode.replace(
+				/<pre class="text"/g,
+				'<pre class="code"'
+			);
+			message_bbcode = message_bbcode.replace(
+				/<pre class="(.*?)".*?>(.*)<\/pre>/g,
+				function (match, a, b, c) {
+					return "[" + a + "]" + b + "[/" + a + "]";
+				}
+			); //python/java code tag
+			message_bbcode = message_bbcode.replace(/<br\s*\/?>/g, "\n"); //breaks
+
+			if (!obj.parse_latex) {
+				//If inline latex is deactivated
+				if (message_bbcode.search("code=") == "-1") {
+					//latex deactivated for transcript line
+					message_bbcode = message_bbcode.replace(/\$/g, "\\$");
+					message_bbcode = message_bbcode.replace(/\\\\\$/g, "\\$");
+				} else if (
+					message_bbcode.search(
+						/\$.*?\$|\$\$.*?\$\$|\\\[.*?\\\]|\\\(.*?\\\)|\\begin\{align\}.*?\\end\{align\}|\\begin\{align*\}.*?\\end\{align*\}|\\begin\{tabular\}.*?\\end\{tabular\}|\\begin\{eqnarray\}.*?\\end\{eqnarray\}|\\begin\{eqnarray*\}.*?\\end\{eqnarray*\}|\[asy\].*?\[\/asy\]/
+					) == "-1"
+				) {
+					//latex activated but no latex delimiters
+					message_bbcode = message_bbcode.replace(/\\%/g, "%");
+					message_bbcode = message_bbcode.replace(/\{\.\}/g, ".");
+					message_bbcode = message_bbcode.replace(/\{\,\}/g, ",");
+				} else {
+					var msg_substring = "";
+					var msg_substring_new = "";
+					var msg_substring_start = 0;
+					var msg_length = message_bbcode.length;
+					var is_latex = false;
+					var i = 0;
+					var j = 0;
+					while (i < msg_length) {
+						if (
+							message_bbcode.substring(i, (j = i + 1)) == "$$" ||
+							(message_bbcode.charAt(i) == "$" &&
+								message_bbcode.charAt(i - 1) != "\\") ||
+							message_bbcode.substring(i, (j = i + 13)) == "\\begin{align}" ||
+							message_bbcode.substring(i, (j = i + 11)) == "\\end{align}" ||
+							message_bbcode.substring(i, (j = i + 14)) == "\\begin{align*}" ||
+							message_bbcode.substring(i, (j = i + 12)) == "\\end{align*}" ||
+							message_bbcode.substring(i, (j = i + 15)) == "\\begin{tabular}" ||
+							message_bbcode.substring(i, (j = i + 13)) == "\\end{tabular}" ||
+							message_bbcode.substring(i, (j = i + 16)) ==
+								"\\begin{eqnarray}" ||
+							message_bbcode.substring(i, (j = i + 14)) == "\\end{eqnarray}" ||
+							message_bbcode.substring(i, (j = i + 17)) ==
+								"\\begin{eqnarray*}" ||
+							message_bbcode.substring(i, (j = i + 15)) == "\\end{eqnarray*}" ||
+							i + 1 == msg_length
+						) {
+							msg_substring = message_bbcode.substring(msg_substring_start, j);
+							if (!is_latex) {
+								// console.log(is_latex);
+								// console.log(msg_substring);
+								msg_substring_new = msg_substring;
+								msg_substring_new = msg_substring_new.replace(/\\%/g, "%");
+								msg_substring_new = msg_substring_new.replace(/\{\.\}/g, ".");
+								msg_substring_new = msg_substring_new.replace(/\{\,\}/g, ",");
+								// console.log(msg_substring_new);
+								message_bbcode = message_bbcode.replace(
+									msg_substring,
+									msg_substring_new
+								);
+								i = j;
+							} else {
+								// console.log(is_latex);
+								// console.log(msg_substring);
+								i = j;
+							}
+							is_latex = !is_latex;
+							msg_substring_start = j;
+						}
+						// console.log('In while loop');
+						i++;
+					}
+				}
+			}
+
+			// Getting rid of any other font modifications (other than the above).
+
+			message_bbcode = message_bbcode.replace(/\\begin\{verbatim\}/, "[code]");
+			message_bbcode = message_bbcode.replace(/\\end\{verbatim\}/, "[/code]");
+
+			// Getting rid of img and tags if code for image is provided.
+			message_bbcode = message_bbcode.replace(
+				/<img class="bbcode_img latex_image".*?code="/g,
+				""
+			);
+			message_bbcode = message_bbcode.replace(
+				/(" )?onload="onImageLoad\(this\);?">/g,
+				""
+			);
+
+			// Getting rid of img and tags if code for image is provided. (Newer classes have this version for some reason.)
+			message_bbcode = message_bbcode.replace(
+				/<img class="bbcode_img latex_img".*?code="/g,
+				""
+			);
+
+			message_bbcode = message_bbcode.replace(/\\vskip.*?pt/g, "");
+			message_bbcode = message_bbcode.replace(
+				/\\textcolor\{(.*?)\}\{(.*?)\}/g,
+				function (match, a, b, c) {
+					return b;
+				}
+			);
+
+			// Misc things that students add to their code. How to catch them all??
+			message_bbcode = message_bbcode.replace(/\\large/gi, "");
+			message_bbcode = message_bbcode.replace(/\\huge/gi, "");
+			message_bbcode = message_bbcode.replace(/\\color\{.*?\}/gi, "");
+
+			message_bbcode = message_bbcode.replace(
+				/<img .*? src="(.*?)">/g,
+				function (match, a, b, c) {
+					return "[img]" + a + "[/img]";
+				}
+			); // Get rid of <img> tags, change to [img] tags.
+
+			message_bbcode = message_bbcode.replace(
+				/<img src="(.*?)" alt="" class="bbcode_img" onload="if \(typeof\(onImageLoad\) == 'function'\) \{ onImageLoad\(this\); \}">/g,
+				function (match, a, b, c) {
+					return "[img]" + a + "[/img]";
+				}
+			); // Get rid of <img> tags, change to [img] tags.
+
+			message_bbcode = message_bbcode.replace(
+				/unitsize\((\d)\);/gi,
+				function (match, a, b, c) {
+					return "unitsize(." + a + "inch);";
+				}
+			); //some unitsize settings don't have unit and comes out very small, adding unit in.
+
+			return '[quote="' + obj.speaker + '"]' + message_bbcode + "[/quote]\n";
+		},
+
+		onClickStartTopic: function (e) {
+			var visible_tag = this.transcript_title.feed,
+				row_id = e.currentTarget.getAttribute("row"),
+				self = this,
+				target_url = this.target_url_base + "/" + row_id;
+
+			// check for shared forum
+			var class_model = this.model.get("class");
+			var has_shared_forum = class_model.get("has_shared_forum") || false;
+			var shared_forum_data = class_model.get("shared_forum_data") || false;
+
+			// set default tags and target text
+			var tags = [];
+			var linked_tag = visible_tag;
+			var target_text = "a line of the " + this.transcript_title.feed;
+
+			// in shared forum, prepend class level to the transcript linked tag
+			if (has_shared_forum && shared_forum_data.prefix_class_name_tag) {
+				var tag_prepend_str = shared_forum_data.prefix_class_name_tag + " ";
+				linked_tag = tag_prepend_str + linked_tag;
+				// also add this to the target text (for target link)
+				target_text =
+					"a line of the " + tag_prepend_str + this.transcript_title.feed;
+			}
+
+			// if shared forum, add custom tag to each linked topic
+			if (has_shared_forum && shared_forum_data.tag_linked_topics) {
+				tags.push(shared_forum_data.tag_linked_topics);
+			}
+
+			// if current and linked urls don't match, hide link
+			var hidden_tags = [this.target_url_base];
+			if (
+				has_shared_forum &&
+				shared_forum_data.hide_target_links_to_diff_classes
+			) {
+				hidden_tags.push("hide_target_links_to_diff_classes");
+			}
+
+			AoPS.Feed.startNewTopic({
+				category_id: this.my_class.get("forum_id"),
+				linked_tag: linked_tag,
+				tags: tags,
+				target_url: target_url,
+				content: this.parseLineForCommunity(
+					_.findWhere(this.transcript_data, {
+						es5db_id: parseInt($(e.currentTarget).attr("row")),
+					})
+				), // Here is where we'll add the output of Phyllis's function
+				target_text: target_text,
+				subtitle: this.transcript_title.short + " Line " + row_id,
+				hidden_tags: hidden_tags,
+				onSuccess: function (obj) {
+					// Must also add the conversation icon here
+					$(e.currentTarget)
+						.parent()
+						.find(".grid-open-page-feed")
+						.removeClass("hidden");
+					self.model.get("master").markTranscriptRow({
+						row_id: row_id,
+						topic_id: obj.topic_id,
+						instance_id: self.instance_id,
+					});
+				},
+			});
+		},
+	});
+
+	return Views;
+})(AoPS.Grid.Views);

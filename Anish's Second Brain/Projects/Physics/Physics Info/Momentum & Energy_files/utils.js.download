@@ -1,0 +1,1087 @@
+AoPS.Utils.initKeyChain(AoPS, "Motors", "Utils");
+
+/**
+ * When we add new motors to use MathJax outputs, add them here
+ * to be rendered in the Grid correctly.
+ */
+AoPS.Motors.Utils.MATHJAX_MOTORS = [
+	"ColumnConnection",
+	"DragDropCategories",
+	"DragDropMathjax",
+	"DynamicGraph",
+	"MathjaxBlank",
+	"MultipleChoice",
+	"HundredsChart",
+];
+
+/**
+ * Use these regex when searching a string for motor commands
+ * MOTOR_REGEX is used to identify whether a motor exists in the string and find each individual match
+ * GLOBAL_MOTOR_REGEX is used to remove motor commands from the string, plus 1 whitespace if one immediately follows the motor
+ */
+AoPS.Motors.Utils.MOTOR_REGEX = /\/motor ([a-zA-Z0-9]{8})/;
+AoPS.Motors.Utils.GLOBAL_MOTOR_REGEX = /\/motor ([a-zA-Z0-9]{8})\s?/g;
+
+/**
+ * Makes a static view of a motor
+ *
+ * @param {object} options
+ * @param {string} options.type motor type
+ * @param {object} options.options input options to initialize the motor
+ * @param {function} options.resolveListener if output should be observed
+ */
+AoPS.Motors.Utils.generateStaticMotor = function (options) {
+	const driverType = options.type + "Driver";
+	const driver = new Motors.Drivers[driverType]();
+	const controller = new Motors.Controller({driver});
+	const motorOptions = options.options;
+	const inputs = driver.outputs.portMap;
+
+	// Disable the motor so we get a static view. Not all motors have this option yet.
+	if ("disabled" in inputs) {
+		motorOptions.disabled = true;
+	}
+	// Flag has a different name for HundredCharts
+	if ("isInteractive" in inputs) {
+		motorOptions.isInteractive = false;
+	}
+
+	if (options.resolveListener) {
+		driver.addResolveListener(function (output) {
+			// We pass a reference to the driver itself in case the listener needs to
+			// talk to it again.
+			options.resolveListener(output, driver);
+		});
+	}
+
+	controller.start(motorOptions);
+
+	return controller.render();
+};
+
+/**
+ * Given a motor ref, retrieves the motor and generates a static view of it.
+ *
+ * This function should only be called by staff-facing pages.
+ *
+ * @param {string} motorRef The reference hash of the motor
+ */
+AoPS.Motors.Utils.generateStaticMotorWithRef = async function (motorRef) {
+	const result = await $.post("/s/motored/ajax.php", {
+		a: "get_motor_with_ref",
+		motor_ref: motorRef.trim(),
+	});
+
+	if (result && result.response) {
+		const motor = result.response.motor;
+		const options = {};
+
+		options.type = motor.motor_type;
+
+		const motor_json = JSON.parse(motor.motor_json);
+		options.options = motor_json.options;
+
+		return this.generateStaticMotor(options);
+	} else {
+		return new Error(`Could not find motor '${motorRef}'.`);
+	}
+};
+
+/**
+ * Given a motor ref, retrieves the motor and returns an object containing the json and type
+ *
+ * @param {string} motorRef The reference hash of the motor
+ * @param {int} optional class id
+ * @param {int} optional user id
+ */
+AoPS.Motors.Utils.findMotorWithRef = async function (
+	motorRef,
+	classId = 0,
+	userId = 0
+) {
+	const params = {
+		a: "get_motor_with_ref",
+		motor_ref: motorRef.trim(),
+	};
+	let ajax_url = "/s/motored/ajax.php";
+	//both should be valid before trying to go into the class ajax
+	if (classId && userId) {
+		ajax_url = "/m/class/ajax.php";
+		params.class_id = classId;
+		params.user_id = userId;
+	}
+
+	const result = await $.post(ajax_url, params);
+
+	if (result && result.response) {
+		const motor = result.response.motor;
+		const problem = {};
+
+		problem.motor_type = motor.motor_type;
+		problem.motor_ref = motorRef;
+		problem.motor_json = motor.motor_json;
+
+		return problem;
+	} else {
+		return false;
+	}
+};
+
+/**
+ * When motors are spun up, they may need to be modified with provided
+ * trial data. If this is the case, then we can run this function to get the
+ * modified motorJson data.
+ *
+ * @param {string} motorJson Motor's json
+ * @param {string} fill with input
+ * @param {boolean} wasPopulatedFromAnswer if user gave up and this is from a give up
+ * @returns
+ */
+AoPS.Motors.Utils.modifyMotorJsonWithInput = function (
+	motorJson,
+	input,
+	wasPopulatedFromAnswer
+) {
+	var parsedJson;
+	try {
+		parsedJson = JSON.parse(motorJson);
+	} catch (e) {
+		return motorJson;
+	}
+
+	// No input. No modify.
+	if (!input) {
+		return motorJson;
+	}
+
+	switch (parsedJson.type) {
+		case "ColumnConnection":
+			try {
+				// connectionPairs have to be converted to connections.
+				// let us create our map that will make that conversion.
+				const itemsToConnIdxs = [];
+				for (colIdx in parsedJson.options.columns) {
+					for (elemIdx in parsedJson.options.columns[colIdx]) {
+						itemsToConnIdxs.push({colIdx, elemIdx});
+					}
+				}
+
+				// Now, we can convert the connectionPairs item ids to the connections.
+				parsedJson.options.connections = parsedJson.options.connections || {};
+				let pairsToProcess, inputIsJson;
+				//if outputDisplayFormat is formattedList and input is not JSON parseable, we manually break it up and figure out the indices
+				try {
+					JSON.parse(input);
+					inputIsJson = true;
+				} catch (e) {
+					inputIsJson = false;
+				}
+				if (
+					parsedJson.outputDisplayFormat === "formattedList" &&
+					!inputIsJson
+				) {
+					//formattedLists are separated by line breaks
+					const splitInput = input.split("</br>");
+					const connectionPairs = [];
+					//will reference this a few times, so declaring it for readability
+					const columns = parsedJson.options.columns;
+					for (connectionPair of splitInput) {
+						const splitPair = connectionPair.split(": ");
+						const fromIndex = columns[0].indexOf(splitPair[0]);
+						//indices being connected to are saved as numbers counting up from the first column's length in connectionPairs output, so replicating that by adding
+						const connectedToTerms = splitPair[1].split(", ");
+
+						for (term of connectedToTerms) {
+							const toIndex = columns[1].indexOf(term) + columns[0].length;
+							connectionPairs.push([fromIndex, toIndex]);
+						}
+					}
+					pairsToProcess = connectionPairs;
+				} else {
+					pairsToProcess = JSON.parse(input);
+				}
+				for (connectionPair of pairsToProcess) {
+					const fromConnIndex = itemsToConnIdxs[connectionPair[0]];
+					const toConnIndex = itemsToConnIdxs[connectionPair[1]];
+					if (fromConnIndex && toConnIndex) {
+						const connIndex = `${fromConnIndex.colIdx},${fromConnIndex.elemIdx},${toConnIndex.elemIdx}`;
+						let color = "";
+						// fix connection color for already existing disabled connections
+						if (
+							parsedJson.options.connections[connIndex] &&
+							parsedJson.options.connections[connIndex].isDisabled &&
+							parsedJson.options.connections[connIndex].color
+						) {
+							color = parsedJson.options.connections[connIndex].color;
+						}
+						parsedJson.options.connections[connIndex] = {
+							color: color,
+							isDisabled: false,
+						};
+					}
+				}
+			} catch (e) {
+				// Unable to parse input, so let's tell the user and continue.
+				AoPS.Motors.Utils.displayModifyMotorWithInputError(
+					parsedJson.problemText
+				);
+			}
+			break;
+
+		case "DragDropCategories":
+			try {
+				parsedJson.options.draggablesInEachDropArea =
+					typeof input === "object" ? input : JSON.parse(input);
+			} catch (e) {
+				// Unable to parse input, so let's tell the user and continue.
+				AoPS.Motors.Utils.displayModifyMotorWithInputError(
+					parsedJson.problemText
+				);
+			}
+			break;
+
+		case "DragDropMathjax":
+			var draggableInEachDropArea;
+
+			if (input !== null) {
+				// If the answer is formatted as content, map to indices
+				// Only apply in crypt preview
+				if (
+					!wasPopulatedFromAnswer &&
+					parsedJson.parseFormat === "contentInEachDropArea" &&
+					window.location.href.includes("crypt")
+				) {
+					var draggedContent = input.split(",");
+					var draggedIndices = [];
+
+					var draggableContents = parsedJson.options.draggableContents;
+					if (draggableContents && Array.isArray(draggableContents)) {
+						for (var content of draggedContent) {
+							var idx = draggableContents.indexOf(content.trim());
+
+							if (idx !== -1) {
+								draggedIndices.push(idx);
+							}
+						}
+
+						input = draggedIndices.join(",");
+					}
+				}
+
+				try {
+					draggableInEachDropArea = JSON.parse(`[${input}]`);
+				} catch (e) {
+					// Unable to parse input, so let's tell the user and continue.
+					AoPS.Motors.Utils.displayModifyMotorWithInputError(
+						parsedJson.problemText
+					);
+				}
+			}
+
+			if (Array.isArray(draggableInEachDropArea)) {
+				parsedJson.options.draggableInEachDropArea = draggableInEachDropArea;
+			}
+			break;
+
+		case "MultipleChoice":
+			var selectedIndices;
+			try {
+				selectedIndices = JSON.parse(`[${input}]`);
+			} catch (e) {
+				if (Array.isArray(input)) {
+					//this was probably parseFormat selectedValues, so let's convert to comma-separated string for the next portion
+					input = input.join(",");
+				}
+				// If not an array, it's probably a comma-separated string that couldn't be parsed, which gets taken care of in the next part
+			}
+
+			// Convert last answer to valid input.
+			if (input !== null) {
+				// If the answer is formatted as selectedValues or any input is non-numerical, map to indices
+				var shouldMap = false;
+				try {
+					var indicesToCheck = input.split(",");
+					if (indicesToCheck.length > 1) {
+						for (let i in indicesToCheck) {
+							if (
+								!parseInt(indicesToCheck[i]) &&
+								parseInt(indicesToCheck[i]) !== 0
+							) {
+								shouldMap = true;
+								break;
+							}
+						}
+					}
+					if (
+						(!wasPopulatedFromAnswer &&
+							parsedJson.outputDisplayFormat === "selectedValues") ||
+						shouldMap
+					) {
+						var selectedValues = input.split(",");
+						var indices = [];
+
+						var items = parsedJson.options.items;
+						if (items && Array.isArray(items)) {
+							for (var value of selectedValues) {
+								var trimmed_value = value.trim();
+								var index = items.indexOf(trimmed_value);
+
+								if (index !== -1) {
+									indices.push(index);
+								} else if (
+									parseInt(trimmed_value) ||
+									parseInt(trimmed_value) === 0
+								) {
+									/**
+									 * 6/28/2023: MC motors have been specifically taking the indices as their inputs regardless of options.
+									 * See the computeGridCurrentMotorInput function's MC case below
+									 * However, IIRC that wasn't always the case so now the saved answer formats can vary in spite of sharing the same options
+									 * Thus, this separate case is necessary to handle both
+									 */
+									indices.push(parseInt(trimmed_value));
+								}
+							}
+
+							input = indices.join(",");
+						}
+					}
+				} catch (e) {
+					//skip this section if improperly formatted.
+					//it will probably just be caught as an error by the later try catch
+				}
+
+				try {
+					selectedIndices = JSON.parse(`[${input}]`);
+				} catch (e) {
+					// Unable to parse input, so let's tell the user and continue.
+					AoPS.Motors.Utils.displayModifyMotorWithInputError(
+						parsedJson.problemText
+					);
+				}
+			}
+
+			if (Array.isArray(selectedIndices)) {
+				parsedJson.options.selectedIndices = selectedIndices;
+			}
+			break;
+
+		case "MathjaxBlank":
+		case "DynamicGraph":
+			var values;
+			try {
+				if (Array.isArray(input)) {
+					values = input;
+				} else if (["number", "string"].indexOf(typeof input) > -1) {
+					// cast numbers to string, since that's what the motors expect as inputs
+					input = "" + input;
+
+					// apparently we ignore the input if it looks like experimental parser stuff?
+					if (!input.trim().match(/^e:?\s*\(.*\)$/is)) {
+						// if we have () or []... drop them
+						input = input
+							.trim()
+							.replace(/^\(\s*(.*?)\s*\)$/, "$1")
+							.replace(/^\[\s*(.*?)\s*\]$/, "$1");
+
+						// split commas
+						values = input.split(/\s*,\s*/);
+					}
+				} else {
+					// ignore any other types, for safety
+				}
+			} catch (e) {
+				// Unable to parse input, so let's tell the user and continue.
+				AoPS.Motors.Utils.displayModifyMotorWithInputError(
+					parsedJson.problemText
+				);
+			}
+
+			if (Array.isArray(values)) {
+				parsedJson.options.values = values;
+			}
+			break;
+
+		case "VennDiagram":
+			let studentInput;
+			if (parsedJson.parseFormat === "selectedRegions") {
+				try {
+					studentInput = JSON.parse(input)[0].split(",");
+				} catch (e) {
+					studentInput = input;
+				}
+			} else {
+				try {
+					studentInput = JSON.parse(input);
+				} catch (e) {
+					/**
+					 * this catch came about because one student's response somehow saved differently
+					 * I literally answered the same problem and it saved correctly
+					 * on a different project at the time of writing so just hotfixing it
+					 */
+					try {
+						var inputArray = input.split(", ");
+						var inputObject = {};
+						for (let i = 0; i < inputArray.length; i++) {
+							var split = inputArray[i].split(": ");
+							inputObject[split[0]] = split[1];
+						}
+						studentInput = inputObject;
+					} catch (e) {
+						//wrap above in try catch just in case something else weird happens
+						//if we hit this point the inputs for this motor won't show, but the rest of the page should at least load
+					}
+				}
+			}
+			if (parsedJson.parseFormat === "selectedRegions") {
+				parsedJson.options["selectedRegions"] = studentInput;
+			} else {
+				parsedJson.options["inputValues"] = studentInput;
+			}
+			break;
+		case "HundredsChart":
+			if (!wasPopulatedFromAnswer) {
+				try {
+					parsedJson.options["gridState"] = JSON.parse(input);
+				} catch (e) {
+					//wrap above in try catch just in case something else weird happens
+					//if we hit this point the inputs for this motor won't show, but the rest of the page should at least load
+				}
+			} else {
+				inputArray = input.split(",");
+
+				// We have to convert the answer array into a grid state based the parseFormat.
+				const usingValues = /values/i.test(parsedJson.parseFormat);
+				const usingSelected = /selected/i.test(parsedJson.parseFormat);
+
+				// Initialize gridState if not already provided by the motor
+				parsedJson.options.gridState = parsedJson.options.gridState || {};
+
+				// Removing default grid state selections that conflict with answer.
+				for (const idx of Object.keys(parsedJson.options["gridState"])) {
+					if (
+						parsedJson.options["gridState"][idx] ===
+						(usingSelected ? "outline" : "crossed")
+					) {
+						delete parsedJson.options["gridState"][idx];
+					}
+				}
+
+				// Setting grid state values from the answer.
+				const indices = inputArray.map((entry) =>
+					usingValues ? parsedJson.options.items.indexOf(entry) : Number(entry)
+				);
+				for (const index of indices) {
+					parsedJson.options["gridState"][index] = usingSelected
+						? "outline"
+						: "crossed";
+				}
+			}
+			break;
+		case "BarGraph":
+			if (typeof input === "string" || input instanceof String) {
+				input = input.split(",");
+			}
+			if (!Array.isArray(input)) {
+				// Break out so the page doesn't break. Something went wrong and we will see a bug report.
+				break;
+			}
+			if (parsedJson.options["interaction"] === "build") {
+				parsedJson.options["values"] = input;
+			} else if (parsedJson.parseFormat === "selectedIndices") {
+				parsedJson.options["selectedIndices"] = input;
+			} else if (parsedJson.parseFormat === "selectedNames") {
+				const inputSelectedIndices = [];
+				const chartNames = parsedJson.options["barLabels"];
+				input.forEach((element) => {
+					inputSelectedIndices.push(chartNames.indexOf(element));
+				});
+				parsedJson.options["selectedIndices"] = inputSelectedIndices;
+			}
+			break;
+		default:
+	}
+
+	return JSON.stringify(parsedJson);
+};
+
+/**
+ * Display an error when modifying a motor with input resulted in error in modifyMotorJsonWithInput
+ * Uses problemText to identify the problem to the user since they should theoretically be unique among the problems in a class
+ * modifyMotorJsonWithInput seems to not have anything like the motor id passed in
+ *
+ * @param string using the problemText as an identifier since it should theoretically be unique among the problems in an assignment
+ */
+AoPS.Motors.Utils.displayModifyMotorWithInputError = function (problemText) {
+	AoPS.Ui.Modal.showAlertQuick(
+		"The motor input for <br>'" +
+			problemText +
+			"'<br> was not saved in the correct format."
+	);
+};
+
+/**
+ * Given motorJson and output from the motor, should we enable submit button?
+ *
+ * @param {object} motorOutput from the motor
+ * @param {string} motorJson Motor's json
+ * @returns
+ */
+AoPS.Motors.Utils.getMotorCanSubmit = function (motorOutput, motorJson) {
+	var parsedJson;
+	try {
+		parsedJson = JSON.parse(motorJson);
+	} catch (e) {
+		// Error? Just return true.
+		// We don't want the submit button to get stuck in a disabled state.
+		return true;
+	}
+
+	switch (parsedJson.type) {
+		case "ColumnConnection":
+			// Submit if any connection has been made.
+			if (
+				!motorOutput.connectionPairs ||
+				motorOutput.connectionPairs === "[]"
+			) {
+				return false;
+			} else {
+				return true;
+			}
+
+		case "DragDropCategories":
+			// We can submit if at least one category contains at least one item.
+			if (
+				!motorOutput.draggablesInEachDropArea ||
+				!Array.isArray(motorOutput.draggablesInEachDropArea) ||
+				motorOutput.draggablesInEachDropArea.length === 0
+			) {
+				return false;
+			} else {
+				for (var draggables of motorOutput.draggablesInEachDropArea) {
+					if (draggables && Array.isArray(draggables) && draggables.length) {
+						return true;
+					}
+				}
+				return false;
+			}
+
+		case "DragDropMathjax":
+			if (
+				!motorOutput.draggableInEachDropArea ||
+				motorOutput.draggableInEachDropArea.length === 0
+			) {
+				return false;
+			}
+
+			for (var index of motorOutput.draggableInEachDropArea) {
+				if (index === -1) {
+					return false;
+				}
+			}
+
+			return true;
+
+		case "MultipleChoice":
+			if (
+				!motorOutput.selectedIndices ||
+				motorOutput.selectedIndices.length === 0
+			) {
+				return false;
+			}
+			return true;
+
+		case "MathjaxBlank":
+			var values = motorOutput.values;
+			if (!values || values.length === 0) {
+				return false;
+			}
+
+			for (var value of values) {
+				if (value === "") {
+					return false;
+				}
+			}
+
+			return true;
+
+		case "VennDiagram":
+			const parseFormat = parsedJson.parseFormat;
+			if (parseFormat === "selectedRegions") {
+				//if there are no selected regions, do not let the empty response through
+				if (motorOutput["selectedRegions"].length < 1) {
+					return false;
+				}
+			} else {
+				for (const i in motorOutput[parseFormat]) {
+					if (parseFormat === "inputValues") {
+						//if the value is empty, do not let the empty response through
+						if (motorOutput[parseFormat][i] === "") {
+							return false;
+						}
+					} else {
+						const input = motorOutput[parseFormat][i];
+						const inputLength = input.length;
+						//if the first instance of ": " is the end of the string, it is an empty response
+						if (
+							input.charAt(inputLength - 1) === " " &&
+							input.charAt(inputLength - 2) === ":" &&
+							input.indexOf(":") === inputLength - 2
+						) {
+							return false;
+						}
+					}
+				}
+			}
+		case "HundredsChart":
+		case "BarGraph":
+			return !!motorOutput[parsedJson.parseFormat].length;
+		default:
+			var parsedOutput = motorOutput[parsedJson.parseFormat];
+			if (!parsedOutput) {
+				return false;
+			}
+			return true;
+	}
+};
+
+/**
+ * Given motorJson and output from the motor, compute grid model's current_motor_input.
+ *
+ * @param {object} motorOutput from the motor
+ * @param {string} motorJson Motor's json
+ * @returns
+ */
+AoPS.Motors.Utils.computeGridCurrentMotorInput = function (
+	motorOutput,
+	motorJson
+) {
+	var parsedJson;
+	try {
+		parsedJson = JSON.parse(motorJson);
+	} catch (e) {
+		// Error
+		return {};
+	}
+
+	const parseFormat = parsedJson.parseFormat;
+	const outputDisplayFormat = parsedJson.outputDisplayFormat;
+	const responseToParse =
+		typeof motorOutput[parseFormat] === "object" &&
+		!Array.isArray(motorOutput[parseFormat])
+			? JSON.stringify(motorOutput[parseFormat])
+			: String(motorOutput[parseFormat]);
+	const currentMotorInput = {
+		response_to_parse: responseToParse,
+	};
+
+	if (Array.isArray(motorOutput[outputDisplayFormat])) {
+		currentMotorInput.response_to_display =
+			motorOutput[outputDisplayFormat].join(", ");
+	} else if (typeof motorOutput[outputDisplayFormat] === "object") {
+		currentMotorInput.response_to_display = JSON.stringify(
+			motorOutput[outputDisplayFormat]
+		);
+	} else {
+		currentMotorInput.response_to_display = String(
+			motorOutput[outputDisplayFormat]
+		);
+	}
+
+	// TODO: This is a temporary fix for problems where response_to_save is undefined.
+	currentMotorInput.response_to_save = currentMotorInput.response_to_display;
+
+	switch (parsedJson.type) {
+		case "ColumnConnection":
+			currentMotorInput.response_to_save = String(motorOutput.connectionPairs);
+			break;
+
+		case "DragDropCategories":
+			currentMotorInput.response_to_parse = JSON.stringify(
+				motorOutput[parseFormat]
+			);
+			currentMotorInput.response_to_save = JSON.stringify(
+				motorOutput.draggablesInEachDropArea
+			);
+			if (motorOutput[outputDisplayFormat] === "draggablesInEachDropArea") {
+				currentMotorInput.response_to_display = JSON.stringify(
+					motorOutput.draggablesInEachDropArea
+				);
+			}
+			break;
+
+		case "DragDropMathjax":
+			currentMotorInput.response_to_save = String(
+				motorOutput.draggableInEachDropArea
+			);
+			break;
+
+		case "MultipleChoice":
+			currentMotorInput.response_to_save = String(motorOutput.selectedIndices);
+			break;
+
+		case "MathjaxBlank":
+		case "DynamicGraph":
+			currentMotorInput.response_to_save = String(motorOutput.values);
+
+			// Escape forward slashes, they can confuse the parser!
+			currentMotorInput.response_to_parse =
+				currentMotorInput.response_to_parse.replace(/\//g, "\\/");
+			break;
+		case "VennDiagram":
+			// Start by basing the response to save off the response to parse
+			let response_to_save = currentMotorInput.response_to_parse;
+			//inputValues already comes in as an object so no case needed for that
+			if (parsedJson.parseFormat === "inputValuesList") {
+				/**
+				 * inputValuesList comes in as a list/string when we want to save an object representation in the db to match inputValues
+				 * It'll need to be converted to an object
+				 */
+				response_to_save = {};
+				let splitInput;
+				try {
+					splitInput = JSON.parse(currentMotorInput.response_to_parse);
+				} catch (e) {
+					splitInput = currentMotorInput.response_to_parse.split(",");
+				}
+				for (let i in splitInput) {
+					// for each input, we get the key and value to put in by identifying the : position and getting the before/after
+					const inputKey = splitInput[i]
+						.trim()
+						.substr(0, splitInput[i].indexOf(":"));
+					const inputValue = splitInput[i]
+						.trim()
+						.substr(splitInput[i].indexOf(":") + 2);
+					response_to_save[inputKey] = inputValue;
+				}
+				response_to_save = JSON.stringify(response_to_save);
+			} else if (parsedJson.parseFormat === "selectedRegions") {
+				if (typeof currentMotorInput.response_to_parse === "string") {
+					try {
+						//attempt to parse response_to_save to see if it's a string representation of an array
+						response_to_save = JSON.parse(response_to_save);
+					} catch (e) {
+						// we want to save an array representation to the db, so if the response to parse is a string and doesn't represent an array then we split it
+						response_to_save = currentMotorInput.response_to_parse.split(", ");
+					}
+				}
+				response_to_save = JSON.stringify(response_to_save);
+			}
+			currentMotorInput.response_to_save = response_to_save;
+			break;
+		case "HundredsChart":
+			// This motor cannot take in it's own parseFormat as an input, so have to use gridState
+			currentMotorInput.response_to_save = JSON.stringify(
+				motorOutput.gridState
+			);
+
+			// Converting the grid state to a list of selections
+			selectedList = [];
+			crossedList = [];
+			// Using indices or values to match the outputDisplayFormat
+			usingValues = /values/i.test(parsedJson.outputDisplayFormat);
+			for (const index in motorOutput.gridState) {
+				if (motorOutput.gridState[index] === "outline") {
+					selectedList.push(
+						usingValues ? parsedJson.options.items[index] : index
+					);
+				} else if (motorOutput.gridState[index] === "cross") {
+					crossedList.push(
+						usingValues ? parsedJson.options.items[index] : index
+					);
+				}
+			}
+			currentMotorInput.response_to_display =
+				"Selected: " +
+				selectedList.join(", ") +
+				"; " +
+				"Crossed out: " +
+				crossedList.join(", ");
+		case "SelectGraph":
+			/**
+			 * before this change, these did nothing
+			 * however, the motors are already being used in classes
+			 * therefore, for now just make them do nothing and not go to the error msg
+			 */
+			break;
+		case "BarGraph":
+			currentMotorInput.response_to_save = currentMotorInput.response_to_parse;
+			break;
+		default:
+			let error_msg = "This motor type has not been implemented yet.";
+			AoPS.Ui.Modal.showAlert(error_msg);
+			throw error_msg;
+	}
+
+	return currentMotorInput;
+};
+
+/**
+ * Motors in homework store trial data in a specific form, which may not match
+ * the outputDisplayFormat we want to display the trials in.
+ *
+ * This function is a helper to reformat stored trial data into the proper
+ * outputDisplayFormat.
+ *
+ * TODO: A lot of this may be redundant with modifyMotorJsonWithInput.
+ * It may be possible to remove a lot of code by using modifyMotorJsonWithInput.
+ *
+ * @param {string} motorJson Motor's json
+ * @param {string} response The trial
+ * @returns
+ */
+AoPS.Motors.Utils.convertTrialData = function (motorJson, response) {
+	var parsedJson;
+	try {
+		parsedJson = JSON.parse(motorJson);
+	} catch (e) {
+		// Error
+		return;
+	}
+
+	const type = parsedJson.type;
+	const outputDisplayFormat = parsedJson.outputDisplayFormat;
+
+	switch (type) {
+		case "ColumnConnection":
+			// Trial stored as 'connectionPairs'
+			// Need to convert to displayable rows.
+			const connectionPairs = response;
+			if (outputDisplayFormat === "formattedList") {
+				const driver = new Motors.Drivers.ColumnConnectionDriver();
+				const controller = new Motors.Controller({driver});
+				const motorOptions = JSON.parse(
+					AoPS.Motors.Utils.modifyMotorJsonWithInput(motorJson, connectionPairs)
+				).options;
+
+				// Bring motor to life
+				controller.start(motorOptions);
+
+				// Read the motor's output
+				if (driver.submotors && driver.submotors.length > 0) {
+					const motor = driver.submotors[0];
+					try {
+						return motor.getFormattedListOutput();
+					} catch (ex) {
+						return;
+					}
+				} else {
+					// Error
+					return;
+				}
+			}
+
+			return connectionPairs;
+
+		case "DragDropCategories":
+			// Trial stored as 'draggablesInEachDropArea'
+			const draggablesInEachDropArea = response;
+
+			// May need to convert to other output format.
+			if (outputDisplayFormat !== "draggablesInEachDropArea") {
+				const driver = new Motors.Drivers.DragDropCategoriesDriver();
+				const controller = new Motors.Controller({driver});
+				const motorOptions = parsedJson.options;
+
+				motorOptions.draggablesInEachDropArea = JSON.parse(
+					draggablesInEachDropArea
+				);
+				controller.start(motorOptions);
+
+				if (driver.submotors && driver.submotors.length > 0) {
+					const motor = driver.submotors[0];
+					try {
+						return motor.outputs.portMap[outputDisplayFormat].data;
+					} catch (ex) {
+						return;
+					}
+				} else {
+					// Error
+					return;
+				}
+			}
+
+			return draggablesInEachDropArea;
+
+		case "DragDropMathjax":
+			// Trial stored as 'draggableInEachDropArea'
+			// Need to convert to 'contentInEachDropArea'
+			const draggableIndices = response.split(",");
+			const draggableContents = parsedJson.options.draggableContents;
+			if (!draggableContents) {
+				// Error
+				return;
+			}
+
+			const contentInEachDropArea = [];
+			for (const index of draggableIndices) {
+				if (index > -1 && index < draggableContents.length) {
+					contentInEachDropArea.push(draggableContents[index]);
+				} else {
+					// Error
+					return;
+				}
+			}
+
+			if (
+				outputDisplayFormat === "newJax" ||
+				outputDisplayFormat === "inlineNewJax"
+			) {
+				const driver = new Motors.Drivers.DragDropMathjaxDriver();
+				const controller = new Motors.Controller({driver});
+				const motorOptions = parsedJson.options;
+
+				controller.start(motorOptions);
+
+				if (driver.submotors && driver.submotors.length > 0) {
+					const motor = driver.submotors[0];
+					const outputJax = motor.generateNewJaxFromValues(
+						contentInEachDropArea
+					);
+
+					if (outputJax[outputDisplayFormat]) {
+						return outputJax[outputDisplayFormat];
+					} else {
+						return;
+					}
+				} else {
+					// Error
+					return;
+				}
+			}
+
+			return contentInEachDropArea.join(", ");
+
+		case "MultipleChoice":
+			// Trial stored as 'selectedIndices'
+			// May need to convert to 'selectedValues'
+			const selectedIndices = response.split(",").map(Number);
+
+			if (outputDisplayFormat === "selectedValues") {
+				const items = parsedJson.options.items;
+				if (!items) {
+					// Error
+					return;
+				}
+
+				let selectedValues = [];
+				for (const index of selectedIndices) {
+					if (index > -1 && index < items.length) {
+						selectedValues.push(items[index]);
+					} else {
+						// Error
+						return;
+					}
+				}
+
+				return selectedValues.join(", ");
+			}
+
+			return selectedIndices.join(", ");
+
+		case "MathjaxBlank":
+		case "DynamicGraph":
+			// Trial stored as 'values'
+			// May need to convert to 'newJax'
+			const values = response.split(",");
+
+			if (
+				outputDisplayFormat === "newJax" ||
+				outputDisplayFormat === "inlineNewJax"
+			) {
+				const driver = new Motors.Drivers[type + "Driver"]();
+				const controller = new Motors.Controller({driver});
+				const motorOptions = parsedJson.options;
+
+				controller.start(motorOptions);
+				if (driver.submotors && driver.submotors.length > 0) {
+					for (const motor of driver.submotors) {
+						if (_.isFunction(motor.generateNewJaxFromValues)) {
+							const outputJax = motor.generateNewJaxFromValues(values);
+							if (outputJax[outputDisplayFormat]) {
+								return outputJax[outputDisplayFormat];
+							}
+						}
+					}
+				}
+
+				// Error
+				return;
+			}
+
+			return values.join(", ");
+		case "HundredsChart":
+			// The grid state was what we saved.
+			var gridState;
+			try {
+				gridState = JSON.parse(response);
+			} catch (ex) {
+				return;
+			}
+
+			// Turning the grid state into a pretty string.
+			selectedList = [];
+			crossedList = [];
+			// Using indices or values depending on the outputDisplayFormat.
+			usingValues = /values/i.test(parsedJson.outputDisplayFormat);
+			for (const index in gridState) {
+				if (gridState[index] === "outline") {
+					selectedList.push(
+						usingValues ? parsedJson.options.items[index] : index
+					);
+				} else if (gridState[index] === "cross") {
+					crossedList.push(
+						usingValues ? parsedJson.options.items[index] : index
+					);
+				}
+			}
+			return (
+				"Selected: " +
+				selectedList.join(", ") +
+				"; " +
+				"Crossed out: " +
+				crossedList.join(", ")
+			);
+		default:
+			return;
+	}
+};
+
+/**
+ * Take valid motor refs in a body of HTML and render them in the containingView
+ * the containingView decides the logic used to attach the motor
+ *
+ * @param View
+ * @param string
+ */
+AoPS.Motors.Utils.processMotorsInText = function (
+	containingView,
+	problem_text
+) {
+	var motor_regex = AoPS.Motors.Utils.MOTOR_REGEX;
+	if (problem_text.match(motor_regex)) {
+		var motor_ref = null;
+		var remaining_problem_text = problem_text;
+		var text_index = 0;
+		while (text_index < problem_text.length) {
+			var match = remaining_problem_text.match(motor_regex);
+			if (match && match.length > 1) {
+				var remainingString = match[1];
+				motor_ref = remainingString;
+			}
+			if (
+				match &&
+				motor_ref &&
+				typeof containingView.attachMotor === "function"
+			) {
+				containingView.attachMotor(motor_ref);
+				// /motor is 6 characters, each motor ref so far is 8, and a space is 1
+				var move_foward = 15 + match.index;
+				text_index += move_foward;
+				remaining_problem_text = remaining_problem_text.substring(move_foward);
+			} else {
+				//end the loop if no match
+				text_index = problem_text.length;
+			}
+		}
+	}
+};

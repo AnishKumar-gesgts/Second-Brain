@@ -1,0 +1,59 @@
+Substituting into x(t)
+x(t) = ∥⃗l∥cos(θ)t −1
+2m(Fdrag)t2
+x(t) = ∥⃗l∥cos(θ)t −1
+2m(0.2886345 · Cd · ∥⃗l∥2)t2
+2mx = mt(2∥⃗l∥cos(θ) −(0.2886345 · Cd · ∥⃗l∥2)t)
+−(0.2886345Cd∥⃗l∥2)t2 + 2mt∥⃗l∥cos(θ) −2mx = 0
+(Holy what is this)
+∥⃗l∥= −2mtcos(θ) ±
+p
+(−2mtcos(θ))2 −4(−0.2886345Cdt2)(−2mx)
+2(−0.2886345Cdt2)
+Using an angle 45° as the value for theta (based on alphabot for now)
+∥⃗l∥=
+−mt
+√
+2 ±
+q
+(−mt
+√
+2)2 −4(−0.2886345Cdt2)(−2mx)
+2(−0.2886345Cdt2)
+= −mt
+√
+2 ± √2m2t2 −2.309076Cdm2t2x
+−0.577269Cdt2
+= mt · −
+√
+2 ± t(√2 −2.309076Cdx)
+−0.577269Cd
+Take only the + solution because we want the highest arc:
+= mt · (2.44983458729
+Cd
++ t(√2 −2.309076Cdx)
+−0.577269Cd
+)
+Drag Coefficients can be determined experimentally, but seeing as we don’t have an easy way to experimentally do so, we
+can estimate it by using Reynold’s numbers.
+Cd is calculated as a piecewise function of the object’s Reynold’s number (Re),
+Refuel = ρ∥⃗l∥D
+µ
+ρ is the density of air, D is the diameter of the sphere, µ is the viscosity of air.
+Refuel = 1.225 · ∥⃗l∥· 0.15
+1.8 · 10−5
+≈10, 208.33∥⃗l∥
+And with exit velocity being in the range from 5 to 20 mph,
+Refuel ≈10, 208.33(2.24 to 9.94m
+s ) ≈2 · 104 to 9 · 104
+Since this value is in the subcritical drag range, below drag crisis, Cd can be approximated as 0.47
+∥⃗l∥= mt · (2.44983458729
+Cd
++ t(√2 −2.309076Cdx)
+−0.577269Cd
+) ≈mt · (5.212414 + t(√2 −1.08526572x)
+−0.27131643
+)
+≈5.212414mt + mt2(√2 −1.08526572x)
+−0.27131643
+2

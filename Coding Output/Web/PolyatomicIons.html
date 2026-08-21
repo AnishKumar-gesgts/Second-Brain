@@ -1,0 +1,412 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Polyatomic Ions Flashcards</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: linear-gradient(to bottom right, #eff6ff, #e0e7ff);
+            min-height: 100vh;
+            padding: 2rem;
+        }
+
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+        }
+
+        h1 {
+            font-size: 2.5rem;
+            color: #312e81;
+            text-align: center;
+            margin-bottom: 0.5rem;
+        }
+
+        .subtitle {
+            text-align: center;
+            color: #6b7280;
+            margin-bottom: 2rem;
+        }
+
+        .mode-toggle {
+            text-align: center;
+            margin-bottom: 1.5rem;
+        }
+
+        .btn-mode {
+            background-color: #4f46e5;
+            color: white;
+            padding: 0.75rem 1.5rem;
+            border: none;
+            border-radius: 0.5rem;
+            font-size: 1rem;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+
+        .btn-mode:hover {
+            background-color: #4338ca;
+        }
+
+        .flashcard-container {
+            perspective: 1000px;
+            margin-bottom: 2rem;
+        }
+
+        .flashcard {
+            position: relative;
+            width: 100%;
+            height: 320px;
+            cursor: pointer;
+            transition: transform 0.6s;
+            transform-style: preserve-3d;
+        }
+
+        .flashcard.flipped {
+            transform: rotateY(180deg);
+        }
+
+        .card-face {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            backface-visibility: hidden;
+            border-radius: 1rem;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 2rem;
+            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+        }
+
+        .card-front {
+            background-color: white;
+        }
+
+        .card-back {
+            background-color: #4f46e5;
+            color: white;
+            transform: rotateY(180deg);
+        }
+
+        .card-text {
+            font-size: 3.5rem;
+            font-weight: bold;
+            margin-bottom: 1rem;
+        }
+
+        .card-back .card-text {
+            font-size: 3rem;
+        }
+
+        .card-hint {
+            font-size: 0.875rem;
+            color: #6b7280;
+        }
+
+        .card-back .card-hint {
+            color: #c7d2fe;
+        }
+
+        .progress {
+            text-align: center;
+            margin-bottom: 1.5rem;
+        }
+
+        .progress-text {
+            color: #374151;
+            font-weight: 600;
+            margin-bottom: 0.5rem;
+        }
+
+        .progress-bar-container {
+            width: 100%;
+            height: 0.5rem;
+            background-color: #d1d5db;
+            border-radius: 9999px;
+            overflow: hidden;
+        }
+
+        .progress-bar {
+            height: 100%;
+            background-color: #4f46e5;
+            transition: width 0.3s;
+        }
+
+        .navigation {
+            display: flex;
+            justify-content: center;
+            gap: 1rem;
+            margin-bottom: 1.5rem;
+        }
+
+        .btn {
+            background-color: white;
+            color: #4f46e5;
+            padding: 0.75rem 1.5rem;
+            border: none;
+            border-radius: 0.5rem;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+            transition: box-shadow 0.3s;
+        }
+
+        .btn:hover {
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+        }
+
+        .btn-purple {
+            background-color: #9333ea;
+            color: white;
+        }
+
+        .btn-purple:hover {
+            background-color: #7e22ce;
+        }
+
+        .btn-gray {
+            background-color: #4b5563;
+            color: white;
+        }
+
+        .btn-gray:hover {
+            background-color: #374151;
+        }
+
+        .controls {
+            display: flex;
+            justify-content: center;
+            gap: 1rem;
+            margin-bottom: 2rem;
+        }
+
+        .study-tips {
+            background-color: white;
+            border-radius: 0.5rem;
+            padding: 1.5rem;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+        }
+
+        .study-tips h3 {
+            color: #312e81;
+            font-size: 1.125rem;
+            margin-bottom: 0.75rem;
+        }
+
+        .study-tips ul {
+            color: #374151;
+            list-style-position: inside;
+        }
+
+        .study-tips li {
+            margin-bottom: 0.5rem;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Polyatomic Ions Flashcards</h1>
+        <p class="subtitle">Click the card to flip • Use arrows to navigate</p>
+
+        <div class="mode-toggle">
+            <button class="btn-mode" onclick="toggleStudyMode()">
+                Study Mode: <span id="mode-text">Formula → Name</span>
+            </button>
+        </div>
+
+        <div class="flashcard-container">
+            <div class="flashcard" id="flashcard" onclick="flipCard()">
+                <div class="card-face card-front">
+                    <div class="card-text" id="front-text">CO₃²⁻</div>
+                    <div class="card-hint">Click to reveal answer</div>
+                </div>
+                <div class="card-face card-back">
+                    <div class="card-text" id="back-text">Carbonate</div>
+                    <div class="card-hint">Click to flip back</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="progress">
+            <div class="progress-text" id="progress-text">Card 1 of 18</div>
+            <div class="progress-bar-container">
+                <div class="progress-bar" id="progress-bar" style="width: 5.56%"></div>
+            </div>
+        </div>
+
+        <div class="navigation">
+            <button class="btn" onclick="previousCard()">
+                ← Previous
+            </button>
+            <button class="btn" onclick="nextCard()">
+                Next →
+            </button>
+        </div>
+
+        <div class="controls">
+            <button class="btn btn-purple" onclick="shuffleCards()">
+                🔀 Shuffle
+            </button>
+            <button class="btn btn-gray" onclick="resetCards()">
+                ↻ Reset
+            </button>
+        </div>
+
+        <div class="study-tips">
+            <h3>Study Tips:</h3>
+            <ul>
+                <li>• Use "Shuffle" to randomize the order for better learning</li>
+                <li>• Toggle study mode to practice both directions (formula→name and name→formula)</li>
+                <li>• Say the answer out loud before flipping the card</li>
+                <li>• Focus on the patterns: -ate has more oxygen than -ite</li>
+                <li>• Remember the "four 4s": SO₄²⁻, PO₄³⁻, CrO₄²⁻</li>
+            </ul>
+        </div>
+    </div>
+
+    <script>
+        const flashcardsData = [
+            { formula: 'CO₃²⁻', name: 'Carbonate' },
+            { formula: 'OH⁻', name: 'Hydroxide' },
+            { formula: 'NO₃⁻', name: 'Nitrate' },
+            { formula: 'NO₂⁻', name: 'Nitrite' },
+            { formula: 'SO₄²⁻', name: 'Sulfate' },
+            { formula: 'SO₃²⁻', name: 'Sulfite' },
+            { formula: 'CH₃CO₂⁻', name: 'Acetate' },
+            { formula: 'ClO₃⁻', name: 'Chlorate' },
+            { formula: 'CrO₄²⁻', name: 'Chromate' },
+            { formula: 'Cr₂O₇²⁻', name: 'Dichromate' },
+            { formula: 'PO₄³⁻', name: 'Phosphate' },
+            { formula: 'O₂²⁻', name: 'Peroxide' },
+            { formula: 'NH₄⁺', name: 'Ammonium' },
+            { formula: 'HCO₃⁻', name: 'Hydrogen Carbonate (Bicarbonate)' },
+            { formula: 'HSO₄⁻', name: 'Hydrogen Sulfate (Bisulfate)' },
+            { formula: 'Hg₂²⁺', name: 'Dimercury (Mercury I)' },
+            { formula: 'Ag⁺', name: 'Silver' },
+            { formula: 'Zn²⁺', name: 'Zinc' }
+        ];
+
+        let cards = [...flashcardsData];
+        let currentIndex = 0;
+        let isFlipped = false;
+        let studyMode = 'formula'; // 'formula' or 'name'
+
+        function updateCard() {
+            const flashcard = document.getElementById('flashcard');
+            
+            // Disable transition temporarily to prevent animation
+            flashcard.style.transition = 'none';
+            flashcard.classList.remove('flipped');
+            isFlipped = false;
+            
+            // Force reflow to ensure the DOM update is processed
+            flashcard.offsetHeight;
+            
+            // Re-enable transition
+            flashcard.style.transition = '';
+            
+            const card = cards[currentIndex];
+            const frontText = document.getElementById('front-text');
+            const backText = document.getElementById('back-text');
+            
+            if (studyMode === 'formula') {
+                frontText.textContent = card.formula;
+                backText.textContent = card.name;
+            } else {
+                frontText.textContent = card.name;
+                backText.textContent = card.formula;
+            }
+            
+            updateProgress();
+        }
+
+        function updateProgress() {
+            const progressText = document.getElementById('progress-text');
+            const progressBar = document.getElementById('progress-bar');
+            
+            progressText.textContent = `Card ${currentIndex + 1} of ${cards.length}`;
+            const percentage = ((currentIndex + 1) / cards.length) * 100;
+            progressBar.style.width = percentage + '%';
+        }
+
+        function flipCard() {
+            const flashcard = document.getElementById('flashcard');
+            isFlipped = !isFlipped;
+            
+            if (isFlipped) {
+                flashcard.classList.add('flipped');
+            } else {
+                flashcard.classList.remove('flipped');
+            }
+        }
+
+        function nextCard() {
+            currentIndex = (currentIndex + 1) % cards.length;
+            updateCard();
+        }
+
+        function previousCard() {
+            currentIndex = (currentIndex - 1 + cards.length) % cards.length;
+            updateCard();
+        }
+
+        function shuffleCards() {
+            cards = [...cards].sort(() => Math.random() - 0.5);
+            currentIndex = 0;
+            const flashcard = document.getElementById('flashcard');
+            flashcard.classList.remove('flipped');
+            isFlipped = false;
+            updateCard();
+        }
+
+        function resetCards() {
+            cards = [...flashcardsData];
+            currentIndex = 0;
+            const flashcard = document.getElementById('flashcard');
+            flashcard.classList.remove('flipped');
+            isFlipped = false;
+            updateCard();
+        }
+
+        function toggleStudyMode() {
+            studyMode = studyMode === 'formula' ? 'name' : 'formula';
+            const modeText = document.getElementById('mode-text');
+            modeText.textContent = studyMode === 'formula' ? 'Formula → Name' : 'Name → Formula';
+            
+            const flashcard = document.getElementById('flashcard');
+            flashcard.classList.remove('flipped');
+            isFlipped = false;
+            updateCard();
+        }
+
+        // Keyboard navigation
+        document.addEventListener('keydown', function(event) {
+            if (event.key === 'ArrowRight') {
+                nextCard();
+            } else if (event.key === 'ArrowLeft') {
+                previousCard();
+            } else if (event.key === ' ' || event.key === 'Enter') {
+                event.preventDefault();
+                flipCard();
+            }
+        });
+
+        // Initialize
+        updateCard();
+    </script>
+</body>
+</html>

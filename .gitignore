@@ -9,7 +9,5 @@
 .DS_Store
 .trash/
 node_modules/
-
-# Large local installers
 Coding Output/Latex/basic-miktex-25.12-x64.exe
 Coding Output/Latex/strawberry-perl-5.42.0.1-64bit.msi

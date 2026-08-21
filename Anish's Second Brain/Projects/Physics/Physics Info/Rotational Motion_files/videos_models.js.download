@@ -1,0 +1,491 @@
+/**
+ * Original author: Paul Salerno <psalerno@artofproblemsolving.com>
+ *
+ * Holds the models for the videos page.
+ */
+
+AoPS.Videos = {};
+
+AoPS.Videos.Models = (function (VideosModels) {
+	var ajax_runner = new AoPS.Ajax.ScriptRunner("/m/videos/ajax.php");
+
+	VideosModels.Master = Backbone.Model.extend({
+		defaults: {
+			// Object associating unique IDs to each collection that has already been loaded by the user.
+			loaded_collections: {},
+		},
+
+		initialize: function () {},
+	});
+
+	VideosModels.Admin = Backbone.Model.extend({
+		defaults: {},
+
+		initialize: function () {},
+
+		createVideo: function (params) {
+			var model = this;
+			var $div = $("<div />")
+				.css({padding: "5px"})
+				.text("Beep beep boop... processing.");
+			var modal = $div.showPlainModal({
+				scrollable: true,
+				force_response: true,
+				closeX: false,
+			});
+			ajax_runner.run(
+				"createVideo",
+				{
+					contest: params.contest,
+					youtube_id: params.youtube_id,
+					year: params.year,
+					title: params.title,
+					subtitle: params.subtitle,
+					num10: params.number_on_10,
+					num12: params.number_on_12,
+					num_aime: params.number_on_aime,
+					version: params.version,
+				},
+				function (passed, data) {
+					AoPS.Ui.Modal.removeModal(modal);
+					if (passed) {
+						model.trigger("table_refresh");
+						AoPS.Ui.Modal.showMessage(data.response);
+					} else {
+						AoPS.Ui.Modal.showAlert(data.error_msg);
+					}
+				}
+			);
+		},
+
+		searchContestVideos: function (contest, youtube_id, year, success) {
+			var $div = $("<div />")
+				.css({padding: "5px"})
+				.text("Beep beep boop... processing.");
+			var modal = $div.showPlainModal({
+				scrollable: true,
+				force_response: true,
+				closeX: false,
+			});
+			ajax_runner.run(
+				"searchContestVideos",
+				{
+					contest: contest,
+					youtube_id: youtube_id,
+					year: year,
+				},
+				function (passed, data) {
+					AoPS.Ui.Modal.removeModal(modal);
+					if (passed) {
+						success(data.response);
+					} else {
+						AoPS.Ui.Modal.showAlert(data.error_msg);
+					}
+				}
+			);
+		},
+
+		deleteContestVideo: function (row_id, video_id) {
+			var model = this;
+			var $div = $("<div />")
+				.css({padding: "5px"})
+				.text("Beep beep boop... processing.");
+			var modal = $div.showPlainModal({
+				scrollable: true,
+				force_response: true,
+				closeX: false,
+			});
+			ajax_runner.run(
+				"deleteContestVideo",
+				{
+					row_id: row_id,
+					video_id: video_id,
+				},
+				function (passed, data) {
+					AoPS.Ui.Modal.removeModal(modal);
+					model.trigger("table_refresh");
+					if (passed) {
+						AoPS.Ui.Modal.showMessage(data.response);
+					} else {
+						AoPS.Ui.Modal.showAlert(data.error_msg);
+					}
+				}
+			);
+		},
+
+		editContestVideo: function (value, cell_type, row_id) {
+			var model = this;
+			var $div = $("<div />")
+				.css({padding: "5px"})
+				.text("Beep beep boop... processing.");
+			var modal = $div.showPlainModal({
+				scrollable: true,
+				force_response: true,
+				closeX: false,
+			});
+
+			var field_name = "";
+			switch (cell_type) {
+				case "display-order-cell":
+					field_name = "display_order";
+					break;
+				case "video-title-cell":
+					field_name = "video_title";
+					break;
+				case "subtitle-cell":
+					field_name = "subtitle";
+					break;
+				case "year-cell":
+					field_name = "year";
+					break;
+				default:
+					console.log("videos_models.js : editField impossible case");
+					break;
+			}
+
+			ajax_runner.run(
+				"editContestVideo",
+				{
+					value: value,
+					field_name: field_name,
+					row_id: row_id,
+				},
+				function (passed, data) {
+					AoPS.Ui.Modal.removeModal(modal);
+					model.trigger("table_refresh");
+					if (passed) {
+						AoPS.Ui.Modal.showMessage(data.response);
+					} else {
+						AoPS.Ui.Modal.showAlert(data.error_msg);
+					}
+				}
+			);
+		},
+	});
+
+	// Model holding video data on chapter of a subject.
+	VideosModels.Chapter = Backbone.Model.extend({
+		defaults: {
+			chapter_title: "",
+			chapter_subtitle: "",
+			contest_type: "",
+			section: "",
+			year: "",
+			grade: "",
+			test_version: "",
+			thumbnail_youtube_id: "",
+			thumbnail_video_id: "",
+			thumbnail_video_title: "",
+		},
+
+		initialize: function (data_object) {
+			// The chapter's first video data, which we need since
+			// this is the default thumbnail for that chapter.
+			var first_video_data = this.get("contents")[0];
+
+			this.set({
+				subject_topic: this.get("subject").get("subject_topic"),
+				thumbnail_youtube_id: first_video_data.youtube_id,
+				thumbnail_video_id: first_video_data.video_id,
+				thumbnail_video_title: first_video_data.video_title,
+			});
+
+			// Use the chapter's info to properly format its title,
+			// e.g. 2014 AMC 10 A.
+			this.setChapterTitle();
+
+			// Use the chapter's info to format a shorthand title, which shows up
+			// in urls involving that chapter, e.g. 2014amc10a or chapter1.
+			this.setChapterShorthandTitle();
+		},
+
+		// Returns a video's data from the chapter given its ID.
+		getVideoDataByVideoId: function (vid_id) {
+			// Loop through each video's data in contents until we find one that matches the ID.
+			for (
+				var i = 0, contents = this.get("contents");
+				i < contents.length;
+				i++
+			) {
+				if (parseInt(contents[i].video_id) === parseInt(vid_id)) {
+					contents[i].chapter_shorthand_title = this.get(
+						"chapter_shorthand_title"
+					);
+					contents[i].subject_topic = this.get("subject_topic");
+					contents[i].subject_url_id =
+						this.get("subject").get("subject_url_id");
+					return contents[i];
+				}
+			}
+		},
+
+		// Use the chapter's info to format a shorthand title, which shows up
+		// in urls involving that chapter, e.g. 2014amc10a or chapter1.
+		setChapterShorthandTitle: function () {
+			var chapter_shorthand_title;
+
+			if (this.get("subject_topic") === "MATHCOUNTS") {
+				//title looks like 'mc2012' for mathcounts.
+				chapter_shorthand_title = "mc" + this.get("year");
+			} else {
+				//Removes all white space in chapter title and makes it lower case.
+				chapter_shorthand_title = this.get("chapter_title")
+					.replace(/\s+/g, "")
+					.toLowerCase();
+			}
+
+			this.set({chapter_shorthand_title: chapter_shorthand_title});
+		},
+
+		// Use the chapter's info to properly format its title, e.g. 2014 AMC 10 A.
+		setChapterTitle: function () {
+			var grade = this.get("grade"),
+				chapter_title,
+				// String we use to generate the chapter title with handlebars.
+				// We do this because grade might be blank for AIME.
+				grade_string = grade ? " " + grade + " " : " ";
+
+			switch (this.get("subject_topic")) {
+				case "AMC":
+					chapter_title =
+						this.get("year") +
+						" " +
+						this.get("contest_type") +
+						grade_string +
+						this.get("test_version");
+
+					break;
+				case "MATHCOUNTS":
+					chapter_title = this.get("year") + " MATHCOUNTS State Competition";
+
+					break;
+				case "Counting & Probability":
+				case "Prealgebra":
+				case "Algebra":
+					chapter_title = "Chapter " + this.get("chapter_number");
+
+					break;
+
+				default:
+					chapter_title = "";
+			}
+
+			this.set({chapter_title: chapter_title});
+		},
+	});
+
+	// A collection of chapter models.
+	VideosModels.ChapterCollection = Backbone.Collection.extend({
+		model: VideosModels.Chapter,
+
+		// Return chapter with a given chapter shorthand title.
+		getChapter: function (chapter_id) {
+			return this.findWhere({chapter_shorthand_title: chapter_id});
+		},
+
+		// Only ever run if it actually has a next chapter.
+		getNextChapter: function (chapter_model) {
+			var index = this.indexOf(chapter_model);
+
+			return this.at(index + 1);
+		},
+
+		// Only ever run if it actually has a previous chapter.
+		getPreviousChapter: function (chapter_model) {
+			var index = this.indexOf(chapter_model);
+
+			return this.at(index - 1);
+		},
+
+		// Returns boolean on whether given chapter model
+		// has a next chapter in the collection.
+		hasNextChapter: function (chapter_model) {
+			var index = this.indexOf(chapter_model);
+
+			return index === this.length - 1 ? false : true;
+		},
+
+		// Returns boolean on whether given chapter model
+		// has a previous chapter in the collection.
+		hasPreviousChapter: function (chapter_model) {
+			var index = this.indexOf(chapter_model);
+
+			return index === 0 ? false : true;
+		},
+	});
+
+	// Model holding data on a subject.
+	VideosModels.Subject = Backbone.Model.extend({
+		defaults: {
+			subject_topic: "",
+			chapters_loaded: false,
+		},
+
+		// Fetch all of the chapter models for the subject.
+		fetchChapters: function () {
+			var self = this;
+
+			// AJAX call to get chapter models, given the subject.
+			ajax_runner.run(
+				"fetchChapters",
+				{chapterSubject: this.get("subject_url_id")},
+				function (passed, data) {
+					if (!passed) {
+						if (data.error_msg !== "E_AJAX_FILTERED") {
+							AoPS.Ui.Modal.showAlert(data.error_msg);
+						}
+						return;
+					}
+					var number_of_chapters = data.response.length,
+						chapter_models = new Array();
+
+					for (var i = 0; i < number_of_chapters; i++) {
+						// Store subject model in each chapter.
+						data.response[i].subject = self;
+
+						// Give each chapter a numerical id.
+						data.response[i].id = i;
+
+						chapter_models.push(
+							new AoPS.Videos.Models.Chapter(data.response[i])
+						);
+					}
+
+					var chapterCollection = new AoPS.Videos.Models.ChapterCollection(
+						chapter_models
+					);
+
+					// Store chapter collection as a subject mdoel attribute.  Toggle attribute
+					// to indicate that this subject's chapter models are now loaded.
+					self.set({
+						chapter_collection: chapterCollection,
+						chapters_loaded: true,
+					});
+
+					// Trigger event to indicate that the chapters have been fetched, so
+					// any listeners can now proceed and use the subject's chapter data.
+					self.trigger("chapters_fetched");
+				}
+			);
+		},
+
+		// Given a video ID, return the first chapter model in the book that contains a video with that ID (or returns undefined).
+		// Only ever called after this subject's chapters have been loaded.
+		getChapterByVideoId: function (video_id) {
+			var chapter_collection = this.get("chapter_collection"),
+				// The chapter model that contains the given ID.
+				correct_chapter_model;
+
+			// Iterate through each chapter model and check if it contains a video of that ID.
+			// If so, assign correct_chapter_model to that chapter.
+			chapter_collection.each(function (chapter_model) {
+				if (!_.isUndefined(chapter_model.getVideoDataByVideoId(video_id))) {
+					correct_chapter_model = chapter_model;
+				}
+			});
+
+			return correct_chapter_model;
+		},
+	});
+
+	// Collection of subject models.
+	VideosModels.SubjectCollection = Backbone.Collection.extend({
+		model: VideosModels.Subject,
+
+		// Fetch the data on the "top videos" of each subject model.
+		fetchTopVideos: function () {
+			var self = this;
+
+			ajax_runner.run("fetchTopVideos", {}, function (passed, data) {
+				var i;
+				for (i = 0; i < data.response.length; i++) {
+					// Data on the first "top video" of the subject.
+					// Need this for the thumbnail's initial settings.
+					var first_top_video_data = data.response[i].top_video_data[0],
+						subject_url_id = self.models[i].get("subject_url_id"),
+						is_contest = false;
+
+					// Determine whether the subject is a contest or not.
+					// Need this when we talk about viewing the videos by chapter vs. year.
+					if (subject_url_id === "mathcounts" || subject_url_id === "amc") {
+						is_contest = true;
+					}
+
+					// Store top video data in each subject model, and
+					// set attributes to initialize each subject's thumbnail.
+					self.models[i].set({
+						top_videos_data: data.response[i].top_video_data,
+						thumbnail_youtube_id: first_top_video_data.youtube_id,
+						thumbnail_video_id: first_top_video_data.video_id,
+						thumbnail_video_title: first_top_video_data.video_title,
+						thumbnail_video_url:
+							"/videos/" +
+							subject_url_id +
+							"/" +
+							first_top_video_data.chapter_url_id +
+							"/" +
+							first_top_video_data.video_id,
+						is_contest: is_contest,
+					});
+				}
+
+				// Triggers event that the top video data has been fetched.
+				self.trigger("top_videos_fetched");
+			});
+		},
+
+		// Given a video ID, return the first subject (string ID like "prealgebra") found with a video of that ID.
+		findSubjectWithGivenVideoId: function (vid_id) {
+			var self = this;
+
+			ajax_runner.run(
+				"findSubjectWithGivenVideoId",
+				{video_id: vid_id},
+				function (passed, data) {
+					self.trigger(
+						"subject_given_video_id_fetched",
+						data.response["subject"]
+					);
+				}
+			);
+		},
+
+		//Get a subject's model from the subject collection by its url id.
+		getSubject: function (subject_id) {
+			subject_id = subject_id.toLowerCase();
+
+			return this.findWhere({subject_url_id: subject_id});
+		},
+
+		// Given a subject url id, returns an array containing the url ids and titles
+		// of the other subjects, excluding the one given.  Used for the dropdown menu.
+		getOtherSubjectIdsTitles: function (excluded_subject_url_id) {
+			var other_subjects_id_title_array = new Array();
+
+			this.each(function (subject_model) {
+				var subject_url_id = subject_model.get("subject_url_id");
+
+				if (subject_url_id !== excluded_subject_url_id) {
+					other_subjects_id_title_array.push({
+						subject_url_id: subject_model.get("subject_url_id"),
+						subject_topic: subject_model.get("subject_topic"),
+					});
+				}
+			});
+
+			return other_subjects_id_title_array;
+		},
+	});
+
+	// Model for the video navigator.  Holds info on the currently embedded video,
+	// and the chapter and subject currently being browsed in the navigator.
+	VideosModels.VideoNavigator = Backbone.Model.extend({
+		defaults: {},
+
+		initialize: function () {},
+	});
+
+	VideosModels.GridModel = Backbone.Model.extend({});
+
+	return VideosModels;
+})(AoPS.Videos.Models || {});

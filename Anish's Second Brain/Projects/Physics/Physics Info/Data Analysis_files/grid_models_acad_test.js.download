@@ -1,0 +1,18 @@
+AoPS.Utils.initKeyChain(AoPS, "Grid", "Models");
+
+AoPS.GridModels = (function (Models) {
+	Models.GridAcademyTest = AoPS.Model.extend({});
+
+	Models.GridAcademyTestCollection = Backbone.Collection.extend({
+		model: Models.GridAcademyTest,
+		// sort-by
+		comparator: "test_at",
+		filterByLesson: function (lessonNum) {
+			return new Models.GridAcademyTestCollection(
+				this.where({lesson: parseInt(lessonNum)})
+			);
+		},
+	});
+
+	return Models;
+})(AoPS.Grid.Models);

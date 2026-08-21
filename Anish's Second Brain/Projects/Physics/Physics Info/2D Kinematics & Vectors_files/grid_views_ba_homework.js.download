@@ -1,0 +1,306 @@
+AoPS.Utils.initKeyChain(AoPS, "Grid", "Views");
+
+AoPS.Grid.Views = (function (Views) {
+	// Most of this doesn't have to change much. Everything will happen in a subview, most likely.
+	Views.GridTabBAHomework = Views.GridTabHomework.extend({
+		template_id: "#grid-tab-assignments-tpl",
+		renderProblems: function () {
+			var lesson = _.findWhere(this.model.get("report").lessons, {
+				lesson: this.vars.lesson,
+			});
+			if (this.hasAcademyTest) {
+				this.$(".list-header:last").hide();
+			} else if (lesson && lesson.bars) {
+				var bao = _.findWhere(lesson.bars, {key: "bao"});
+				if (!bao || _.isUndefined(bao.bao) || _.isUndefined(bao.bao.topics)) {
+					// Homework not released.
+					this.$inner.html(
+						this.getTemplate("#grid-tab-ba-homework-lesson-error-tpl", {
+							body:
+								"<strong>" +
+								this.model.get("lesson_units").singular +
+								" " +
+								this.lesson.get("lesson") +
+								"</strong> " +
+								"assignments are not currently available.",
+						})
+					);
+				} else if (bao.bao.topics.length) {
+					this.innerView = new Views.GridTabBAHomeworkLesson({
+						bao: bao.bao,
+						model: this.model,
+						parentView: this,
+					});
+					this.$inner.html("").append(this.innerView.$el);
+					this.$copyright.show();
+				} else {
+					this.$inner.html(
+						this.getTemplate("#grid-tab-ba-homework-lesson-error-tpl", {
+							body:
+								"<strong>" +
+								this.model.get("lesson_units").singular +
+								" " +
+								this.lesson.get("lesson") +
+								"</strong> " +
+								"has no Beast Academy Online topics assigned.",
+						})
+					);
+				}
+			} else {
+				this.$inner.text("No homework data was found for this class.");
+			}
+
+			if (_.isUndefined(this.model.debouncedFetchClassProgress)) {
+				this.model.debouncedFetchClassProgress = _.debounce(
+					_.bind(function () {
+						this.fetchClassProgress();
+					}, this.model),
+					10000,
+					true
+				);
+				$(window).on("focus", this.model.debouncedFetchClassProgress);
+			}
+			this.listenTo(
+				this.model,
+				"report_has_changed",
+				_.bind(function () {
+					this.render();
+				}, this)
+			);
+		},
+		renderHomeworkCaption: function () {
+			this.$plist_hdr.append(
+				$("<span />").text("Beast Academy Online Homework")
+			);
+			this.$plist_hdr.append(
+				$("<span />")
+					.addClass("aops-font grid-antonio-trigger")
+					.text("3")
+					.click(
+						_.bind(function (e) {
+							e.preventDefault();
+							var popup = new Views.GridAntonio({
+								model: this.model,
+								parentView: this,
+								name: this.model.get("hw_antonio_template"),
+							});
+							popup.options.modal = popup.$el.showPlainModal({
+								scrollable: true,
+								title:
+									'<h1 class="grid-antonio-title">Beast Academy Online Homework</h1>',
+								onClose: function () {
+									popup.close();
+								},
+							});
+						}, this)
+					)
+			);
+		},
+		markAsViewed: function () {
+			// Do nothing here.
+		},
+	});
+
+	Views.GridTabBAHomeworkLesson = AoPS.View.extend({
+		template_id: "#grid-tab-ba-homework-lesson-tpl",
+		initialize: function (options) {
+			this.options = options;
+			this.parentView = options.parentView;
+			this.render();
+		},
+		getSubdivisions: function () {
+			if (this.model.get("flavor").bao_version < 2) {
+				return [
+					{
+						title: "Required Lessons",
+						unit: "required lesson",
+						should_complete_all: true,
+						input: _.filter(this.options.bao.topics, function (t) {
+							return t.req;
+						}),
+					},
+					{
+						title: "Mastery Lessons",
+						unit: "mastery lesson",
+						input: _.filter(this.options.bao.topics, function (t) {
+							return !t.req;
+						}),
+					},
+				];
+			} else {
+				return [
+					{
+						title: "Core Lessons",
+						unit: "core lesson",
+						should_complete_all: true,
+						input: _.filter(this.options.bao.topics, function (t) {
+							return t.core;
+						}),
+					},
+					{
+						title: "Enrichment Lessons",
+						unit: "enrichment lesson",
+						input: _.filter(this.options.bao.topics, function (t) {
+							return !t.core;
+						}),
+					},
+				];
+			}
+		},
+		render: function () {
+			this.vars = {
+				lesson_units: this.model.get("lesson_units"),
+				lesson_number: this.parentView.lesson.get("lesson"),
+				base_class_url: this.parentView.options.base_class_url,
+				user_string: this.parentView.options.user_string,
+				play: this.options.bao.play && this.options.bao.exists,
+				exists: this.options.bao.exists,
+				unplayable: _.filter(this.options.bao.topics, function (t) {
+					return t.blockIndex < 0;
+				}),
+				chapter_hashes: _.uniq(
+					_.map(this.options.bao.topics, function (t) {
+						return t.grade.toString() + "-" + t.chapterNumber;
+					})
+				),
+				subs: this.getSubdivisions(),
+			};
+
+			this.vars.num_unplayable = this.vars.unplayable.length;
+			this.vars.num_unplayable_is_plural = this.vars.num_unplayable > 1;
+
+			if (
+				(this.vars.unplayable_chapter = _.uniq(
+					_.pluck(this.vars.unplayable, "chapterNumber")
+				))
+			) {
+				this.vars.unplayable_chapter_is_plural =
+					this.vars.unplayable_chapter.length > 1;
+				this.vars.unplayable_chapter_fmt =
+					"Chapter" +
+					(this.vars.unplayable_chapter_is_plural ? "s " : " ") +
+					AoPS.Grid.Utils.ArrayToCommaSeparatedString(
+						this.vars.unplayable_chapter,
+						{ampersand: true}
+					);
+			}
+
+			this.vars.num_chapters = this.vars.chapter_hashes.length;
+			this.vars.num_chapters_is_plural = this.vars.num_chapters > 1;
+			this.vars.chapter_links = _.map(
+				this.vars.chapter_hashes,
+				function (hash) {
+					return {
+						caption: hash.replace(/^(\d+)-(\d+)*$/i, "$2"),
+						hash: hash,
+					};
+				}
+			);
+
+			_.each(
+				this.vars.subs,
+				_.bind(function (s) {
+					s.rows = [];
+					_.each(
+						s.input,
+						_.bind(function (row) {
+							var min = Math.ceil(row.time / 60);
+							s.rows.push({
+								block_id: row.block_id,
+								grade: row.grade,
+								chapter: row.chapterNumber,
+								chapter_name: row.chapterName,
+								title: row.displayName,
+								completed: row.stars > 0,
+								play: row.blockIndex >= 0,
+								stars: _.times(3, function (n) {
+									return n < row.stars;
+								}),
+								time:
+									(min >= 60 ? Math.floor(min / 60) + " hr " : "") +
+									(min % 60) +
+									" min",
+							});
+						}, this)
+					);
+					s.num = s.rows.length;
+					s.num_completed = _.reduce(
+						s.rows,
+						function (carry, item) {
+							return carry + (item.completed ? 1 : 0);
+						},
+						0
+					);
+				}, this)
+			);
+
+			this.$el.html(this.getTemplate(this.template_id, this.vars));
+
+			if (this.options.bao.num_required + this.options.bao.num_optional > 0) {
+				if (this.vars.exists) {
+					this.$header = this.parentView.$(
+						".lesson-header-outer .cell:first-child .inner:last-child"
+					);
+
+					_.each(
+						this.vars.subs,
+						_.bind(function (s) {
+							if (s.num && s.should_complete_all) {
+								this.$header.append(
+									$("<div />").html(
+										"You need to earn at least one star on each " +
+											(this.model.get("flavor").bao_version < 2
+												? s.unit
+												: "lesson") +
+											" to complete the homework."
+									)
+								);
+							}
+
+							if (s.num) {
+								this.$header.append(
+									$("<div />").html(
+										"You have completed <b>" +
+											s.num_completed +
+											"</b> of " +
+											"<b>" +
+											s.num +
+											"</b> " +
+											s.unit +
+											(s.num === 1 ? "" : "s") +
+											"."
+									)
+								);
+							}
+						}, this)
+					);
+				}
+
+				if (!this.vars.play) {
+					var $header = this.parentView.$(".problem-list-header");
+					var $table = $("<table />").css({
+						width: "100%",
+						"table-layout": "fixed",
+					});
+					var caption = "";
+					if (this.vars.exists) {
+						if (!this.parentView.lesson.get("classes_ended")) {
+							caption = "Lessons will become available after class.";
+						}
+					} else {
+						caption = "(Non-Student Mode)";
+					}
+					$table
+						.append(
+							$("<tr />")
+								.append($("<td />").append($header.children()))
+								.append($("<td />").text(caption))
+						)
+						.appendTo($header);
+				}
+			}
+		},
+	});
+
+	return Views;
+})(AoPS.Grid.Views);

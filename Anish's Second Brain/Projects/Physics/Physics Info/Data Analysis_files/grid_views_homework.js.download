@@ -1,0 +1,2504 @@
+/* global pythonTool */
+
+// Oh hey this file is almost entirely not used
+// Look on views_cronus.js instead thanks!!
+
+AoPS.Utils.initKeyChain(AoPS, "Grid", "Views");
+
+// ###########################################
+// ### PC Student Surveys Helper Functions ###
+// ###########################################
+// Functions for the Physical Campuses Student Survey System to be called by the Backbone View Object.
+// Ideally, these functions would be part of the View Object, but I couldn't find an way to do it.
+// Besides the clunkiness of the code, this also means we need to grab data (like for the questions)
+// outside of the \class\index.php file by using an Ajax call.
+
+// As these questions are only for PC, we should only need then when on Academy Server
+var questions = [];
+
+if (AoPS.bd.in_academy) {
+	fetchPhysicalCampusStudentSurveyQuestions();
+}
+
+// Name says it all....
+function fetchPhysicalCampusStudentSurveyQuestions() {
+	$.post(
+		"/m/class/ajax-student-surveys-grid.php",
+		{
+			action: "load-student-survey-questions",
+		},
+		function (data) {
+			questions = data.response.questions;
+		}
+	);
+}
+
+// We create the html elements which make up the student survey.  Basically, it's a form element with
+// a bunch of radio buttons, and a textbox. The variable 'questions' is an input to this function,
+// but considering those are obatain through another Ajax call in fetchPhysicalCampusStudentSurveyQuestions(),
+// there was a weird timing issue of the asynchronous nature of that call.
+// Thus, we made it a global variable instead which works.
+// Also, I did not know of an easy way to use CSS for the element styles, so they are hardcoded.
+// Ideally, we are able to have a CSS file which both Student Surveys and Teacher Surveys (aka Lesson Feedback)
+// both use, so we don't have to bother changing styles in two places.
+function createPhysicalCampusStudentSurveyHtml() {
+	var ratingsStyle = `
+		style="display: grid;
+		grid-template-columns: auto repeat(5, 1fr);
+		 grid-auto-rows: 1fr;
+		 grid-row-gap: 1em;
+		 grid-column-gap: 0.5em`;
+	var html = "";
+	html += `<form id="student-survey"><div class="ratings" ${ratingsStyle}>`;
+
+	questions.map((question) => {
+		html += `<span class="subject"> ${question.subject}</span>`;
+
+		var optionDivStyle = `style="
+		display: flex;
+		flex-direction: column-reverse;
+		align-items: center;
+		justify-content: start;
+		text-align: center;
+		height: 100%;
+		padding-left: 0.5em;
+		padding-right: 0.5em;"`;
+		var question_id = question.id;
+		var labels = Object.entries(question.labels_json);
+		labels.map((label) => {
+			var label_id = label[0];
+			var label_name = label[1];
+			html += `<div class="option-div"${optionDivStyle}>
+					<label for="response-${question_id}-${label_id}">${label_name}</label>
+					<input type="radio" name="response-${question_id}" value="${label_id}" id="response-${question_id}-${label_id}">
+				</div>`;
+		});
+	});
+
+	html += `</div>`;
+
+	var additionalCommentsDivStyle = `style="
+		display: flex;
+		flex-direction: column;"`;
+	var additionalCommentsTextAreaStyle = `style="
+		width: 100%;
+		resize: vertical;
+		min-height: 80px;"`;
+
+	html += `
+		<div class="additional-comments" ${additionalCommentsDivStyle}>
+			<div id="submitted-feedback-comments" class="submitted-comment"></div>
+			<label for="additional-comments">Is there anything else we should know about how your class is going? Let us know!</label>
+			<textarea name="response-6" id="response-6" placeholder="(optional)" ${additionalCommentsTextAreaStyle}></textarea>
+		</div>`;
+
+	html += `</form>`;
+
+	return html;
+}
+
+// We build a Modal for survey to be completed by a student.  We also handle the Ajax call to store the survey data.
+// This Modal is called in the associated Handlebars file.
+AoPS.Ui.Modal.physicalCampusStudentSurvey = function (
+	user_id,
+	class_id,
+	instance
+) {
+	var html_new = createPhysicalCampusStudentSurveyHtml();
+
+	AoPS.Ui.Modal.showButtonsQuick(
+		html_new,
+		[
+			{text: "Cancel", value: "cancel"},
+			{text: "Submit Feedback", value: "submit"},
+		],
+		function (value) {
+			if (value === "submit") {
+				// Grab the form data
+				var form = document.getElementById("student-survey");
+				var formData = new FormData(form);
+				var formObjectData = [...formData.entries()];
+
+				// and create an array of responses, where each response is a vector with the question ID and response
+				var responses = [];
+
+				formObjectData.map((data) => {
+					// Obatin question ID by grabbing the number after the '-'
+					var question_id = data[0].substring(data[0].indexOf("-") + 1);
+					var response = data[1];
+					// This is to exclude a short answer response with an empty string
+					if (response != "") {
+						responses.push([question_id, response]);
+					}
+				});
+				$.post(
+					"/m/class/ajax-student-surveys-grid.php",
+					{
+						action: "save-student-survey-academic-year-response",
+						"user-id": user_id,
+						"class-id": class_id,
+						instance: instance,
+						responses: responses,
+					},
+					function (result) {
+						// Just in case the user isn't actually in the class.
+						if (result.error_code === "E_NOT_ENROLLED") {
+							AoPS.Ui.Modal.showAlert(result.error_msg);
+						}
+						// Upon success, we change the language on the page and disable the ability to take the survey again.
+						if (!result.error_msg) {
+							var click_bait_div = document.getElementById(
+								"physical-campus-survey-click-bait"
+							);
+							click_bait_div.textContent =
+								"Thank you for submitting this survey!";
+							click_bait_div.onclick = null;
+						}
+					}
+				);
+			}
+		},
+		{
+			max_height: "1000px",
+			title: "Optional Student Survey",
+		}
+	);
+};
+
+// ##############################
+// ### Homework View Function ###
+// ##############################
+
+AoPS.Grid.Views = (function (Views) {
+	Views.GridTabAssignments = Views.GridTab.extend({
+		template_id: "#grid-tab-assignments-tpl",
+		onAddToPage: function (obj) {
+			this.allow_stretch_redirect = true;
+
+			if (obj.args.join("/") != this.options.args.join("/")) {
+				if (obj.args.length > 0) {
+					this.options.args = obj.args;
+					this.render();
+				} else {
+					Backbone.history.navigate(
+						this.options.history_tab_url +
+							"/" +
+							this.options.args.join("/") +
+							this.options.user_string,
+						{replace: true}
+					);
+					return;
+				}
+			}
+		},
+		preserveEl: true,
+		loadFirst: function (success) {
+			if (!this.model.get("master").get("grid_data").config.homework_active) {
+				return;
+			}
+
+			var overview = this.model
+				.get("my_grid_tabs")
+				.findWhere({hash: "overview"});
+
+			this.vars.show_survey =
+				this.model.get("show_class_survey") &&
+				!this.model.get("survey_completed") &&
+				overview;
+
+			this.vars.lesson = _.isUndefined(this.options.args[0])
+				? this.options.homework_lesson
+				: parseInt(this.options.args[0]);
+
+			//comment to force autopull
+			this.vars.class_string = this.model.get("class_string");
+
+			// This relies on 'this.vars.lesson', so make sure to keep this below that definition
+			if (AoPS.bd.is_physical_campus) {
+				this.loadPhysicalCampusStudentSurveyInfo();
+			}
+
+			this.vars.can_edit_class_transcript =
+				this.model.get("perms").me.can_edit_class_transcript;
+			this.vars.lesson_units = this.model.get("lesson_units");
+
+			this.page_feed_heading =
+				this.model.get("lesson_units").singular +
+				" " +
+				this.vars.lesson +
+				" " +
+				(this.options.tab_caption || "Homework");
+			this.page_url = this.options.base_tab_url + "/" + this.vars.lesson;
+
+			if (!_.isUndefined(this.weeklyProblemViews)) {
+				_.each(this.weeklyProblemViews, function (pv) {
+					pv.$el.detach();
+				});
+			}
+
+			if (
+				!_.isUndefined(
+					this.model.get("master").get("lesson_has_homework")[this.vars.lesson]
+				) &&
+				this.model.get("master").get("lesson_has_homework")[this.vars.lesson] >
+					0
+			) {
+				this.render(true);
+			} else {
+				this.$el.html(this.getTemplate(this.template_id, this.vars));
+				this.$selectors = this.$(".lesson-selector");
+				this.$inner = this.$(".inner");
+
+				this.renderSelector(this.vars.lesson);
+				this.resizeLessonContext();
+				this.$inner
+					.css({padding: "10px 5px"})
+					.text(
+						"Loading " +
+							this.vars.lesson_units.singular +
+							" " +
+							this.vars.lesson +
+							" Homework..."
+					);
+
+				this.model.get("master").executeWhenHomeworkLoaded(
+					{lesson: this.vars.lesson, display: 1},
+					_.bind(function () {
+						success();
+					}, this)
+				);
+			}
+		},
+		// We grab and define all the extra data needed to run the PC Student Survey System.
+		// The only other piece of data we need is the 'this.vars.lesson', which is defined above
+		loadPhysicalCampusStudentSurveyInfo: function () {
+			this.vars.class_id = this.model.get("class_id");
+			this.vars.user_id = this.options.user_string.substr(
+				this.options.user_string.indexOf("=") + 1
+			);
+			this.vars.user_id = this.vars.user_id
+				? this.vars.user_id
+				: this.model.get("aops_user_id");
+			var survey_instances = this.model.get("physical_campus_survey_instances");
+
+			this.vars.physical_campus_show_survey =
+				this.model.get("physical_campus_show_survey") &&
+				survey_instances.includes(this.vars.lesson.toString());
+
+			var survey_taken_account_ids = this.model.get(
+				"physical_campus_survey_taken_account_ids"
+			);
+			this.vars.physical_campus_survey_completed =
+				survey_taken_account_ids[this.vars.user_id] &&
+				survey_taken_account_ids[this.vars.user_id].includes(
+					this.vars.lesson.toString()
+				);
+		},
+		prerenderHelper: function () {
+			if (_.isUndefined(this.allProblemViews)) {
+				this.allProblemViews = new Backbone.Collection();
+			}
+
+			if (!_.isUndefined(this.weeklyProblemViews)) {
+				_.each(this.weeklyProblemViews, function (pv) {
+					pv.$el.detach();
+				});
+			}
+			this.weeklyProblemViews = [];
+
+			if (
+				_.isUndefined(
+					(this.lesson = this.model
+						.get("hw_lessons")
+						.findWhere({lesson: this.vars.lesson}))
+				) ||
+				this.vars.lesson > this.model.get("max_disp_lesson")
+			) {
+				this.lesson = this.model
+					.get("hw_lessons")
+					.findWhere({lesson: this.options.homework_lesson});
+				this.vars.lesson = this.options.homework_lesson;
+			}
+			this.options.args[0] = this.vars.lesson;
+		},
+		constructCrumbs: function () {
+			if (this.lesson) {
+				return [
+					{
+						text:
+							this.options.tab_caption +
+							" " +
+							this.model.get("lesson_units").singular +
+							" " +
+							this.lesson.get("lesson"),
+					},
+				];
+			} else {
+				return [];
+			}
+		},
+		renderAcademyTests: function () {
+			this.hasAcademyTest = false;
+			var lesson = _.findWhere(this.model.get("report").lessons, {
+				lesson: this.vars.lesson,
+			});
+
+			if (lesson && lesson.bars) {
+				var bars = _.filter(lesson.bars, function (b) {
+					return _.contains(["hw", "bao"], b.key) && !_.isUndefined(b.test);
+				});
+				_.each(
+					bars.slice(0, 1),
+					_.bind(function (bar) {
+						var $hdr = $("<div />")
+							.addClass("list-header")
+							.text("Test")
+							.insertAfter(this.$header.parent());
+						_.each(
+							bar.test.tests.sort(
+								_.bind(function (t1, t2) {
+									var test1 = this.model.get("academy_tests").findWhere({
+										name: t1.name,
+									});
+									var test2 = this.model.get("academy_tests").findWhere({
+										name: t2.name,
+									});
+									return test1.get("test_number") > test2.get("test_number")
+										? 1
+										: -1;
+								}, this)
+							),
+							_.bind(function (t, i) {
+								if (t.weight > 0) {
+									var $fp = $("<div />")
+										.addClass("grid-tab-assignments-problem")
+										.insertAfter($hdr);
+									$("<div />")
+										.addClass("problem-header grid-bg-default")
+										.text(t.name || "Test")
+										.appendTo($fp);
+									var test = this.model.get("academy_tests").findWhere({
+										name: t.name,
+									});
+									var test_url = test.get("ba_test_url");
+									if (
+										this.model.get("flavor").hash.includes("-bao") &&
+										!this.model.get("course_id").includes("-la") &&
+										test &&
+										test_url
+									) {
+										var test_url_split = test_url.split("/");
+										if (
+											test_url_split.length >= 2 &&
+											test_url_split[test_url_split.length - 2] === "book-test"
+										) {
+											test_url =
+												"/class/bao/book-test/" +
+												test_url_split[test_url_split.length - 1];
+											// the redirect happens at /m/class/index.php
+										}
+									}
+									if (!this.model.get("flavor").hash.includes("-bao") && test) {
+										test_url = window.location.pathname.replace(
+											"/homework",
+											"/test"
+										);
+									}
+									var go_to_exam =
+										"Go to <a target='_blank' href='" +
+										test_url +
+										"'>exam</a>.<br>";
+									var $fp_body = $("<div />")
+										.addClass("body")
+										.appendTo(
+											$("<div />")
+												.addClass("problem-box gray")
+												.appendTo(
+													$("<div />")
+														.addClass("problem-block first")
+														.appendTo(
+															$("<div />")
+																.addClass("problem-body")
+																.appendTo($fp)
+														)
+												)
+										);
+
+									if (
+										t.denom &&
+										(test.get("lesson") <=
+											this.model.get("current_lesson") - 2 ||
+											test.get("solution"))
+									) {
+										$fp_body.html(
+											go_to_exam +
+												"Your score is " +
+												t.num +
+												" out of " +
+												t.denom +
+												(t.gorilla_num
+													? " (Beast Points: " + t.gorilla_num + ")"
+													: "") +
+												"."
+										);
+
+										var max_per_line;
+										if ($(window).width() > 1200) {
+											max_per_line = 10;
+										} else if ($(window).width() > 1000) {
+											max_per_line = 8;
+										} else if ($(window).width() > 800) {
+											max_per_line = 7;
+										} else {
+											max_per_line = 5;
+										}
+										if (
+											bar.test.problems &&
+											bar.test.problems[i] !== undefined
+										) {
+											var problems = bar.test.problems[i];
+											if (problems.length) {
+												var score_wrapper = $("<div />")
+													.addClass("body")
+													.appendTo(
+														$("<div />")
+															.addClass("problem-box gray")
+															.css({"padding-top": "0"})
+															.appendTo(
+																$("<div />")
+																	.addClass("problem-block")
+																	.appendTo($fp.find(".problem-body"))
+															)
+													);
+												var score_table = $("<table />").addClass(
+													"hw-blocks-test-table"
+												);
+												var indexes = $("<tr />");
+												var scores = $("<tr />");
+												var problem_number;
+												$("<td />").html("<b>Problem</b>").appendTo(indexes);
+												$("<td />").html("<b>Score</b>").appendTo(scores);
+												_.each(problems, function (problem, num) {
+													problem_number = num + 1;
+													$("<td />").html(problem_number).appendTo(indexes);
+													$("<td />").html(problem.num).appendTo(scores);
+
+													if (problem_number % max_per_line == 0) {
+														indexes.appendTo(score_table);
+														scores.appendTo(score_table);
+
+														indexes = $("<tr />");
+														scores = $("<tr />");
+														$("<td />")
+															.html("<b>Problem</b>")
+															.appendTo(indexes);
+														$("<td />").html("<b>Score</b>").appendTo(scores);
+													}
+												});
+												if (problem_number % max_per_line != 0) {
+													indexes.appendTo(score_table);
+													scores.appendTo(score_table);
+												}
+
+												score_table.appendTo(score_wrapper);
+											}
+										}
+
+										if (t.student_comment && t.student_comment !== undefined) {
+											var $comment = $("<div />")
+												.addClass("body")
+												.appendTo(
+													$("<div />")
+														.addClass("problem-box gray")
+														.css({"padding-top": "0"})
+														.appendTo(
+															$("<div />")
+																.addClass("problem-block")
+																.appendTo($fp.find(".problem-body"))
+														)
+												);
+
+											$comment.html(
+												"<span><b>Teacher comments: </b></span>" +
+													t.student_comment.comment_fmt
+											);
+										}
+
+										if (t.legend && t.legend.length) {
+											var template = Handlebars.compile(t.legend);
+											var tr_blue = Math.ceil(t.denom * t.map[3]);
+											var tr_green = Math.ceil(t.denom * t.map[2]);
+											var $yellow = $("<div />")
+												.addClass("body")
+												.appendTo(
+													$("<div />")
+														.addClass("problem-box gray")
+														.css({"padding-top": "0"})
+														.appendTo(
+															$("<div />")
+																.addClass("problem-block")
+																.appendTo($fp.find(".problem-body"))
+														)
+												);
+
+											$yellow.html(
+												template({
+													mastery_min: Math.min(tr_blue, t.denom),
+													mastery_max: t.denom,
+													passing_min: Math.min(tr_green, tr_blue - 1, t.denom),
+													passing_max: Math.min(tr_blue - 1, t.denom),
+													improve_max: Math.min(
+														tr_green - 1,
+														tr_blue - 1,
+														t.denom
+													),
+												})
+											);
+										}
+									} else if (
+										lesson.lesson < this.model.get("max_disp_lesson") ||
+										test.get("lesson") > this.model.get("current_lesson") - 2
+									) {
+										// ignore-security-checks
+										$fp_body.html(go_to_exam + "Your score is not available.");
+									} else {
+										$fp_body.text((t.name || "Test") + " will not be held.");
+									}
+								}
+							}, this)
+						);
+
+						this.hasAcademyTest = true;
+						this.$(".lesson-header-outer .cell:first-child").hide();
+					}, this)
+				);
+			}
+		},
+		markAsViewed: function () {
+			this.lesson.markAsViewed();
+		},
+		renderHelper: function () {
+			this.$el.addClass("grid-tab-assignments");
+			if (!this.model.get("master").get("grid_data").config.homework_active) {
+				this.$el
+					.html("")
+					.append(
+						$("<div />")
+							.addClass("error-box")
+							.text(
+								this.model.get("master").get("grid_data").config
+									.homework_disabled_msg
+							)
+					);
+				return;
+			}
+
+			this.lesson = this.model
+				.get("hw_lessons")
+				.findWhere({lesson: this.vars.lesson});
+			this.$selectors = this.$(".lesson-selector");
+
+			this.$header = this.$(".lesson-header");
+			this.$plist_hdr = this.$(".problem-list-header");
+			this.$inner = this.$(".inner");
+			this.$copyright = this.$(".copyright-notice");
+
+			this.markAsViewed();
+			this.renderSelector(this.options.homework_lesson);
+
+			if (_.isFunction(this.renderHeader)) {
+				this.renderHeader();
+				this.listenTo(
+					this.model,
+					"report_has_changed",
+					_.bind(function () {
+						this.$header.find("tr").remove();
+						this.renderHeader();
+					}, this)
+				);
+			} else {
+				this.$header.parent().hide();
+			}
+
+			if (
+				this.model.get("campus_id") != "web" &&
+				this.model.get("is_virtual")
+			) {
+				this.renderAcademyTests();
+			}
+			this.renderProblems();
+
+			$(window).on("resize", _.bind(this.resizeLessonContext, this));
+			this.resizeLessonContext();
+		},
+		fetchSelectorHref: function (i) {
+			return this.options.base_tab_url + "/" + i + this.options.user_string;
+		},
+		events: {
+			"click .lesson-header .grid-start-topic": "onClickStartTopic",
+			"click .lesson-header .grid-open-page-feed": "onClickOpenFeed",
+		},
+		renderProblems: function () {
+			if (_.isUndefined(this.debouncedUpdateHasChanged)) {
+				this.debouncedUpdateHasChanged = _.debounce(
+					_.bind(this.updateHasChanged, this),
+					500
+				);
+			}
+			this.hw_problems = this.lesson.get("hw_problems");
+			if (this.hw_problems.length) {
+				this.hw_problems.each(
+					_.bind(function (problem) {
+						var found = this.allProblemViews.findWhere({
+							problem_id: problem.get("problem_id"),
+						});
+						if (found) {
+							this.$inner.append(found.get("view").$el);
+							this.weeklyProblemViews.push(found.get("view"));
+						} else {
+							var viewModel =
+								Views.GridTabAssignmentsCronus ||
+								Views.GridTabAssignmentsProblem;
+							var view = new viewModel({
+								model: problem,
+								parentView: this,
+							});
+							this.allProblemViews.add({
+								problem_id: problem.get("problem_id"),
+								view: view,
+							});
+							this.weeklyProblemViews.push(view);
+							this.$inner.append(view.$el);
+							view.render(true);
+						}
+					}, this)
+				);
+				this.updateHasChanged();
+				this.$copyright.show();
+			} else {
+				this.$plist_hdr.hide();
+			}
+		},
+		updateHasChanged: function () {
+			this.model.get("master").resetNagController();
+			_.each(
+				this.weeklyProblemViews,
+				_.bind(function (pv) {
+					var freeResponse = pv.problemSubViews["FreeResponse"];
+					if (pv.problemSubViews && freeResponse) {
+						if (freeResponse.editing && freeResponse.hasChanged()) {
+							this.model.get("master").setNagController({
+								should_nag: true,
+								$scroll:
+									this.model.get("master").get("nag_controller").$scroll ||
+									pv.$el,
+							});
+						}
+					}
+
+					var shortAnswer = pv.problemSubViews["ShortAnswer"];
+					if (pv.problemSubViews && shortAnswer) {
+						if (
+							shortAnswer.isNotEmpty() &&
+							shortAnswer.hasChanged() &&
+							!shortAnswer.model.get("done_at")
+						) {
+							this.model.get("master").setNagController({
+								should_nag: true,
+								$scroll:
+									this.model.get("master").get("nag_controller").$scroll ||
+									pv.$el,
+							});
+						}
+					}
+
+					var physics = pv.problemSubViews["Physics"];
+					if (pv.problemSubViews && physics) {
+						if (
+							physics.isNotEmpty() &&
+							physics.hasChanged() &&
+							!physics.model.get("done_at")
+						) {
+							this.model.get("master").setNagController({
+								should_nag: true,
+								$scroll:
+									this.model.get("master").get("nag_controller").$scroll ||
+									pv.$el,
+							});
+						}
+					}
+
+					var matrixOrVector = pv.problemSubViews["MatrixOrVector"];
+					if (pv.problemSubViews && matrixOrVector) {
+						if (
+							matrixOrVector.isNotEmpty() &&
+							matrixOrVector.hasChanged() &&
+							!matrixOrVector.model.get("done_at")
+						) {
+							this.model.get("master").setNagController({
+								should_nag: true,
+								$scroll:
+									this.model.get("master").get("nag_controller").$scroll ||
+									pv.$el,
+							});
+						}
+					}
+
+					var motor = pv.problemSubViews["Motor"];
+					if (pv.problemSubViews && motor) {
+						if (
+							motor.isNotEmpty() &&
+							motor.hasChanged() &&
+							!motor.model.get("done_at")
+						) {
+							this.model.get("master").setNagController({
+								should_nag: true,
+								$scroll:
+									this.model.get("master").get("nag_controller").$scroll ||
+									pv.$el,
+							});
+						}
+					}
+				}, this)
+			);
+		},
+		setPageFeed: function () {
+			if (AoPS.Feed) {
+				AoPS.Feed.setPageFeed(
+					this.model.get("forum_id"),
+					this.page_url,
+					this.page_feed_heading
+				);
+			}
+		},
+		onClickStartTopic: function () {
+			var visible_tag =
+				this.model.get("lesson_units").singular +
+				" " +
+				this.lesson.get("lesson") +
+				" " +
+				(this.options.tab_caption || "Homework");
+
+			AoPS.Feed.startNewTopic({
+				category_id: this.model.get("forum_id"),
+				linked_tag: visible_tag,
+				target_text: "the " + visible_tag,
+				subtitle: this.page_feed_heading,
+				target_url: this.page_url,
+			});
+		},
+		onClickOpenFeed: function () {
+			AoPS.Feed.openPageFeed(
+				this.model.get("forum_id"),
+				this.page_url,
+				this.page_feed_heading
+			);
+		},
+	});
+
+	Views.GridTabDiscussionHomework = Views.GridTabAssignments.extend({});
+
+	Views.GridTabHomework = Views.GridTabAssignments.extend({
+		renderHeader: function () {
+			if (!this.model.get("master").get("grid_data").config.homework_active) {
+				this.$header.parent().hide();
+				return;
+			}
+
+			this.header = [];
+			this.$header.html("");
+			this.$plist_hdr.html("");
+
+			this.renderHeaderHomework();
+			this.renderHeaderAlcumus();
+			this.renderHeaderReadings();
+
+			if (this.header.length) {
+				_.each(
+					this.header,
+					_.bind(function (info) {
+						var $header = $("<div />").addClass("cell").appendTo(this.$header);
+
+						var $title = $("<div />")
+							.addClass("lesson-header-row")
+							.append($("<h3 />").html(info.title));
+
+						$header.append(
+							$("<div />").addClass("header inner").append($title)
+						);
+
+						if (info.$body.text().trim()) {
+							$header.append($("<div />").addClass("inner").append(info.$body));
+						}
+					}, this)
+				);
+
+				this.$header_top = this.$header
+					.find("div.cell div.inner.header .lesson-header-row")
+					.first();
+
+				if (this.model.get("forum_id") > 0 && AoPS.bd.is_community_active) {
+					if (
+						this.model.get("flavor").hw_header_style == "standard" ||
+						(_.isArray(this.hw_problems) && this.hw_problems.length > 0)
+					) {
+						this.$header_top.append(
+							$("<span />")
+								.addClass(
+									"aops-font grid-open-page-feed clickable header-button"
+								)
+								.text("t")
+								.attr({
+									title: "View discussions about this week's homework",
+								})
+						);
+					}
+					if (this.model.get("flavor").hw_header_style == "standard") {
+						this.$header_top.append(
+							$("<span />")
+								.addClass("aops-font grid-start-topic clickable header-button")
+								.text("V")
+								.attr({
+									title: "Start topic about this week's homework",
+								})
+						);
+					}
+				}
+			} else {
+				this.$header.hide();
+			}
+
+			if (this.model.get("show_total_score")) {
+				this.$plist_hdr.append(
+					$("<span />")
+						.addClass("right")
+						.text(
+							"Total Score: " +
+								this.lesson.get("sum_pts_earned") +
+								(this.model.get("show_total_score_denominator")
+									? " / " + this.lesson.get("sum_pts_possible")
+									: "")
+						)
+				);
+			}
+			this.renderHomeworkCaption(this.lesson.get("lesson"));
+		},
+		renderHomeworkCaption: function () {
+			if (this.model.get("flavor").hw_caption) {
+				if (
+					this.model.get("ghost_lessons").includes(this.lesson.get("lesson"))
+				) {
+					this.$plist_hdr.append(
+						$("<span />").text(
+							this.model.get("flavor").hw_caption + " (Optional)"
+						)
+					);
+				} else {
+					this.$plist_hdr.append(
+						$("<span />").text(this.model.get("flavor").hw_caption)
+					);
+				}
+				if (this.model.get("flavor").hw_header_style == "standard") {
+					this.$plist_hdr.append(
+						$("<span />")
+							.addClass("aops-font grid-antonio-trigger clickable")
+							.text("3")
+							.click(
+								_.bind(function (e) {
+									e.preventDefault();
+									var popup = new Views.GridAntonio({
+										model: this.model,
+										parentView: this,
+										name: this.model.get("hw_antonio_template"),
+									});
+									popup.options.modal = popup.$el.showPlainModal({
+										scrollable: true,
+										title:
+											'<h1 class="grid-antonio-title">' +
+											this.model.get("flavor").hw_caption +
+											"</h1>",
+										onClose: function () {
+											popup.close();
+										},
+									});
+								}, this)
+							)
+					);
+				}
+			}
+		},
+		renderHeaderHomework: function () {
+			var info = {
+				title:
+					this.options.tab_caption +
+					": " +
+					this.model.get("lesson_units").singular +
+					"&nbsp;" +
+					this.lesson.get("lesson"),
+				$body: $("<div />"),
+			};
+
+			if ((this.lesson.get("homework_status") || []).length) {
+				_.each(this.lesson.get("homework_status"), function (status) {
+					info.$body.append($("<div />").html(status));
+				});
+			}
+
+			// Add the Request Extension Link
+			if (this.isExtensionAllowed()) {
+				info.$extend = $("<a />").text("Request Writing Problem Extension");
+				info.$body.append($("<div />").append(info.$extend));
+				info.$extend.click(
+					_.bind(function (e) {
+						var popup = new Views.GridTabAssignmentsRequestExtensionModal({
+							model: this.model,
+							parentView: this,
+							lesson: this.lesson,
+						});
+						popup.options.modal = popup.$el.showPlainModal({
+							scrollable: true,
+							onClose: function () {
+								popup.close();
+							},
+						});
+						e.preventDefault();
+					}, this)
+				);
+			}
+			this.header.push(info);
+		},
+
+		/**
+		 * We want to show the extension link if this lesson
+		 * has a Graded Writing problem that has not had it's
+		 * solution viewed
+		 */
+		isExtensionAllowed: function () {
+			let hasGradedWriting = false;
+			let isExtensionAllowed = true;
+
+			let problems = this.lesson.get("hw_problems").models;
+			$.each(problems, function () {
+				// Check if this question allows extensions. These are Graded Writing problem types.
+				const problemAllowsExtension =
+					this.get("crypt_problem_type").get("is_extensible");
+				if (problemAllowsExtension) {
+					hasGradedWriting = true;
+
+					// Check if the solution was viewed; if so, disallow extensions
+					if (this.get("solution_viewed_at") !== null) {
+						isExtensionAllowed = false;
+						return false;
+					}
+				}
+			});
+
+			return hasGradedWriting && isExtensionAllowed;
+		},
+
+		renderHeaderAlcumus: function () {
+			if (this.model.get("report")) {
+				var lesson = _.findWhere(this.model.get("report").lessons, {
+					lesson: this.lesson.get("lesson"),
+				});
+				if (lesson && lesson.bars) {
+					var bar = _.findWhere(lesson.bars, {key: "alc"});
+					if (bar && bar.topics) {
+						var info = {
+							title: "Alcumus",
+							$body: $("<table />").css({width: "100%"}),
+						};
+						_.each(
+							bar.topics,
+							_.bind(function (topic) {
+								var $row = $("<tr />").appendTo(info.$body);
+								$row.append(
+									$("<td />")
+										.css({
+											width: "55%",
+											"padding-right": "5px",
+										})
+										.append(
+											$("<a />")
+												.text(topic.name)
+												.attr({
+													nav_grid: true,
+													href:
+														"/class/" +
+														this.vars.class_string +
+														"/alcumus/set_focus/" +
+														topic.topic_id,
+												})
+										)
+								);
+								$row.append(
+									AoPS.Grid.Utils.CreateProgressBar(
+										$("<td />").addClass("grid-report-bar-general"),
+										topic
+									)
+								);
+								$row.find(".aops-rogb-container").css({
+									background: "#fff",
+								});
+							}, this)
+						);
+						this.header.push(info);
+					}
+				}
+			}
+		},
+		renderHeaderReadings: function () {
+			var info = {
+				title: "Readings",
+				$body: $("<div />"),
+			};
+
+			var is_la = this.model.get("flavor").hash.match(/^acad-lang/);
+			var is_ebook = this.model.get("perms").user.can_ebook;
+
+			/*
+			current_lesson begins as the lesson being viewed, so that students can see the current reading assignment.
+			The for loop prints a reminder, then updates current_lesson to the next lesson that has a different reading assignment.
+			*/
+			var current_lesson = this.lesson;
+			for (var row = 0; row < 2; row++) {
+				var reading_reminder = "";
+
+				if (current_lesson) {
+					// Get an array of every lesson that assigns the same readings as current_lesson
+					var lessons = null,
+						readings = null;
+					if (is_ebook) {
+						readings = current_lesson.get("ebook_readings");
+						if (readings) {
+							lessons = this.model
+								.get("hw_lessons")
+								.where({ebook_readings: readings});
+						}
+					} else {
+						readings = current_lesson.get("readings");
+						if (readings) {
+							lessons = this.model
+								.get("hw_lessons")
+								.where({readings: readings});
+						}
+					}
+
+					// If the readings exist and are assigned, create a reminder for them
+					if (lessons) {
+						var lesson_numbers = lessons.map((lesson) => lesson.get("lesson"));
+						var first_lesson_with_reading = current_lesson.get("lesson");
+						while (lesson_numbers.includes(first_lesson_with_reading - 1)) {
+							first_lesson_with_reading--;
+						}
+						var last_lesson_with_reading = current_lesson.get("lesson");
+						while (lesson_numbers.includes(last_lesson_with_reading + 1)) {
+							last_lesson_with_reading++;
+						}
+						var number_of_lessons =
+							last_lesson_with_reading - first_lesson_with_reading + 1;
+
+						// This string describes the lessons that require this reading.
+						var reading_lessons =
+							(is_la ? "Before " : "") +
+							(number_of_lessons === 1
+								? this.model.get("lesson_units").singular
+								: this.model.get("lesson_units").plural);
+						reading_lessons += ` ${first_lesson_with_reading}`;
+						if (number_of_lessons > 1) {
+							reading_lessons += number_of_lessons === 2 ? ` & ` : ` - `;
+							reading_lessons += `${last_lesson_with_reading}`;
+						}
+
+						if (is_ebook) {
+							reading_reminder = this.lesson
+								.parseReading(readings, this.options.user_string)
+								.prepend($("<span><b>" + reading_lessons + "</b>: </span>"));
+						} else {
+							reading_reminder = $("<div />").html(
+								"<b>" + reading_lessons + "</b>: " + readings
+							);
+						}
+
+						current_lesson = this.model
+							.get("hw_lessons")
+							.findWhere({lesson: last_lesson_with_reading + 1});
+					} else {
+						current_lesson = this.model
+							.get("hw_lessons")
+							.findWhere({lesson: current_lesson.get("lesson") + 1});
+					}
+				}
+				info.$body.append(reading_reminder || "");
+			}
+
+			_.each(
+				this.lesson.get("dates"),
+				_.bind(function (date) {
+					var mdate = moment(date.date, "YYYY-MM-DD");
+					_.each(
+						date.sections,
+						_.bind(function (instance) {
+							if (this.lesson.get("classes_ended") && instance.has_transcript) {
+								var $cell = $("<div />")
+									.html(
+										"<b>" +
+											this.model.get("lesson_units").singular +
+											" " +
+											this.vars.lesson +
+											" Transcript</b>: "
+									)
+									.appendTo(info.$body);
+								$cell.append(
+									$("<a />")
+										.attr({
+											nav_grid: true,
+											href:
+												"/class/" +
+												this.vars.class_string +
+												"/transcript/" +
+												instance.instance_id,
+										})
+										.append($("<span />").addClass("aops-font").text("p"))
+										.append(
+											$("<text />").html(
+												" " +
+													mdate.format("ddd, MMM D") +
+													(date.sections.length > 1
+														? " - " + instance.section + " "
+														: " ")
+											)
+										)
+								);
+								if (this.vars.can_edit_class_transcript) {
+									$cell.append(
+										$("<a />")
+											.attr({
+												target: "_blank",
+												href: "/class/transcripter/" + instance.instance_id,
+											})
+											.append($("<span />").addClass("aops-font").text("L"))
+									);
+								}
+							}
+						}, this)
+					);
+				}, this)
+			);
+
+			if (info.$body.text()) {
+				this.header.push(info);
+			}
+		},
+	});
+
+	Views.GridTabAssignmentsProblem = AoPS.View.extend({
+		template_id: "#grid-tab-assignments-problem-tpl",
+		className: "grid-tab-assignments-problem",
+		initialize: function (options) {
+			this.options = options;
+			this.savedRenderer = "";
+			this.listenTo(
+				this.model,
+				"rebuild",
+				_.bind(function () {
+					this.savedRenderer = "";
+					if (
+						this.$(".grid-tab-assignments-problem-short-answer-rendered").length
+					) {
+						this.savedRenderer = this.$(
+							".grid-tab-assignments-problem-short-answer-rendered"
+						).html();
+					}
+					if (this.model.get("just_finished")) {
+						/**
+						 * When a student finishes a problem, they will newly be
+						 *  able to access topics connected to solutions to that problem.
+						 *  We need to reset the class's category in order to get those
+						 *  newly gettable topics.
+						 **/
+						if (this.model.get("class").get("forum_id") > 0) {
+							AoPS.Community.MasterModel.resetCategory(
+								this.model.get("class").get("forum_id")
+							);
+						}
+						var showSolution = _.bind(function () {
+							if (this.$solution.length) {
+								if (!AoPS.Grid.Utils.ElementIsVisible(this.$solution, true)) {
+									var scrollTop =
+										this.$solution.offset().top - $(window).height() * 0.6;
+									setTimeout(
+										_.bind(function () {
+											$("html body").animate(
+												{scrollTop: scrollTop - 7},
+												"slow"
+											);
+										}, this),
+										500
+									);
+								}
+							}
+						}, this);
+						if (AoPS.Grid.Utils.ElementIsVisible(this.$header)) {
+							this.render();
+							setTimeout(showSolution, 1000);
+						} else {
+							$("html body").animate(
+								{scrollTop: this.$el.position().top - 7},
+								"slow",
+								_.bind(function () {
+									setTimeout(
+										_.bind(function () {
+											this.render();
+											setTimeout(showSolution, 1000);
+										}, this),
+										250
+									);
+								}, this)
+							);
+						}
+					} else {
+						this.render();
+					}
+				}, this)
+			);
+		},
+		events: {
+			"click .grid-start-topic": "onClickStartTopic",
+			"click .grid-open-page-feed": "onClickOpenFeed",
+		},
+		prerenderHelper: function () {
+			this.vars = [];
+			_.each(
+				this.model.attributes,
+				_.bind(function (value, key) {
+					if (!(value instanceof Backbone.Model)) {
+						this.vars[key] = value;
+					} else if (value instanceof AoPS.Grid.Models.CryptConstant) {
+						this.vars[key] = value.attributes;
+					} else if (value instanceof AoPS.Grid.Models.GridClassLesson) {
+						this.vars[key] = value.attributes;
+					}
+				}, this)
+			);
+
+			this.vars.is_expired =
+				this.vars.crypt_problem_type.is_evaluated &&
+				this.vars.class_lesson.closed_at;
+			if (this.vars.crypt_problem_type.is_parsed) {
+				this.vars.can_submit = !this.vars.graded_at;
+			} else if (this.vars.crypt_problem_type.is_evaluated) {
+				this.vars.can_submit =
+					!this.vars.is_expired &&
+					!this.vars.solution_viewed_at &&
+					!this.vars.graded_at;
+			} else {
+				this.vars.can_submit = !this.vars.solution_viewed_at;
+			}
+
+			this.vars.aname = "problem" + this.model.get("problem_id");
+			this.vars.mylink =
+				this.options.parentView.options.base_tab_url +
+				"/" +
+				this.model.get("lesson") +
+				this.options.parentView.options.user_string +
+				"#problem" +
+				this.model.get("problem_id");
+			this.vars.permalink =
+				this.options.parentView.options.base_class_url +
+				"/hw" +
+				this.model.get("problem_id");
+			this.vars.show_submission =
+				(this.vars.crypt_problem_type.is_free_response &&
+					(this.vars.can_submit || this.vars.submission)) ||
+				!this.vars.crypt_problem_type.is_free_response;
+			this.vars.config = this.model.get("master").get("grid_data").config;
+		},
+		preAppendixHelper: function () {
+			this.$header = this.$(".problem-header");
+			this.$body = this.$(".problem-body");
+			this.$solution = this.$(".solution");
+		},
+		postAppendixHelper: function () {
+			this.$(".get-hint").click(
+				_.bind(function (e) {
+					if (
+						this.$input &&
+						_.isFunction(this.problemAppendix.updateCurrentProblemText)
+					) {
+						this.problemAppendix.updateCurrentProblemText();
+					}
+					this.model.getHint(
+						_.isUndefined(this.problemAppendix.$input)
+							? ""
+							: this.problemAppendix.$input.val()
+					);
+					e.preventDefault();
+				}, this)
+			);
+			this.$(".report-bug").click(
+				_.bind(function (e) {
+					var popup = new Views.GridTabAssignmentsProblemReportBugModal({
+						model: this.model,
+						parentView: this,
+						vars: this.vars,
+					});
+					popup.options.modal = popup.$el.showPlainModal({
+						scrollable: true,
+						onClose: function () {
+							popup.close();
+						},
+					});
+					e.preventDefault();
+				}, this)
+			);
+		},
+		render: function () {
+			this.prerenderHelper();
+			this.$el.html(this.getTemplate(this.template_id, this.vars));
+			this.preAppendixHelper();
+			if (this.vars.crypt_problem_type.is_free_response) {
+				this.problemAppendixModel =
+					Views.GridTabAssignmentsProblemFreeResponseAppendix;
+			} else if (this.vars.crypt_problem_type.is_discussion) {
+				this.problemAppendixModel =
+					Views.GridTabAssignmentsProblemDiscussionAppendix;
+			} else {
+				this.problemAppendixModel =
+					Views.GridTabAssignmentsProblemShortAnswerAppendix;
+			}
+			this.problemAppendix = new this.problemAppendixModel({
+				model: this.model,
+				parentView: this,
+				vars: this.vars,
+			});
+			this.$body.append(this.problemAppendix.$el);
+			this.problemAppendix.render();
+			if (_.isFunction(this.problemAppendix.postAppendHelper)) {
+				this.problemAppendix.postAppendHelper();
+			}
+			this.postAppendixHelper();
+			if (this.savedRenderer) {
+				this.$(".grid-tab-assignments-problem-short-answer-rendered").html(
+					this.savedRenderer
+				);
+			}
+			if (this.vars.crypt_problem_type.has_unique_topic) {
+				this.$(".grid-start-topic").hide();
+			}
+		},
+		onClickStartTopic: function (e) {
+			if (this.vars.crypt_problem_type.has_unique_topic) {
+				return;
+			}
+			var class_model = this.model.get("class"),
+				target_url = this.vars.permalink,
+				week_str =
+					this.model.get("class").get("lesson_units").singular +
+					" " +
+					this.model.get("lesson"),
+				target_text = week_str + " " + this.vars.markup,
+				page_url =
+					this.options.parentView.options.base_tab_url +
+					"/" +
+					this.model.get("lesson"),
+				hidden_tags = class_model.get("is_self_paced") ? [] : [page_url],
+				restricted_tags = class_model.get("is_self_paced") ? [page_url] : [];
+
+			if (!_.isNull(this.model.get("solution_viewed_at"))) {
+				restricted_tags.push(
+					"/" +
+						AoPS.router_root +
+						"/" +
+						class_model.get("class_id") +
+						"/sol" +
+						this.model.get("problem_id")
+				);
+				target_text += " solution";
+			}
+			AoPS.Feed.startNewTopic({
+				category_id: this.model.get("class").get("forum_id"),
+				tags: [
+					week_str +
+						" " +
+						(this.options.parentView.options.tab_caption || "Homework"),
+				],
+				target_url: target_url,
+				linked_tag:
+					week_str + " " + this.vars.markup.replace(/[^a-zA-Z0-9 _-]/g, ""),
+				target_text: target_text,
+				subtitle: this.vars.markup,
+				hidden_tags: hidden_tags,
+				restricted_tags: restricted_tags,
+			});
+		},
+		onClickOpenFeed: function (e) {
+			if (this.vars.crypt_problem_type.has_unique_topic) {
+				if (this.vars.topic_id > 0) {
+					AoPS.Feed.openTopicSetFeed(
+						this.vars.topic_id,
+						this.model.get("class").get("forum_id"),
+						this.vars.permalink,
+						this.model.get("class").get("lesson_units").singular +
+							" " +
+							this.model.get("lesson") +
+							" " +
+							this.vars.markup
+					);
+				} else {
+					// WHAT TO DO ON FAIL
+				}
+			} else {
+				AoPS.Feed.openPageFeed(
+					this.model.get("class").get("forum_id"),
+					this.vars.permalink,
+					this.model.get("class").get("lesson_units").singular +
+						" " +
+						this.model.get("lesson") +
+						" " +
+						this.vars.markup
+				);
+			}
+		},
+	});
+
+	Views.GridTabAssignmentsProblemDiscussionAppendix = AoPS.View.extend({
+		template_id: "#grid-tab-assignments-problem-discussion-appendix-tpl",
+		className: "grid-tab-assignments-problem-discussion-appendix",
+		initialize: function (options) {
+			this.options = options;
+		},
+		render: function () {
+			this.parentView = this.options.parentView;
+			this.vars = this.options.vars;
+			this.$el.html(this.getTemplate(this.template_id, this.vars));
+			this.$(".view-solution").click(
+				_.bind(function (e) {
+					AoPS.Grid.Utils.CreateModalConfirm(
+						"Are you sure you want to view the solution for this problem?",
+						_.bind(function (confirm) {
+							this.model.respond("", true);
+						}, this)
+					);
+					e.preventDefault();
+				}, this)
+			);
+		},
+	});
+
+	Views.GridTabAssignmentsProblemFreeResponseAppendix = AoPS.View.extend({
+		template_id: "#grid-tab-assignments-problem-free-response-appendix-tpl",
+		className: "grid-tab-assignments-problem-free-response-appendix",
+		initialize: function (options) {
+			this.options = options;
+		},
+		getPython: function () {
+			return pythonTool.getPyStudentResponse(this.$python, true);
+		},
+		getResponse: function () {
+			var input_val = this.$input
+				.val()
+				.replace(/\[\/?pystudentresponse\]/gi, "")
+				.trim();
+			if (this.vars.crypt_problem_type.is_python) {
+				var python = this.getPython();
+				if (python) {
+					input_val += "[pyStudentResponse]";
+					input_val += python.replace(/\[\/?pystudentresponse\]/gi, "");
+					input_val += "[/pyStudentResponse]";
+				}
+			}
+			return input_val;
+		},
+		hasChanged: function () {
+			if (
+				(this.vars.submission ? this.vars.submission.response : "") !=
+				this.$input.val()
+			) {
+				return true;
+			} else if (
+				this.vars.crypt_problem_type.is_python &&
+				this.vars.submission.python != this.getPython()
+			) {
+				return true;
+			} else {
+				return false;
+			}
+		},
+		cancelEdit: function (anchor_to_end) {
+			this.updateCurrentProblemText();
+			if (this.hasChanged()) {
+				AoPS.Grid.Utils.CreateModalConfirm(
+					"Are you sure you want to cancel and discard all changes?",
+					_.bind(function () {
+						if (!_.isUndefined(this.$python)) {
+							pythonTool.externalReset(this.$python);
+						}
+						this.showViewMode(anchor_to_end);
+					}, this)
+				);
+			} else {
+				this.showViewMode(anchor_to_end);
+			}
+		},
+		showViewMode: function (anchor_to_end) {
+			var scrollFrom = $(window).scrollTop() - this.$input_form.height();
+			if (!_.isUndefined(this.$python)) {
+				this.$python.removeClass("editing");
+			}
+			this.$(".fr-edit-mode").hide();
+			this.$(".fr-view-mode").show();
+			if (this.editing && anchor_to_end) {
+				$(window).scrollTop(scrollFrom + this.$view.height());
+			}
+			this.editing = false;
+			this.removeCurrentProblemText();
+		},
+		showEditMode: function (focus) {
+			if (!this.editing) {
+				var default_text = this.vars.submission
+					? this.vars.submission.response
+					: "";
+				var found = this.findCurrentProblemText();
+				this.editing = true;
+				if (!_.isUndefined(this.$python)) {
+					this.$python.addClass("editing");
+				}
+				this.$(".fr-view-mode").hide();
+				this.$(".fr-edit-mode").show();
+				if (focus) {
+					this.$input.focus();
+				}
+				if (!_.isUndefined(found)) {
+					this.$input.val(found);
+				} else {
+					this.$input.val(default_text);
+				}
+				this.addCurrentProblemText();
+			}
+		},
+		addCurrentProblemText: function () {
+			this.model.addCurrentProblemText(this.$input.val());
+		},
+		updateCurrentProblemText: function () {
+			this.model.updateCurrentProblemText(this.$input.val());
+		},
+		findCurrentProblemText: function () {
+			return this.model.findCurrentProblemText();
+		},
+		removeCurrentProblemText: function () {
+			this.model.removeCurrentProblemText();
+		},
+		setupResponse: function () {
+			this.$('input[name="aops_code"]').prop("checked", true).parent().hide();
+			this.$edit_block = this.$("div.free-reponse-submission");
+			this.$view = this.$("div.problem-view");
+			this.$input_form = this.$("form.problem-input");
+			this.$input = this.$('form.problem-input textarea[name="response"]');
+			if (this.vars.submission && this.vars.submission.response.trim()) {
+				this.$view
+					.find(".problem-view-inner")
+					.html(this.vars.submission.response_fmt);
+			} else {
+				this.$view
+					.find(".problem-view-inner")
+					.html(this.$view.attr("default"))
+					.css({color: "lightgray"});
+			}
+
+			if (!_.isUndefined(this.findCurrentProblemText())) {
+				this.showEditMode(false);
+			} else {
+				this.showViewMode();
+			}
+
+			this.$(".trigger-edit")
+				.addClass("clickable")
+				.click(
+					_.bind(function (e) {
+						this.showEditMode(true);
+						e.preventDefault();
+					}, this)
+				);
+			this.$(".save-response")
+				.click(
+					_.bind(function (e) {
+						e.stopImmediatePropagation();
+						this.removeCurrentProblemText();
+						this.model.respond(
+							this.getResponse(),
+							false,
+							this.$('input[name="aops_code"]').prop("checked")
+						);
+						e.preventDefault();
+					}, this)
+				)
+				.keypress(
+					_.bind(function (e) {
+						if (e.which == 13 || e.which == 32) {
+							e.stopImmediatePropagation();
+							this.removeCurrentProblemText();
+							this.model.respond(
+								this.getResponse(),
+								false,
+								this.$('input[name="aops_code"]').prop("checked")
+							);
+							e.preventDefault();
+						}
+					}, this)
+				);
+			this.$(".cancel-edit").each(
+				_.bind(function (index, btn) {
+					$(btn)
+						.click(
+							_.bind(function (e) {
+								e.stopImmediatePropagation();
+								this.cancelEdit(index);
+								e.preventDefault();
+							}, this)
+						)
+						.keypress(
+							_.bind(function (e) {
+								if (e.which == 13 || e.which == 32) {
+									e.stopImmediatePropagation();
+									this.cancelEdit(index);
+									e.preventDefault();
+								}
+							}, this)
+						);
+				}, this)
+			);
+		},
+		setupPython: function () {
+			this.$python = this.$(".python-submission .body .py-student-response");
+			this.$python.html(this.vars.submission.python_fmt);
+			this.$python.find(".pywindow").on(
+				"pywindow_focus",
+				_.bind(function () {
+					var checkExist = setInterval(
+						_.bind(function () {
+							if (
+								!this.editing &&
+								this.$python.find(".pywindow .CodeMirror").length
+							) {
+								var scrollFrom = $(window).scrollTop() - this.$view.height();
+								this.showEditMode(false);
+								$(window).scrollTop(scrollFrom + this.$input_form.height());
+								clearInterval(checkExist);
+							} else if (this.editing) {
+								clearInterval(checkExist);
+							}
+						}, this),
+						100
+					);
+				}, this)
+			);
+		},
+		render: function () {
+			this.parentView = this.options.parentView;
+			this.vars = this.options.vars;
+			this.$el.html(this.getTemplate(this.template_id, this.vars));
+			if (this.vars.can_submit) {
+				this.setupResponse();
+				if (this.vars.crypt_problem_type.is_python) {
+					this.setupPython();
+				}
+			} else {
+				if (this.vars.submission && this.vars.submission.response) {
+					this.$(".free-reponse-submission .body").html(
+						this.vars.submission.response_fmt
+					);
+				} else {
+					this.$(".free-reponse-submission").hide();
+				}
+				if (this.vars.crypt_problem_type.is_python) {
+					this.$(".python-submission .body").html(
+						this.vars.submission.python_fmt
+					);
+				}
+			}
+			this.$(".thank-grader").click(
+				_.bind(function (e) {
+					// this.updateCurrentProblemText();
+					this.model.thankGrader();
+					e.preventDefault();
+				}, this)
+			);
+			this.$(".view-solution").click(
+				_.bind(function (e) {
+					this.removeCurrentProblemText();
+					this.model.respond("", true);
+					e.preventDefault();
+				}, this)
+			);
+			this.$(".attach-a-file").click(
+				_.bind(function (e) {
+					this.updateCurrentProblemText();
+					var popup = new Views.GridTabAssignmentsProblemAttachFileModal({
+						model: this.model,
+						parentView: this.parentView,
+						vars: this.vars,
+					});
+					popup.options.modal = popup.$el.showPlainModal({
+						scrollable: true,
+						onClose: function () {
+							popup.close();
+						},
+					});
+					e.preventDefault();
+				}, this)
+			);
+			this.$(".grid-hw-file").each(
+				_.bind(function (index, el) {
+					if ($(el).find("a.delete").length) {
+						$(el)
+							.find("a.delete")
+							.click(
+								_.bind(function (e) {
+									this.updateCurrentProblemText();
+									AoPS.Grid.Utils.CreateModalConfirm(
+										"Are you sure you want to delete this file?",
+										_.bind(function () {
+											this.model.deleteFile($(el).attr("hw_file_id"));
+										}, this)
+									);
+									e.preventDefault();
+								}, this)
+							);
+					}
+				}, this)
+			);
+		},
+	});
+
+	Views.GridTabAssignmentsProblemShortAnswerRendered = AoPS.View.extend({
+		template_id: "#grid-tab-assignments-problem-short-answer-rendered-tpl",
+		className: "grid-tab-assignments-problem-short-answer-rendered",
+		initialize: function () {
+			this.vars = {
+				rendered_input: "",
+				has_errors: false,
+			};
+			this.debouncedRender = _.debounce(_.bind(this.render, this), 500);
+			this.render();
+		},
+		render: function () {
+			this.$el.html(this.getTemplate(this.template_id, this.vars));
+			if (this.vars.rendered && window.MathJax) {
+				MathJax.Hub.Queue([
+					"Typeset",
+					MathJax.Hub,
+					this.$(".grid-answer-rendered").get(0),
+				]);
+			}
+		},
+		shouldRender: function (original, rendered) {
+			original = original || "";
+			rendered = rendered || "";
+			if (/[\\\^_]/.test(original)) {
+				return true;
+			}
+
+			var clean_original = original.replace(/[\s\$]/g, "");
+			var clean_rendered = rendered.replace(/[\s\$]/g, "");
+			if (clean_original !== clean_rendered) {
+				return true;
+			}
+			return false;
+		},
+		setData: function (original_input, rendered, has_errors) {
+			if (this.shouldRender(original_input, rendered)) {
+				this.vars.rendered = rendered;
+				this.vars.has_errors = has_errors;
+			} else {
+				this.vars.rendered = "";
+				this.vars.has_errors = false;
+			}
+			this.debouncedRender();
+		},
+	});
+
+	Views.GridTabAssignmentsProblemShortAnswerAppendix = AoPS.View.extend({
+		template_id: "#grid-tab-assignments-problem-short-answer-appendix-tpl",
+		className: "grid-tab-assignments-problem-short-answer-appendix",
+		initialize: function (options) {
+			this.options = options;
+		},
+		postAppendHelper: function () {
+			if (this.vars.last_response && this.vars.can_submit) {
+				this.$input.focus();
+			}
+		},
+		processStandard: function () {
+			this.$input = this.$('form.problem-input input[name="response"]');
+			this.$input
+				.val(this.vars.last_response || this.$input.attr("default"))
+				.css({color: "lightgray"})
+				.focus(
+					_.bind(function (e) {
+						this.$input.css({color: "black"});
+						if (this.$input.val() == this.$input.attr("default")) {
+							this.$input.val(this.vars.cheat_answer);
+							current_text = this.$input.val();
+							this.onChangeInput(current_text);
+						}
+					}, this)
+				)
+				.blur(
+					_.bind(function (e) {
+						if (
+							this.$input.val() == "" ||
+							this.$input.val() == this.$input.attr("default")
+						) {
+							this.$input
+								.val(this.$input.attr("default"))
+								.css({color: "lightgray"});
+						}
+					}, this)
+				);
+
+			this.renderedPanel =
+				new Views.GridTabAssignmentsProblemShortAnswerRendered({
+					model: this.model,
+					parentView: this,
+					vars: this.vars,
+				});
+			this.$(".problem-block.main").after(this.renderedPanel.$el);
+
+			var current_text =
+				this.$input.val() != this.$input.attr("default")
+					? this.$input.val()
+					: "";
+			this.$input.on(
+				"input change keydown keyup cut paste",
+				_.bind(function () {
+					var new_text =
+						this.$input.val() != this.$input.attr("default")
+							? this.$input.val()
+							: "";
+					if (new_text !== current_text) {
+						current_text = new_text;
+						this.onChangeInput(current_text);
+					}
+				}, this)
+			);
+			if (current_text) {
+				// this.onChangeInput(current_text);
+			}
+
+			this.$input_form.find('input[name="submit"]').click(
+				_.bind(function (e) {
+					current_text =
+						this.$input.val() != this.$input.attr("default")
+							? this.$input.val()
+							: "";
+					if (current_text) {
+						this.respond(current_text);
+					} else {
+						AoPS.Grid.Utils.CreateModalAlert("You must enter a response.");
+					}
+					e.preventDefault();
+				}, this)
+			);
+		},
+		onChangeInput: function (input) {
+			var flags = this.vars.answer_type == "interval" ? "interval" : "";
+			var result = AoPS.parseMath(input || "", flags);
+			var has_errors = !!result.errors.length;
+			this.renderedPanel.setData(input, result.submission, has_errors);
+		},
+		processMatrixOrVector: function () {
+			var populate = this.vars.last_response || this.vars.cheat_answer || null;
+			var i;
+
+			this.vars.table_num_rows = this.vars.default_rows;
+			this.vars.table_num_cols = this.vars.default_cols;
+			if (populate) {
+				if (this.vars.crypt_answer_type.is_vector) {
+					populate = AoPS.Grid.Utils.ParseVector(populate);
+				} else {
+					populate = AoPS.Grid.Utils.ParseMatrix(populate);
+					this.vars.table_num_cols = populate[0].length;
+				}
+				this.vars.table_num_rows = populate.length;
+			}
+
+			if (this.vars.crypt_answer_type.has_size) {
+				this.$mv_rows = $("<input />").attr({
+					name: "num_rows",
+					type: "hidden",
+				});
+			} else {
+				this.$mv_rows = $("<select />").attr({name: "num_rows"});
+				for (i = 1; i <= 9; i++) {
+					this.$mv_rows.append($("<option />", {value: i, text: i}));
+				}
+			}
+
+			if (
+				this.vars.crypt_answer_type.is_vector ||
+				this.vars.crypt_answer_type.has_size
+			) {
+				this.$mv_cols = $("<input />").attr({
+					name: "num_cols",
+					type: "hidden",
+				});
+			} else {
+				this.$mv_cols = $("<select />").attr({name: "num_cols"});
+				for (i = 1; i <= 9; i++) {
+					this.$mv_cols.append($("<option />", {value: i, text: i}));
+				}
+			}
+
+			this.$mv_heading = $("<div />")
+				.addClass("your-answer")
+				.text("Your Answer:");
+			this.$mv_dimension = $("<div />").addClass("dimension");
+			if (!this.vars.crypt_answer_type.has_size) {
+				if (this.vars.crypt_answer_type.is_vector) {
+					this.$mv_dimension.text("Dimension:");
+					this.$mv_dimension.append(
+						this.$mv_rows.val(this.vars.table_num_rows)
+					);
+					this.$mv_dimension.append(
+						this.$mv_cols.val(this.vars.table_num_cols)
+					);
+				} else {
+					this.$mv_dimension.text("Rows:");
+					this.$mv_dimension.append(
+						this.$mv_rows.val(this.vars.table_num_rows)
+					);
+					this.$mv_dimension.append($("<span />").text("Cols:"));
+					this.$mv_dimension.append(
+						this.$mv_cols.val(this.vars.table_num_cols)
+					);
+				}
+			} else {
+				this.$mv_dimension.append(this.$mv_rows.val(this.vars.table_num_rows));
+				this.$mv_dimension.append(this.$mv_cols.val(this.vars.table_num_cols));
+			}
+			this.$mv_heading.appendTo(this.$(".matrix-vector"));
+			this.$mv_dimension.appendTo(this.$(".matrix-vector"));
+			this.enableFocusBoxes(this.$mv_dimension.find("select"));
+
+			this.$mv_table = $("<table />").append($("<tbody />"));
+			this.$mv_table.appendTo(this.$(".matrix-vector"));
+			this.$mv_new_td = $("<td />").append($("<input />", {type: "text"})); // Because we will need this...
+			this.resizeMatrixOrVectorTable(true);
+			if (populate) {
+				if (this.vars.crypt_answer_type.is_vector) {
+					this.$mv_table.find("tbody tr td input").each(
+						_.bind(function (index, input) {
+							$(input).val(populate[index]);
+						}, this)
+					);
+				} else {
+					this.$mv_table.find("tbody tr").each(
+						_.bind(function (row, el) {
+							$(el)
+								.find("td input")
+								.each(
+									_.bind(function (col, input) {
+										$(input).val(populate[row][col]);
+									}, this)
+								);
+						}, this)
+					);
+				}
+				this.vars.table_num_rows = populate.length;
+			}
+
+			this.$mv_dimension.find("select").change(
+				_.bind(function () {
+					this.resizeMatrixOrVectorTable();
+				}, this)
+			);
+
+			this.$input_form.find('input[name="submit"]').click(
+				_.bind(function (e) {
+					var output = [],
+						validated = true;
+					var validate_and_append = function (output_acc, index, input) {
+						$(input).val(
+							$(input)
+								.val()
+								.replace(/\[|\]|,/g, "")
+						);
+						if (!$(input).val().trim().length) {
+							validated = false;
+						}
+						output_acc.push($(input).val());
+					};
+					if (this.vars.crypt_answer_type.is_vector) {
+						this.$mv_table
+							.find("tbody tr td input")
+							.each(function (index, input) {
+								validate_and_append(output, index, input);
+							});
+					} else {
+						this.$mv_table.find("tbody tr").each(
+							_.bind(function (row, el) {
+								row = [];
+								$(el)
+									.find("td input")
+									.each(function (index, input) {
+										validate_and_append(row, index, input);
+									});
+								output.push(row);
+							}, this)
+						);
+					}
+
+					if (validated) {
+						this.respond(AoPS.Grid.Utils.ParseFromMatrixOrVector(output));
+					} else {
+						AoPS.Grid.Utils.CreateModalAlert(
+							"Please fill out every cell before submitting."
+						);
+					}
+
+					e.preventDefault();
+				}, this)
+			);
+		},
+		resizeMatrixOrVectorTable: function (first) {
+			var old_rows = this.$mv_table.find("tr").length;
+			var old_cols = this.$mv_table.find("tr:first td").length;
+			var new_rows = parseInt(this.$mv_rows.val());
+			var new_cols = parseInt(this.$mv_cols.val());
+			var i;
+
+			// Knock rows down to size
+			for (i = 0; i < old_rows - new_rows; i++) {
+				this.$mv_table.find("tbody tr:last").remove();
+			}
+
+			// Knock columns down to size
+			for (i = 0; i < old_cols - new_cols; i++) {
+				this.$mv_table.find("tbody tr").each(
+					_.bind(function (index, el) {
+						$(el).find("td:last").remove();
+					}, this)
+				);
+			}
+
+			// Expand columns
+			for (i = 0; i < new_cols - old_cols; i++) {
+				this.$mv_table.find("tbody tr").each(
+					_.bind(function (index, el) {
+						$(el).append(this.$mv_new_td.clone());
+					}, this)
+				);
+			}
+
+			// Expand rows
+			for (i = 0; i < new_rows - old_rows; i++) {
+				this.$mv_table.find("tbody").append($("<tr />"));
+				for (var j = 0; j < new_cols; j++) {
+					this.$mv_table.find("tbody tr:last").append(this.$mv_new_td.clone());
+				}
+			}
+
+			if (!first) {
+				this.$('.problem-input input[type="text"]').off().addClass("focused");
+				this.enableFocusBoxes(this.$('.problem-input input[type="text"]'));
+			}
+		},
+		respond: function (response) {
+			if (this.$(".formatting-tips").is(":visible")) {
+				this.$(".formatting-tips").slideUp(
+					_.bind(function () {
+						this.model.respond(response);
+					}, this)
+				);
+			} else {
+				this.model.respond(response);
+			}
+		},
+		enableFocusBoxes: function ($el) {
+			$el
+				.focus(
+					_.bind(function () {
+						this.$('.problem-input input[type="text"]').addClass("focused");
+					}, this)
+				)
+				.blur(
+					_.bind(function () {
+						this.$('.problem-input input[type="text"]').removeClass("focused");
+					}, this)
+				);
+		},
+		render: function () {
+			this.vars = this.options.vars;
+			this.$el.html(this.getTemplate(this.template_id, this.vars));
+
+			this.$input_form = this.$("form.problem-input");
+			if (this.vars.crypt_answer_type.is_matrix_or_vector) {
+				this.processMatrixOrVector();
+			} else {
+				this.processStandard();
+			}
+			this.enableFocusBoxes(this.$('.problem-input input[type="text"]'));
+
+			this.$input_form.find('input[name="giveup"]').click(
+				_.bind(function (e) {
+					AoPS.Grid.Utils.CreateModalConfirm(
+						"Aw, shucks. Are you sure you want to give up? Remember that you can " +
+							"always get help on the message board if you're stuck!",
+						_.bind(function () {
+							this.model.respond("", true);
+						}, this),
+						null,
+						{
+							confirm_button_ok: "Give Up",
+							confirm_button_cancel: "Keep Trying!",
+						}
+					);
+					e.preventDefault();
+				}, this)
+			);
+
+			if (this.$(".show-formatting-tips").length) {
+				this.$tips = this.$(".formatting-tips");
+				this.$(".show-formatting-tips").click(
+					_.bind(function (e) {
+						if (!this.$tips.hasClass("rendered")) {
+							if (window.MathJax) {
+								MathJax.Hub.Queue(["Typeset", MathJax.Hub, this.$tips.get(0)]);
+							}
+							this.$tips.addClass("rendered");
+						}
+						this.$tips.slideToggle();
+						e.preventDefault();
+					}, this)
+				);
+			}
+		},
+	});
+
+	Views.GridTabAssignmentsProblemAttachFileModal = AoPS.View.extend({
+		template_id: "#grid-tab-assignments-problem-attach-file-modal-tpl",
+		className: "grid-tab-assignments-problem-attach-file-modal",
+		initialize: function (options) {
+			this.options = options;
+			this.render();
+		},
+		render: function () {
+			var myView = this;
+			this.parentView = this.options.parentView;
+			this.vars = this.options.vars;
+			this.$el.html(this.getTemplate(this.template_id, this.vars));
+			if (!this.options.maxFiles) {
+				this.options.maxFiles = null;
+			}
+			this.$(".dropzone").dropzone({
+				url: "/m/class/upload.php",
+				accept: function (file, done) {
+					var ext = file.name.split(".").pop().toLowerCase();
+					if (_.indexOf(["exe", "vbs", "dmg", "app"], ext) >= 0) {
+						done("Error! Files of this type are not accepted.");
+					}
+					done();
+					$(window).trigger("resize");
+				},
+				addRemoveLinks: true,
+				sending: function (file, xhr, formData) {
+					formData.append("class_id", myView.model.get("class_id"));
+					formData.append("user_id", myView.model.get("user_id"));
+					formData.append("problem_id", myView.model.get("problem_id"));
+					$(window).trigger("resize");
+				},
+				removedfile: function (file) {
+					if (!_.isUndefined(file.hw_file_id) && file.hw_file_id) {
+						myView.model.deleteFile(file.hw_file_id);
+					}
+					if (
+						_.isObject(file.previewElement) &&
+						_.isObject(file.previewElement.parentNode)
+					) {
+						file.previewElement.parentNode.removeChild(file.previewElement);
+					}
+					$(window).trigger("resize");
+					return this._updateMaxFilesReachedClass();
+				},
+				maxFiles: this.options.maxFiles,
+				maxFilesize: 16,
+				success: function (file, response) {
+					var data = JSON.parse(response);
+					if (data.error_code) {
+						AoPS.Grid.Utils.CreateModalAlert(data.error_msg);
+						this.removeFile(file);
+					} else {
+						if (data.response.problems) {
+							file.hw_file_id = data.response.hw_file_id;
+							$(file.previewElement).addClass("dz-success");
+							myView.model
+								.get("class")
+								.addOrUpdateHomeworkProblem(data.response.problems);
+						}
+					}
+					$(window).trigger("resize");
+				},
+				error: function (file, error) {
+					if (error.substr(0, 15) === "File is too big") {
+						AoPS.Grid.Utils.CreateModalAlert(
+							"Your file is too large. You may only upload files up to 8 MB."
+						);
+					} else {
+						AoPS.Grid.Utils.CreateModalAlert(error);
+					}
+					this.removeFile(file);
+					$(window).trigger("resize");
+				},
+			});
+			this.$(".done").click(
+				_.bind(function (e) {
+					AoPS.Ui.Modal.removeModal(this.options.modal);
+					e.preventDefault();
+				}, this)
+			);
+		},
+	});
+
+	// Report Bug Modal
+	Views.GridTabAssignmentsProblemReportBugModal = AoPS.View.extend({
+		template_id: "#grid-tab-assignments-problem-report-bug-modal-tpl",
+		className: "grid-tab-assignments-problem-report-bug-modal",
+		initialize: function (options) {
+			this.options = options;
+			this.render();
+		},
+		render: function () {
+			this.parentView = this.options.parentView;
+			this.vars = _.extend(
+				{lesson_units: this.model.get("class").get("lesson_units")},
+				this.options.vars
+			);
+			this.$el.html(this.getTemplate(this.template_id, this.vars));
+
+			this.$problem_options = this.$("problem_options");
+			if (this.$problem_options.length) {
+				var $ol = $("<ol />")
+					.addClass("bbcode_list")
+					.css("list-style-type", "upper-alpha")
+					.insertBefore(this.$problem_options);
+				_.each(
+					this.$problem_options.find("problem_option"),
+					_.bind(function (option) {
+						$("<li />").html($(option).text()).appendTo($ol);
+					}, this)
+				);
+				this.$problem_options.remove();
+			}
+
+			this.$report = this.$("textarea.jeremy-he-hate-me");
+			this.$(".save").click(
+				_.bind(function (e) {
+					e.preventDefault();
+					if (this.$report.val()) {
+						this.model.reportBug(
+							this.$report.val(),
+							_.bind(function () {
+								AoPS.Ui.Modal.removeModal(this.options.modal);
+								AoPS.Grid.Utils.CreateModalAlert(
+									"Your error report has been saved. Thank you!"
+								);
+							}, this)
+						);
+					} else {
+						AoPS.Grid.Utils.CreateModalAlert(
+							"No text entered. Please try again."
+						);
+					}
+				}, this)
+			);
+			this.$(".cancel").click(
+				_.bind(function (e) {
+					e.preventDefault();
+					if (this.$report.val()) {
+						AoPS.Grid.Utils.CreateModalConfirm(
+							"Are you sure you want to cancel your error report?",
+							_.bind(function () {
+								AoPS.Ui.Modal.removeModal(this.options.modal);
+							}, this)
+						);
+					} else {
+						AoPS.Ui.Modal.removeModal(this.options.modal);
+					}
+				}, this)
+			);
+		},
+	});
+
+	// Request Extension Modal
+	Views.GridTabAssignmentsRequestExtensionModal = AoPS.View.extend({
+		template_id: "#grid-tab-assignments-request-extension-modal-tpl",
+		className: "grid-tab-assignments-request-extension-modal",
+		initialize: function (options) {
+			this.options = options;
+			this.render();
+		},
+		readRequestedDate: function () {
+			var value = this.$select.val();
+			this.approvalRequired = true;
+			if (this.options.lesson.get("evaluated_solution_viewed_at")) {
+				this.$status.css({color: "red"});
+				this.$status.text(
+					"You have viewed the solution to a Writing Problem this " +
+						this.vars.lesson_units.singular_lc +
+						". " +
+						"Administrators will not grant extensions for problems whose solutions have been " +
+						"viewed except in unusual circumstances. Please address this below."
+				);
+			} else if (this.options.lesson.get("evaluated_graded_at")) {
+				this.$status.css({color: "red"});
+				this.$status.text(
+					"Since you have graded feedback for " +
+						"a problem in this " +
+						this.vars.lesson_units.singular_lc +
+						", extensions for " +
+						this.vars.lesson_units.singular +
+						" " +
+						this.vars.lesson +
+						" " +
+						"will require administrator approval. " +
+						"Requests may take one full business day to process."
+				);
+			} else if (this.vars.num_extensions_remaining <= 0) {
+				this.$status.css({color: "red"});
+				this.$status.text(
+					"All extensions will require administrator approval. " +
+						"Requests may take one full business day to process."
+				);
+			} else {
+				var date = _.findWhere(this.vars.dates, {date: value});
+				if (date && date.days_extend < 4) {
+					this.$status.css({color: "black"});
+					this.$status.text(
+						"Extension requests for 1-3 days after the due date will automatically be granted."
+					);
+					this.approvalRequired = false;
+				} else if (date) {
+					this.$status.css({color: "red"});
+					this.$status.text(
+						"Extension requests 4+ days after the due date will require administrator approval." +
+							" Requests may take one full business day to process."
+					);
+				} else {
+					this.$status.css({color: "red"});
+					this.$status.text(
+						"This extension request will require administrator approval." +
+							" Requests may take one full business day to process."
+					);
+				}
+			}
+		},
+		render: function () {
+			this.due_at = AoPS.Grid.Utils.SqlDateTimeToMoment(
+				this.options.lesson.get("due_at")
+			).startOf("day");
+			this.today = moment().startOf("day");
+			this.start_moment =
+				this.today.format("YYYY-MM-DD") > this.due_at.format("YYYY-MM-DD")
+					? moment(this.today)
+					: moment(this.due_at);
+
+			this.vars = {
+				lesson: this.options.lesson.get("lesson"),
+				lesson_units: this.model.get("lesson_units"),
+				num_extensions_used: this.model.get("num_extensions_used"),
+				num_extensions_used_is_plural:
+					this.model.get("num_extensions_used") != 1,
+				num_extensions_remaining: this.model.get("num_extensions_remaining"),
+				num_extensions_remaining_is_plural:
+					this.model.get("num_extensions_remaining") != 1,
+				class_id: this.model.get("class_id"),
+				class_name: this.model.get("class_name"),
+				current_fmt: this.due_at.format("dddd, MMM D, YYYY"),
+				dates: [],
+				evaluated_graded_or_solution_viewed:
+					this.options.lesson.get("evaluated_graded_at") ||
+					this.options.lesson.get("evaluated_solution_viewed_at"),
+				evaluated_graded_at: this.options.lesson.get("evaluated_graded_at"),
+				evaluated_solution_viewed_at: this.options.lesson.get(
+					"evaluated_solution_viewed_at"
+				),
+				extension_request_note_cms: AoPS.bd.extension_request_note_cms,
+			};
+			_.each(
+				[1, 2, 3, 5, 7],
+				_.bind(function (delta) {
+					var dt = moment(this.start_moment).add(delta, "days");
+					this.vars.dates.push({
+						moment: dt,
+						caption: dt.format("dddd, MMM D, YYYY"),
+						date: dt.format("YYYY-MM-DD"),
+						days_extend: dt.diff(this.due_at, "days"),
+					});
+				}, this)
+			);
+
+			this.$el.html(this.getTemplate(this.template_id, this.vars));
+			this.$select = this.$('select[name="date"]');
+			this.$status = this.$("li.status");
+			this.$comment = this.$('textarea[name="comment"]');
+
+			this.readRequestedDate();
+			this.$('select[name="date"]').change(
+				_.bind(function () {
+					this.readRequestedDate();
+				}, this)
+			);
+
+			this.$(".save").click(
+				_.bind(function (e) {
+					e.preventDefault();
+					if (this.$comment.val()) {
+						var modalPleaseWait = AoPS.Grid.Utils.CreateModalInescapable(
+							"Saving... Please wait!"
+						);
+
+						const options = {
+							closeX: false,
+							force_response: true,
+						};
+						this.model.requestExtension(
+							{
+								lesson: this.options.lesson.get("lesson"),
+								comment: this.$comment.val(),
+								date: this.$select.val(),
+							},
+							_.bind(function (message, refresh) {
+								AoPS.Ui.Modal.removeModal(modalPleaseWait);
+								AoPS.Ui.Modal.removeModal(this.options.modal);
+								AoPS.Grid.Utils.CreateModalAlert(
+									message,
+									() => {
+										location.reload();
+									},
+									options
+								);
+							}, this),
+							_.bind(function (error) {
+								AoPS.Ui.Modal.removeModal(modalPleaseWait);
+								AoPS.Grid.Utils.CreateModalAlert(error);
+							}, this)
+						);
+					} else {
+						AoPS.Grid.Utils.CreateModalAlert(
+							"Please enter a reason for your extension request."
+						);
+					}
+				}, this)
+			);
+			this.$(".cancel").click(
+				_.bind(function (e) {
+					e.preventDefault();
+					AoPS.Ui.Modal.removeModal(this.options.modal);
+				}, this)
+			);
+		},
+	});
+
+	return Views;
+})(AoPS.Grid.Views);

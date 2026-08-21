@@ -1,0 +1,151 @@
+\documentclass{article}
+\usepackage{amsmath}
+\usepackage{titling}
+
+\usepackage[margin=0.5in]{geometry}
+
+\title{Shoot on the Move Theory Proof\\
+\large Charging Champions - 6560}
+
+\author{Anish Kumar}
+
+\begin{document}
+
+\maketitle
+
+\section{Theory}
+
+For a robot to be able to shoot while moving, it must be able to correct for its current velocity to account for the transfering of its momentum to a ball that exits the robot/turret. To do this, I examined the idea of adding a target vector with the magnitude and direction of a stationary shoot to the robot's velocity vector, calculating a final magnitude and direction vector that represents the corrected vector of the trajectory of a ball. Using additional methods to account for elements that impact flight such as drag, it is possible to simulate, although it may not be 100\% accurate. By using efficiency constants for hardware construction and spin transfer, it is possible to determine the RPM of the ball based on the target exit velocity vector that uses kinematics to determine this value. Information like position, velocity and gyro readings can be obtained through robot-relevant odometry calculations, inherently specific to robot construction and drivetrain tracking.
+
+\section{Setup}
+
+Goal: Get the RPM and turret angle to shoot at while moving at a velocity $\vec{v}$
+\\
+\\
+There are 2 main vectors to keep track of (at the beginning):
+\\
+\\
+let $\vec{r}$ be a "relative position vector", used to track the difference between the robot and target's positions regardless of vertical height 
+\\
+\\
+let $\vec{v}$ be a yagsl-determined vector to show the robots velocity in 2 dimensions, also disregarding vertical height
+\\
+\\
+These will not be combined directly, as they are position and velocity, and instead operations will be performed to translate the position vector into a velocity vector.
+\\
+
+\section{Kinematics}
+
+Imagine a triangle in a 2d plane, similar to a standard kinematics projectile motion problem with vectors for velocity and it's components forming a right triangle with an angle $\theta$
+\\
+Let the vectors on this triangle be made of 
+\[
+\vec{l} , \vec{l}_x , \vec{l}_y
+\]
+\\
+By solving like a normal projectile motion question, we can separate the vector into componenets and solve from there
+\[y(t) = y_0 + \|\vec{l}\|sin(\theta) t - \frac{1}{2}gt^{2}\]
+\\
+And
+
+\[x(t) = \|\vec{l}\|cos(\theta) t\]
+\\
+But, drag aplies to both the $x$ and $y$ functions
+So, using a standard calculation for drag force:
+
+\[F_{drag} = \frac{1}{2} \cdot \rho \cdot A \cdot C_d \cdot v^2\]
+\\
+Density of air is $\approx{1.225}$\\
+Contact area = $\frac{\pi d^2}{4} = \pi \cdot 0.005625$m $\approx 0.01767$
+
+
+%recompute all associated values or approximations because of the pi{d/2}^2 thing 
+
+
+\[F_{drag} = \frac{1}{2} \cdot 1.225 \cdot 0.01767 \cdot C_d \cdot \vec{l}^2 \approx 0.2886345 \cdot C_d \cdot \|\vec{l}\|^2\]
+\\
+Substituting into $x(t)$
+\[x(t) = \|\vec{l}\|cos(\theta) t - \frac{1}{2m}(F_{drag})t^2\]
+\[x(t) = \|\vec{l}\|cos(\theta) t - \frac{1}{2m}(0.2886345 \cdot C_d \cdot \|\vec{l}\|^2)t^2\]
+\[2mx = mt(2\|\vec{l}\|cos(\theta) - (0.2886345 \cdot C_d \cdot \|\vec{l}\|^2)t)\]
+\[-(0.2886345C_d\|\vec{l}\|^2)t^2+2mt\|\vec{l}\|cos(\theta)-2mx = 0\]
+\\
+\[\|\vec{l}\| = \frac{-2mtcos(\theta) \pm \sqrt{(-2mtcos(\theta))^2 - 4(-0.2886345C_dt^2)(-2mx)}}{2(-0.2886345C_dt^2)}  \]
+\\
+\\
+Using an angle 45\textdegree \,as the value for theta (based on alphabot for now)
+\[\|\vec{l}\| = \frac{-mt\sqrt{2} \pm \sqrt{(-mt\sqrt{2})^2 - 4(-0.2886345C_dt^2)(-2mx)}}{2(-0.2886345C_dt^2)}\]
+\[ = \frac{-mt\sqrt{2} \pm \sqrt{2m^2t^2 - 2.309076C_dm^2t^2x}}{-0.577269C_dt^2}\]
+\[ = mt \cdot \frac{-\sqrt{2} \pm t(\sqrt{2 - 2.309076C_dx})}{-0.577269C_d}\]
+\\\\
+Take only the $+$ solution because we want the highest arc:
+\[ = mt \cdot (\frac{2.44983458729}{C_d} + \frac{t(\sqrt{2 - 2.309076C_dx})}{-0.577269C_d})\]
+\\
+Drag Coefficients can be determined experimentally, but seeing as we don't have an easy way to experimentally do so, we can estimate it by using Reynold's numbers. 
+\\\\
+$C_d$ is calculated as a piecewise function of the object's Reynold's number ($Re$), 
+
+\[Re_{fuel} = \frac{\rho\|\vec{l}\|D}{\mu}\]
+\\\\
+$\rho$ is the density of air, $D$ is the diameter of the sphere, $\mu$ is the viscosity of air.
+
+\[Re_{fuel} = \frac{1.225 \cdot \|\vec{l}\| \cdot 0.15}{1.8 \cdot 10^{-5}}\]
+
+\[\approx 10,208.33\|\vec{l}\|\]
+\\
+And with exit velocity being in the range from 5 to 20 mph,
+
+\[Re_{fuel} \approx 10,208.33(2.24 \,\, to \,\, 9.94 \frac{m}{s}) \approx 2 \cdot 10^4 \,\, to \,\, 9 \cdot 10^4\]
+\\
+Since this value is in the subcritical drag range, below drag crisis, $C_d$ can be approximated as $0.47$
+
+\[\|\vec{l}\| = mt \cdot (\frac{2.44983458729}{C_d} + \frac{t(\sqrt{2 - 2.309076C_dx})}{-0.577269C_d}) \approx mt \cdot (5.212414 + \frac{t(\sqrt{2-1.08526572x})}{-0.27131643})\]
+\[\approx 5.212414mt +\frac{mt^2(\sqrt{2-1.08526572x})}{-0.27131643}\]
+\\\\
+Fuel mass according to the game manual is $m_{fuel} \approx (0.203 \,\, to \,\, 0.227kg)$ so can be used as $\approx 0.215 \,kg$
+\\\\
+\[\boxed{\|\vec{l}(x,t)\| \approx 1.12t - 0.8t^2\sqrt{2-1.085x}}\]
+\\\\
+Substituting back into $y(t)$
+
+\[ y = \frac{\|\vec{l}\|t}{\sqrt{2}} - \frac{(g-\frac{F_{drag}}{m})t^2}{2}\]
+\[2 \sqrt{2}y = 2t\|\vec{l}\| - \sqrt{2}t^2\cdot(g-\frac{0.2886345 \cdot C_d \cdot \|\vec{l}\|^2}{m}) \approx 2t\|\vec{l}\| -\sqrt{2}t^2 \cdot (g-0.630968\|\vec{l}\|^2)\]
+\\
+Solve for $\|\vec{l}(y,t)\|$
+
+\[-\sqrt{2}t^2 \cdot (g-0.630968\|\vec{l}\|^2) + 2t\|\vec{l}\| - 2 \sqrt{2}y = 0\]
+\[\|\vec{l}\| = -\frac{1.122}{t} + \frac{\sqrt{4 + 10.08y + 5.04g}}{1.782t}\]
+\[\boxed{\|\vec{l}(y,t)\| = -\frac{2 + \sqrt{53.4424 + 10.08y}}{1.782t}}\]
+\\
+Then solve for time of flight:
+
+\[-2 - \sqrt{53.4424 + 10.08y} = 1.782t(1.12t - 0.8t^2\sqrt{2-1.085x})\]
+\\
+The nature of this function means it is irreducible, even through Newton-Raphson method. However, time of flight can be implicitly defined as a function of $x$ or $y$,
+\[\boxed{t(x,y) = -1.4t^3\sqrt{2-1.1x} + 2t^2 + \sqrt{53.44 + 10.1y} + 2 = 0}\]
+\\
+When actually running, $x$ and $y$ would be inputted into $t(x,y)$. This would result in a cubic, irreducible function of solely $t$, meaning Newton-Raphson method can be used to approximate the roots of the function.
+From there, the value $t$ and the $x$ could be substituted into $\|\vec{l}(x,t)\|$ to finally determine the exit velocity. 
+
+% \section{Vector Processes}
+
+% Now that there is a vector for magnitude in that plane, we need to work in the ground plane for direction calculations:
+% \\
+% \\
+% First, convert $\vec{l}$'s magnitude to a ground-relative vector, aka $\vec{l_x}$, and call it $\vec{g}$ to store ground velocity of the ball.
+
+% \[\|\vec{g}\| = \|\vec{l}\|cos(\theta) = \frac{x}{t} = x\sqrt{\frac{g}{2(x-y)}}\]
+% \\\\
+% Since the stationary ground velocity of the ball would retain the heading of the position vector $\vec{r}$,
+
+% \[arg(\vec{g}) = \phi = atan2(\vec{r_y},\vec{r_x})\]
+% This would mean that 0\textdegree is upfield and $\phi$ would increase counter-clockwise from that
+% \\\\
+% Then break it into components:
+
+% \[\|\vec{l}(x,t)\|cos(\phi)\hat{\imath} + \|\vec{l}(y,t)\|sin(\phi)\hat{\jmath}\]
+
+
+%\[\vec{v} = (\vec{v_x}cos(\beta) - \vec{v_y}sin(\beta-\frac{\pi}{2}))\hat{\imath}\]
+
+\end{document}

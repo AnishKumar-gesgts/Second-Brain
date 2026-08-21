@@ -1,0 +1,644 @@
+AoPS.Utils.initKeyChain(AoPS, "Grid", "Views");
+
+AoPS.Grid.Views = (function (Views) {
+	Views.GridTabGoals = Views.GridTab.extend({
+		template_id: "#grid-tab-goals-tpl",
+		postInitializePreRender: function () {
+			this.listenTo(
+				this.model,
+				"rebuild",
+				_.bind(function () {
+					this.render();
+				}, this)
+			);
+		},
+		onAddToPage: function (obj) {
+			if (obj.args.join("/") != this.options.args.join("/")) {
+				if (obj.args.length > 0) {
+					this.options.args = obj.args;
+				} else {
+					Backbone.history.navigate(
+						this.options.history_tab_url +
+							"/" +
+							this.options.args.join("/") +
+							this.options.user_string,
+						{replace: true}
+					);
+				}
+			}
+			this.render();
+		},
+		preserveEl: true,
+		loadFirst: function (success) {
+			if (!this.model.get("master").get("grid_data").config.homework_active) {
+				return;
+			}
+
+			this.vars.lesson = _.isUndefined(this.options.args[0])
+				? this.options.homework_lesson
+				: parseInt(this.options.args[0]);
+			this.vars.class_string = this.model.get("class_string");
+			this.vars.can_edit_class_transcript =
+				this.model.get("perms").me.can_edit_class_transcript;
+			this.vars.lesson_units = this.model.get("lesson_units");
+
+			if (!_.isUndefined(this.lessonView)) {
+				this.lessonView.$el.detach();
+				this.lessonView = undefined;
+			}
+
+			if (
+				!_.isUndefined(
+					this.model.get("master").get("lesson_has_homework")[this.vars.lesson]
+				) &&
+				this.model.get("master").get("lesson_has_homework")[this.vars.lesson] !=
+					0
+			) {
+				this.render(true);
+			} else {
+				this.$el.html(this.getTemplate(this.template_id, this.vars));
+				this.$selectors = this.$(".lesson-selector");
+				this.$inner = this.$(".inner");
+
+				this.renderSelector(this.vars.lesson);
+				this.resizeLessonContext();
+				this.$inner
+					.css({padding: "10px 5px"})
+					.text(
+						"Loading " +
+							this.vars.lesson_units.singular +
+							" " +
+							this.vars.lesson +
+							" Goals..."
+					);
+
+				this.model.get("master").executeWhenHomeworkLoaded(
+					{lesson: this.vars.lesson, display: 0},
+					_.bind(function () {
+						success();
+					}, this)
+				);
+			}
+		},
+		prerenderHelper: function () {
+			this.vars.class_name = this.model.get("class_name");
+			if (!_.isUndefined(this.lessonView)) {
+				this.lessonView.$el.detach();
+				this.lessonView = undefined;
+			}
+
+			if (
+				_.isUndefined(
+					(this.lesson = this.model
+						.get("lessons")
+						.findWhere({lesson: this.vars.lesson}))
+				)
+			) {
+				this.lesson = this.model
+					.get("lessons")
+					.findWhere({lesson: this.options.homework_lesson});
+				this.vars.lesson = this.options.homework_lesson;
+			}
+		},
+		constructCrumbs: function () {
+			return [
+				{
+					text:
+						this.options.tab_caption +
+						" " +
+						this.model.get("lesson_units").singular +
+						" " +
+						this.vars.lesson,
+				},
+			];
+		},
+		renderHelper: function () {
+			this.subhash = _.first(this.options.args);
+			this.$inner = this.$(".inner");
+			this.$workday = this.$(".workday-selector");
+			this.$selectors = this.$(".lesson-selector");
+
+			this.renderSelector(this.options.homework_lesson);
+			this.renderLesson();
+
+			$(window).on("resize", _.bind(this.resizeLessonContext, this));
+			this.resizeLessonContext();
+		},
+		fetchSelectorHref: function (i) {
+			return this.options.base_tab_url + "/" + i + this.options.user_string;
+		},
+		renderLesson: function () {
+			this.workdayView = new Views.GridTabGoalsLessonWorkdaySelector({
+				model: this.model,
+				lesson: this.vars.lesson,
+				parentView: this,
+			});
+			this.workdayView.$el.appendTo(this.$workday);
+			this.workdayView.render(true);
+
+			this.lessonView = new Views.GridTabGoalsLessonView({
+				model: this.model,
+				lesson: this.vars.lesson,
+				parentView: this,
+			});
+			this.lessonView.$el.appendTo(this.$inner);
+			this.lessonView.render(true);
+		},
+	});
+
+	Views.GridTabGoalsLessonWorkdaySelector = AoPS.View.extend({
+		template_id: "#grid-tab-goals-lesson-workday-selector-tpl",
+		initialize: function (options) {
+			this.options = options;
+			this.parentView = this.options.parentView;
+			this.vars = _.extend({}, this.parentView.vars);
+		},
+		render: function () {
+			this.vars.weekday =
+				AoPS.Grid.Utils.SqlDateToMoment(
+					this.model.get("date_start_at")
+				).isoWeekday() - 1;
+			this.vars.settings = this.model.get("goals").settings;
+			this.vars.homework_lesson =
+				this.options.parentView.options.homework_lesson;
+			this.vars.weekdays_enabled =
+				this.vars.lesson >= this.vars.homework_lesson;
+			this.vars.list_view =
+				this.model.get("goals").show_as_list_view[this.vars.lesson];
+			this.vars.released = this.model
+				.get("lessons")
+				.findWhere({lesson: this.vars.lesson})
+				.get("released_at");
+
+			this.vars.enabled =
+				this.vars.lesson >= this.vars.homework_lesson && this.vars.released;
+			this.vars.selector_enabled = this.vars.enabled && !this.vars.list_view;
+			this.vars.selector = [];
+			this.vars.num_selected = 0;
+
+			if (this.options.parentView.workdayViewExpanded) {
+				this.$el.addClass("grid-workday-expanded");
+			}
+
+			_.each(
+				[0, 1, 2, 3, 4, 5, 6],
+				_.bind(function (key) {
+					this.vars.selector[key] = {
+						moment: moment().day("Monday").add(key, "day"),
+						index: (key - this.vars.weekday + 7) % 7,
+						day:
+							7 *
+								((this.vars.enabled
+									? this.vars.homework_lesson
+									: this.vars.lesson) -
+									1) +
+							((key - this.vars.weekday + 7) % 7),
+						is_class: key == this.vars.weekday,
+						selected: false,
+					};
+					this.vars.selector[key].caption =
+						this.vars.selector[key].moment.format("dddd");
+					this.vars.selector[key].short =
+						this.vars.selector[key].moment.format("ddd");
+					var j;
+					for (j = this.vars.selector[key].day; j >= 0; j -= 7) {
+						if (typeof this.vars.settings[j] === "undefined") {
+							continue;
+						} else {
+							this.vars.selector[key].selected = this.vars.settings[j]
+								? true
+								: false;
+							break;
+						}
+					}
+					if (this.vars.selector[key].selected) {
+						this.vars.num_selected++;
+					}
+				}, this)
+			);
+
+			if (!this.vars.list_view) {
+				if (this.vars.num_selected <= 0) {
+					this.vars.n_days = "no days";
+				} else if (this.vars.num_selected <= 1) {
+					this.vars.n_days = "one day";
+				} else if (this.vars.num_selected <= 2) {
+					this.vars.n_days = "two days";
+				} else {
+					this.vars.n_days = this.vars.num_selected + " days";
+				}
+				this.vars.selected = _.reduce(
+					this.vars.selector,
+					_.bind(function (carry, item) {
+						if (item.selected) {
+							carry.push(item.caption);
+						}
+						return carry;
+					}, this),
+					[]
+				);
+				this.vars.parenthetical = "";
+				_.each(
+					this.vars.selected,
+					_.bind(function (item, index) {
+						this.vars.parenthetical += item;
+						if (index < this.vars.selected.length - 2) {
+							this.vars.parenthetical += ", ";
+						} else if (index < this.vars.selected.length - 1) {
+							this.vars.parenthetical += " and ";
+						}
+					}, this)
+				);
+			}
+
+			this.$el.html(this.getTemplate(this.template_id, this.vars));
+
+			if (this.vars.enabled) {
+				this.$(".grid-workday-viewer.enabled").click(
+					_.bind(function (el) {
+						this.$el.addClass("grid-workday-expanded");
+						this.options.parentView.workdayViewExpanded = true;
+					}, this)
+				);
+				this.$selects = this.$(".grid-workday-selector .workday.enabled");
+				_.each(
+					this.$selects,
+					_.bind(function (el) {
+						var index = parseInt($(el).attr("index"));
+						$(el).click(
+							_.bind(function () {
+								var value;
+								if (index < 0) {
+									value = !this.vars.list_view;
+								} else {
+									value = !_.findWhere(this.vars.selector, {
+										index: index,
+									}).selected;
+								}
+								if (!$(el).hasClass("updating")) {
+									this.$selects.addClass("updating");
+									this.model.changeGoalSettings(index, value);
+								}
+							}, this)
+						);
+					}, this)
+				);
+			}
+		},
+	});
+
+	Views.GridTabGoalsLessonView = AoPS.View.extend({
+		template_id: "#grid-tab-goals-lesson-tpl",
+		initialize: function (options) {
+			this.options = options;
+			this.parentView = this.options.parentView;
+			this.vars = _.extend({}, this.parentView.vars);
+		},
+		renderGoal: function ($li, goal, mode) {
+			switch (goal.t) {
+				case "alcumus":
+					var lesson = _.findWhere(this.model.get("report").lessons, {
+						lesson: goal.n,
+					});
+					if (lesson) {
+						var alcumus = _.findWhere(lesson.bars, {key: "alc"});
+						if (alcumus) {
+							var topic = _.findWhere(alcumus.topics, {
+								topic_id: goal.i,
+							});
+							if (topic) {
+								$li
+									.addClass(
+										_.indexOf(["green", "blue"], topic.color) < 0
+											? "unchecked"
+											: "checked"
+									)
+									.append(
+										$("<span />").text(
+											"Alcumus Topic " +
+												this.vars.lesson_units.singular +
+												" " +
+												goal.n +
+												": "
+										)
+									)
+									.append(
+										$("<a />")
+											.text(topic.name)
+											.attr({
+												nav_grid: true,
+												href:
+													"/class/" +
+													this.vars.class_string +
+													"/alcumus/set_focus/" +
+													goal.i,
+											})
+									);
+								return true;
+							}
+						}
+					}
+					break;
+
+				case "class":
+					var schedule = this.model.get("lessons").findWhere({lesson: goal.n});
+					$li
+						.css({"font-weight": "bold"})
+						.text(
+							this.vars.lesson_units.singular +
+								" " +
+								goal.n +
+								" Class: " +
+								schedule.get("topic") +
+								" "
+						);
+					_.each(
+						schedule.get("dates"),
+						_.bind(function (date) {
+							_.each(
+								date.sections,
+								_.bind(function (section) {
+									if (section.has_transcript) {
+										var $a = $("<a />").text("Transcript");
+										$a.attr({
+											nav_grid: true,
+											href:
+												"/class/" +
+												this.vars.class_string +
+												"/transcript/" +
+												section.instance_id,
+										});
+										$li.append("(").append($a).append(") ");
+									}
+								}, this)
+							);
+						}, this)
+					);
+					if (mode == "list") {
+						$li.append(" &ndash; " + goal.date.fmt);
+					}
+					return true;
+
+				case "handout":
+					var handout = this.model
+						.get("handouts")
+						.findWhere({handout_id: goal.n});
+					if (handout) {
+						$li.text("Please Read: ").append(
+							$("<a />")
+								.attr({
+									target: "_blank",
+									href: handout.get("url"),
+								})
+								.text(handout.get("name"))
+						);
+						return true;
+					}
+					break;
+
+				case "reading":
+					$li.html(
+						"Reading " +
+							this.vars.lesson_units.singular +
+							" " +
+							goal.n +
+							": " +
+							goal.i
+					);
+					return true;
+
+				case "due":
+					$li
+						.text(
+							"All " +
+								this.vars.lesson_units.singular +
+								" " +
+								goal.n +
+								" assignments due " +
+								(mode == "list" ? goal.date.fmt : goal.date.short) +
+								"."
+						)
+						.css({"font-weight": "bold"});
+					return true;
+
+				case "release":
+					if (mode == "list") {
+						$li
+							.text(
+								this.vars.lesson_units.singular +
+									" " +
+									goal.n +
+									" assignments will be released " +
+									goal.date.fmt +
+									"."
+							)
+							.css({"font-weight": "bold"});
+						return true;
+					}
+					break;
+				case "practice":
+				case "challenge":
+				case "discussion":
+				case "writing":
+				case "read_writing":
+					var $problems = [],
+						checked = true;
+					_.each(
+						_.isArray(goal.i) ? goal.i : [goal.i],
+						_.bind(function (problem_id) {
+							var problem = this.model
+								.get("problems")
+								.findWhere({problem_id: problem_id});
+							if (problem) {
+								$problems.push(
+									$("<a />")
+										.text(problem.get("markup"))
+										.attr({
+											nav_grid: true,
+											href:
+												"/class/" + this.vars.class_string + "/hw" + problem_id,
+										})
+								);
+								if (problem.get("crypt_problem_type").get("is_evaluated")) {
+									if (
+										!problem.get("answered_at") &&
+										(problem.get("can_answer") ||
+											!problem.get("solution_viewed_at"))
+									) {
+										checked = false;
+									}
+								} else {
+									if (!problem.get("solution_viewed_at")) {
+										checked = false;
+									}
+								}
+							}
+						}, this)
+					);
+					if (_.indexOf(["read_writing", "discussion"], goal.t) < 0) {
+						$li.addClass(checked ? "checked" : "unchecked");
+					}
+					if ($problems.length) {
+						var suffix =
+							($problems.length > 1 ? "s " : " ") +
+							this.vars.lesson_units.singular +
+							" " +
+							goal.n;
+						if (goal.t == "read_writing") {
+							if (mode == "list") {
+								return false;
+							}
+							$li.append("Get started on Writing Problem" + suffix + ": ");
+						} else if (goal.t == "writing") {
+							$li.append("Finish Writing Problem" + suffix + ": ");
+						} else if (goal.t == "challenge") {
+							$li.append("Challenge Problem" + suffix + ": ");
+						} else if (goal.t == "discussion") {
+							$li.append("Discussion Problem" + suffix + ": ");
+						} else if (goal.t == "practice") {
+							$li.append("Practice Problem" + suffix + ": ");
+						}
+						_.each(
+							$problems,
+							_.bind(function ($problem, index) {
+								$li.append($problem);
+								if (index < $problems.length - 2) {
+									$li.append(", ");
+								} else if (index < $problems.length - 1) {
+									$li.append(" and ");
+								}
+							}, this)
+						);
+						return true;
+					}
+					break;
+			}
+
+			return false;
+		},
+		showAntonioTrigger: function () {
+			if (this.vars.show_antonio_trigger) {
+				this.$(".grid-antonio-trigger").click(
+					_.bind(function () {
+						var popup = new Views.GridAntonio({
+							model: this.model,
+							parentView: this,
+							name: "goals",
+						});
+						popup.$el.showPlainModal({
+							scrollable: true,
+							title: '<h1 class="grid-antonio-title">My Goals</h1>',
+							onClose: function () {
+								popup.close();
+							},
+						});
+					}, this)
+				);
+			} else {
+				this.$(".lesson-goals-outer").prepend(
+					$("<div />")
+						.addClass("inline-antonio")
+						.append($("<strong />").text("What is this?"))
+						.append($(this.getTemplate("#grid-antonio-goals-tpl")))
+				);
+			}
+		},
+		renderDate: function (date, mode) {
+			var $row = $("<div />")
+				.addClass("lesson-goals-inner-row")
+				.appendTo(this.$inner);
+			var $lhs = $("<div />")
+				.addClass("lesson-goals-inner-cell")
+				.appendTo($row);
+			var $rhs = $("<div />")
+				.addClass("lesson-goals-inner-cell")
+				.appendTo($row);
+			var $list = $("<ul />").addClass("lesson-goals-list").appendTo($rhs);
+
+			if (_.isNull(date.date)) {
+				$lhs.hide();
+			} else if (
+				date.date == "ASAP" &&
+				this.model.get("master").get("today") < this.model.get("date_start_at")
+			) {
+				$lhs.addClass("current");
+			} else if (date.date == "ASAP") {
+				$lhs.addClass("past");
+			} else if (date.date < this.model.get("master").get("today")) {
+				$lhs.addClass("past");
+			} else if (date.date > this.model.get("master").get("today")) {
+				$lhs.addClass("future");
+			} else {
+				$lhs.addClass("current");
+			}
+
+			$lhs.text(date.fmt);
+			_.each(
+				date.goals,
+				_.bind(function (goal) {
+					var $li = $("<li />").appendTo($list);
+					if (!this.renderGoal($li, goal, mode)) {
+						$li.hide();
+					}
+				}, this)
+			);
+		},
+		renderDateView: function () {
+			_.each(
+				this.model.get("goals").lessons[this.vars.lesson].dates,
+				_.bind(function (date) {
+					this.vars.dates.push(this.model.get("goals").dates[date]);
+				}, this)
+			);
+			_.each(
+				this.vars.dates,
+				_.bind(function (date) {
+					this.renderDate(date, "date");
+				}, this)
+			);
+		},
+		renderListView: function () {
+			var goals = [];
+			_.each(
+				this.model.get("goals").dates,
+				_.bind(function (date) {
+					_.each(
+						date.goals,
+						_.bind(function (goal) {
+							if (goal.n == this.vars.lesson) {
+								goals.push(_.extend(_.clone(goal), {date: date}));
+							}
+						}, this)
+					);
+				}, this)
+			);
+			this.renderDate({date: null, fmt: null, goals: goals}, "list");
+		},
+		render: function () {
+			this.vars.dates = [];
+			this.vars.due_at_fmt = this.model
+				.get("lessons")
+				.findWhere({lesson: this.vars.lesson})
+				.get("due_at_fmt");
+			this.vars.num_videos = _.where(this.model.get("my_videos"), {
+				lesson: this.vars.lesson,
+			}).length;
+			this.vars.show_antonio_trigger = this.vars.lesson > 1;
+			this.vars.list_view =
+				this.model.get("goals").show_as_list_view[this.vars.lesson];
+
+			this.$el.html(this.getTemplate(this.template_id, this.vars));
+			this.$inner = this.$(".lesson-goals-inner");
+
+			if (this.vars.list_view) {
+				this.renderListView();
+			} else {
+				this.renderDateView();
+			}
+
+			this.showAntonioTrigger();
+		},
+	});
+
+	return Views;
+})(AoPS.Grid.Views);

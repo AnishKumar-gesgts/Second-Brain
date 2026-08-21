@@ -1,0 +1,955 @@
+/**
+To sort out
+
+--At start of parseEncodedUrlContinue, there's a check for preloaded data.
+We either need to build that on the back end, or deal with the redirects later on if
+the topic isn't in the forum anymore.  (General issue: direct to url navigation.)
+
+-- Deal with the 'stay on expandable view'; search for 'ZZZA'
+
+-- Need to edit takeAjaxDetour for the appropriate event -- may need to trigger
+something on the master model...  That, or pass the router in; the route event
+is always fired.  But what if this is included in a non-backbone page?
+
+-- window resize action - sort that out
+
+-- Need to consider putting back all the stuff that would allow embedding other category types.
+**/
+AoPS.Community.EmbeddableForum = (function (ComEmbed) {
+	var Views = AoPS.Community.Views,
+		Lang = AoPS.Community.Lang,
+		Utils = AoPS.Community.Utils;
+
+	ComEmbed.View = AoPS.View.extend({
+		// The order is important.  Maybe someday I will fix that.
+		url_parameters: [
+			{
+				letter: "c",
+				property: "category_id",
+			},
+			{
+				letter: "t",
+				property: "tag_id",
+			},
+			{
+				letter: "f",
+				property: "tag_forum_id",
+			},
+			{
+				letter: "h",
+				property: "topic_id",
+			},
+			{
+				letter: "p",
+				property: "post_id",
+			},
+			{
+				// denotes whether or not we go to start or end of topic
+				letter: "s",
+				property: "state",
+			},
+		],
+
+		initialize: function (options) {
+			var url,
+				self = this;
+
+			if (!AoPS.bootstrap_data.is_community_active) {
+				return;
+			}
+			if (!AoPS.Community.hasOwnProperty("MasterModel")) {
+				AoPS.Community.MasterModel = new AoPS.Community.Models.Master({
+					in_community: false,
+				});
+			}
+
+			this.model = AoPS.Community.MasterModel;
+			this.fetchHeightAdjustment =
+				typeof options.fetchHeightAdjustment === "function"
+					? options.fetchHeightAdjustment
+					: function () {
+							return 0;
+					  };
+			this.url_router_base = options.url_router_base;
+			this.url_cmty_path = options.url_cmty_path;
+			this.push_state_attribute = options.push_state_attribute;
+
+			this.category_id = options.category_id;
+
+			this.router_counter = 0; // see this.takeAjaxDetour below
+			this.continuing_from_ajax = false;
+
+			this.first_pass = true;
+			this.previous_route = "";
+
+			// If there is a preloaded topic for directly navigating to a topic on page load,
+			// then this will be set to the preloaded id when the preloaded data is parsed.
+			// We then set this back to -1 once the preloaded topic is set as the focus_topic.
+			//  This flag is used to prevent a redundant Ajax call (change_focus_topic) when the topic is built.
+			// REMOVE IF WE DECIDE WE DON"T HAVE TO WORRY ABOUT PRELOAD TOPIC
+			this.preloaded_topic_id = -1;
+			this.direct_to_topic = false;
+			// Create page instance.
+			this.myPage = AoPS.Page.constructPage("community-all");
+			this.$el.append(this.myPage.$el);
+
+			url = options.hasOwnProperty("url") ? this.prepareUrl(options.url) : "";
+			this.parseUrl(url);
+			$(window).on(
+				"touchmove.farfromtop scroll.farfromtop resize.farfromtop",
+				function (e) {
+					self.checkTopPosition();
+				}
+			);
+
+			AoPS.Community.Utils.activateLatexOnclick();
+
+			this.listenTo(Backbone, "community_disabled", this.onCommunityInactive);
+		},
+
+		checkTopPosition: function () {
+			/**
+			 * TODO : Make a class that is added to "stuff above the forum"  Add to the grid.
+			 **/
+			var height =
+				$("#header-wrapper").outerHeight() +
+				$(".atop-the-community").outerHeight();
+			$("body").toggleClass("cmty-away-from-top", window.scrollY > height);
+		},
+
+		prepareUrl: function (url) {
+			var url_arr;
+			if (_.isNull(url) || _.isUndefined(url)) {
+				return "";
+			}
+
+			if (url.substr(0, 1) === "/") {
+				if (url.length === 1) {
+					url = "";
+				} else {
+					url = url.substr(1);
+				}
+			}
+
+			url_arr = url.split("_");
+			url = url_arr[0];
+
+			return url;
+		},
+
+		/**
+		 * Handler for whenever an Ajax call is made as a necessary step in a page build.
+		 *  We check when the Ajax call returns whether or not we are still on the route
+		 *  that we were on when we made the call.  We squelch the onFinish handler for the
+		 *	Ajax call if we have moved on to another route.  This is designed to prevent
+		 *	the following from happening:
+		 *		A) User visits a page which builds part-way and then makes an Ajax call
+		 *			to get more data needed to build the rest of the page.
+		 *		B) User clicks elsewhere while waiting for the data, thereby heading down
+		 *			another route.
+		 *		C) First call returns, and the page continues building, thereby throwing
+		 *			elements on the page that we don't want anymore.
+		 *
+		 * We tackle this by setting still_on_this_route, and whenever the router's
+		 *	route event fires (which happens at the end of a route),
+		 *  we check if we are still on this route.  We do so by keeping this.router_counter,
+		 *  a counter of how many routes we have finished.  We also keep track of
+		 *  when code is being executed as the continuation of an ajax call.
+		 ***/
+		takeAjaxDetour: function (obj) {
+			var still_on_this_route = true,
+				settings = obj.hasOwnProperty("settings") ? obj.settings : {},
+				counter = this.router_counter, // counter at time of this ajax call
+				handlers = ["onFinish", "onError"],
+				self = this,
+				continuing_from_ajax = this.continuing_from_ajax, // Was this ajax call made as a continuation from an earlier Ajax call (some rare routes may need two Ajax calls to build a whole page)
+				listener_handler = function () {
+					//Assigned to variable so we can stop listening
+					/**
+					 * If we are continuing from an ajax call, then the router_counter
+					 *  will already have incremented prior to this ajax call being made.
+					 *  Otherwise, the router_counter will increment between the
+					 *  Ajax call initiation and its completion.
+					 **/
+					if (
+						self.router_counter !==
+						counter + (continuing_from_ajax ? 0 : 1)
+					) {
+						still_on_this_route = false;
+					}
+				};
+			this.listenTo(this, "route", listener_handler);
+			this.myPage.showLoader();
+
+			_.each(handlers, function (handler) {
+				settings[handler] = function (data) {
+					self.continuing_from_ajax = true;
+					if (obj.hasOwnProperty(handler)) {
+						if (still_on_this_route) {
+							obj[handler](data);
+						}
+					}
+					self.stopListening(self, "route", listener_handler);
+					self.continuing_from_ajax = false;
+				};
+			});
+			obj.func(settings);
+		},
+
+		onCommunityInactive: function () {
+			this.$el.html(AoPS.bootstrap_data.community_inactive_message);
+		},
+
+		parseUrl: function (url) {
+			var coords = {
+				topic: null,
+				category: null,
+			};
+			this.url = url;
+
+			if (!AoPS.bootstrap_data.is_community_active) {
+				this.onCommunityInactive();
+				return;
+			}
+
+			AoPS.Community.Utils.cmty_ajax.cancelAll({cancel_type: "master"});
+			/**
+			 * If we're hitting a category, topic, or post on page load (first_pass through the
+			 *  router), then we check the preload_cmty_data property of bootstrap to see if
+			 *  there's anything we can preload, and to see if we need to rewrite the url.
+			 *
+			 * There are later url rewrite checks, but they shouldn't ever be triggered.
+			 *  I'm leaving them in, in case down the line we introduce ways that users can
+			 *  travel down routes missing properties (like topic id with no category id) in
+			 *  some way other than the initial page load.
+			 **/
+			if (this.first_pass) {
+				if (AoPS.bootstrap_data.hasOwnProperty("preload_cmty_data")) {
+					this.first_pass = false;
+					if (this.parsePreloadedData()) {
+						return;
+					}
+				}
+			}
+
+			// Fill coords object from url
+			_.each(this.url_parameters, function (item) {
+				coords[item.property] = Utils.extractValueFromUrl(item.letter, url);
+			});
+
+			if (coords.category_id === 0) {
+				coords = {
+					category_id: this.category_id,
+					topic_id: 0,
+					tag_id: 0,
+					tag_forum_id: 0,
+					post_id: 0,
+				};
+			}
+
+			if (coords.post_id > 0 && parseInt(coords.topic_id) === 0) {
+				coords.post_id = 0;
+			}
+
+			coords.category_id = this.category_id;
+
+			/** TODO ZZZA
+			 * Check to see if we want to keep the current fullscreen mode.
+			 *  We do so if we are staying in the same category&tag, and
+			 *  are viewing a topic.  Anything else takes us out of fullscreen
+			 *  mode.
+			 **/
+			if (
+				this.previous_route === "parseEncodedUrl" &&
+				this.hasOwnProperty("previous_coords")
+			) {
+				if (
+					coords.category_id === this.previous_coords.category_id &&
+					coords.tag_id === this.previous_coords.tag_id &&
+					coords.tag_forum_id === this.previous_coords.tag_forum_id
+				) {
+					this.stay_on_list = true;
+
+					if (coords.topic_id > 0) {
+						this.keep_fullscreen_mode = true;
+					}
+					coords.category = this.model.get("focus_category");
+					coords.topic_list = this.model.get("focus_topic_list");
+				} else {
+					this.stay_on_list = false;
+				}
+			} else {
+				this.stay_on_list = false;
+			}
+			if (!this.stay_on_list) {
+				this.myPage.clearPage();
+			}
+			coords.topic = null;
+			this.previous_coords = {
+				category_id: coords.category_id,
+				tag_id: coords.tag_id,
+				tag_forum_id: coords.tag_forum_id,
+			};
+
+			this.startConstructingPage(coords);
+		},
+
+		throwError: function (error) {
+			this.myPage.throwError({
+				error_type: "custom",
+				error_msg: error,
+			});
+			this.direct_to_topic = false;
+		},
+
+		/**
+		 * When the user doesn't have permissions to access a page, we
+		 *  throw an error with text based on whether or not the user is logged in.
+		 **/
+		throwNoPermissions: function () {
+			if (AoPS.session.logged_in) {
+				this.throwError(AoPS.Community.Lang["router-err-no-perms-logged-in"]);
+			} else {
+				this.throwError(AoPS.Community.Lang["router-err-no-perms-logged-out"]);
+			}
+		},
+
+		startConstructingPage: function (coords) {
+			var category_model = this.model.fetchCategory(coords.category_id),
+				self = this;
+			if (_.isUndefined(category_model)) {
+				this.takeAjaxDetour({
+					func: _.bind(this.model.buildCategory, this.model),
+					settings: {
+						category_id: coords.category_id,
+					},
+					onFinish: function (data) {
+						coords.category = data.category;
+						self.checkTopicThenContinue(coords);
+					},
+					onError: function (msg) {
+						if (msg.error_code === "E_NO_SUCH_CATEGORIES") {
+							self.throwError(Lang["router-err-no-such-category"]);
+						} else if (msg.error_code !== "E_AJAX_CANCEL") {
+							self.throwError(msg.error_code);
+						}
+					},
+				});
+			} else {
+				// We have the category object, rock on.
+				coords.category = category_model;
+
+				this.checkTopicThenContinue(coords);
+			}
+		},
+
+		/**
+		 * Check the topic setting, then keep on going.  If user has
+		 *  requested an unloaded topic, then we have to load it first.
+		 *  This is separated from the "constructPageFromCategory" function
+		 *  because sometimes the topic is loaded before the category.
+		 *
+		 * @param coords: settings used to build the page.
+		 */
+		checkTopicThenContinue: function (coords) {
+			var self = this,
+				suppress_ajax = coords.topic_id === this.preloaded_topic_id;
+			this.model.set("focus_category", coords.category);
+			function continueBuilding() {
+				this.model.set("focus_topic", coords.topic, {
+					suppress_ajax: suppress_ajax,
+					tag_id: coords.tag_id,
+					tag_forum_id: coords.tag_forum_id,
+				});
+
+				this.preloaded_topic_id = -1;
+
+				// Check if topic is in the category that the URL has
+				//  stated.  If not, rewrite the URL and recast the
+				//  the tag's forum_id if necessary (if the URL has a tag set).
+				if (
+					!this.stay_on_list &&
+					!_.isNull(coords.topic) &&
+					!coords.category.filterTopic(coords.topic)
+				) {
+					// TODO ERROR
+					this.throwError(Lang["embed-err-no-topic"]);
+
+					// Allow Halpers to view closed halper topics from the halper forum.
+					if (AoPS.bd.mode === "halper") {
+						if (this.myPage.$error_window) {
+							this.myPage.$error_window.html(
+								Lang["embed-halper-no-topic"].replace(
+									":URL:",
+									"/community/" + this.url
+								)
+							);
+						}
+					}
+
+					return;
+				} else {
+					this.checkTagThenContinue(coords);
+				}
+			}
+
+			if (coords.topic_id === 0) {
+				// No focus topic, so the topic_list will stretch across the bottom of the screen.
+				continueBuilding.apply(this);
+				return;
+			} else {
+				coords.topic = this.model.fetchTopicById(coords.topic_id);
+
+				if (_.isNull(coords.topic) || _.isUndefined(coords.topic)) {
+					// this really may be moot...
+					suppress_ajax = true;
+					this.direct_to_topic = true;
+					//this.parseWindowSize();
+					this.takeAjaxDetour({
+						func: _.bind(this.model.fetchTopicFromDb, this.model),
+						settings: {
+							topic_id: coords.topic_id,
+						},
+						onFinish: function (data) {
+							coords.topic = data.topic;
+							continueBuilding.apply(self);
+						},
+						onError: function (data) {
+							if (data.error_code === "E_NO_PERMISSION") {
+								self.throwNoPermissions();
+							} else if (data.error_code === "E_NO_SUCH_TOPIC") {
+								self.throwError(Lang["router-err-no-topic"]);
+							}
+						},
+					});
+
+					return;
+				} else {
+					// If we have a topic, process all the tags on it (add them to their categories).
+					this.model.processTopicTags(coords.topic);
+					continueBuilding.apply(this);
+					return;
+				}
+			}
+		},
+
+		/***
+		 * Check the submitted tag if there is one.  We have two items to check:
+		 *  1) Is the tag a valid item for the category
+		 *  2) If there is a topic, does the topic have this tag?
+		 * If the answer to either is "no", then we strip the tag from the URL and
+		 *  continue without a tag.
+		 *
+		 * @param coords: settings used to build the page.
+		 */
+		checkTagThenContinue: function (coords) {
+			var tag,
+				self = this;
+			if (this.stay_on_list) {
+				self.buildThePage(coords);
+				return;
+			}
+			function continueBuilding() {
+				if (coords.tag_id > 0) {
+					coords.tag_name = this.model.fetchItemName(coords.category_id, {
+						item_id: coords.tag_id,
+						item_forum_id: coords.tag_forum_id,
+						item_type: "tag",
+					});
+				}
+				this.checkTopicListThenContinue(coords);
+			}
+
+			function stripTagAndContinue() {
+				this.previous_coords.tag_forum_id = 0;
+				this.previous_coords.tag_id = 0;
+				coords.tag_forum_id = 0;
+				coords.tag_id = 0;
+				//	this.rebuildUrl(coords);
+				this.model.set("focus_tag", null);
+				continueBuilding.apply(this);
+			}
+
+			if (coords.tag_id > 0) {
+				if (parseInt(coords.category_id) !== parseInt(coords.tag_forum_id)) {
+					coords.tag_forum_id = coords.category_id;
+					//	this.rebuildUrl(coords);
+				}
+
+				// If we have a topic, let's make sure the topic has this tag.
+				if (coords.topic_id > 0) {
+					if (!coords.topic.hasTag(coords.tag_id)) {
+						/**
+						 * Here we do something subtle.  All of the code below deals with the problem
+						 *  of a topic having its tag removed while the user is looking at a filter
+						 *  on that tag.  As the user clicks around within that topic_list, we don't
+						 *  want the topic to disappear (until the user leaves the list).  The topic won't have the tag anymore, but
+						 *  we need to get in front of the "stripTagAndContinue" line to prevent
+						 *  the user from getting redirected if they click on the topic that has had its tag
+						 *  stripped.
+						 **/
+						if (this.hasOwnProperty("current_topic_list")) {
+							coords.topic_list = this.model.fetchFilteredTopicList({
+								category: coords.category,
+								category_id: coords.category_id,
+								tag_ids: [
+									{
+										tag_id: coords.tag_id,
+										tag_forum_id: coords.tag_forum_id,
+									},
+								], //currently assumes at most one tag_id.
+							});
+							if (coords.topic_list !== this.current_topic_list) {
+								//We are not on the same topic_list as before
+								delete coords.topic_list;
+								stripTagAndContinue.apply(this);
+								return;
+							} else {
+								// We are still on the same list we were just on.  Rock on.
+							}
+						} else {
+							// We are not clicking around on a page with a topic_list on it
+							stripTagAndContinue.apply(this);
+							return;
+						}
+					}
+				}
+				tag = coords.category.fetchItem({
+					item_id: coords.tag_id,
+					item_forum_id: coords.tag_forum_id,
+					item_type: "tag",
+				});
+
+				// If the tag has not been loaded to the category yet, then we go get it
+				//  from the database.  This should only happen for forums.
+				//  The earlier check should catch missing tags for views.  Views should
+				//  have all of their tags already loaded, so there's no more fetching to do.
+				if (_.isUndefined(tag)) {
+					coords.category.fetchItemFromDb({
+						item_id: coords.tag_id,
+						forum_id: coords.tag_forum_id,
+						item_type: "tag",
+						onError: function () {
+							stripTagAndContinue.apply(self);
+						},
+						onFinish: function (data) {
+							self.model.set("focus_tag", data.item);
+							continueBuilding.apply(self);
+						},
+					});
+				} else {
+					this.model.set("focus_tag", tag);
+					continueBuilding.apply(this);
+					return;
+				}
+			} else {
+				this.model.set("focus_tag", null);
+				continueBuilding.apply(this);
+				return;
+			}
+		},
+
+		/***
+		 * Construct the topic list that we use for the page.  If the topic list
+		 *  has no topics, then we go get some topics before building.
+		 *
+		 * @param coords: settings used to build the page.
+		 */
+		checkTopicListThenContinue: function (coords) {
+			var page_class,
+				category_identifier = coords.category_id; // for Page to remember this category
+			/**
+			 * Load the Category cell before looking for the topic list.
+			 *  I hope this doesn't make IE do stupid stuff.  This
+			 *  Allows the Category block to stay on top of the page when
+			 *  the user clicks to a new tag.
+			 **/
+			this.myPage.hideLoader();
+
+			// This must be done before we build the page.
+			//  Any category with topics must have a fixed-height page.
+			// TODO SORT THIS OUT
+			//this.setWindowResizeAction(true);
+
+			// MUST SET BEFORE ADDING THE CATEGORY, OR YOU'LL GET WACKINESS IF THE BROWSER
+			//  RENDERS THE CATEGORY BEFORE THE PAGE CLASS IS SET.
+			if (coords.topic_id > 0) {
+				page_class = "cmty-page-topic";
+				this.myPage.setClass();
+			} else {
+				page_class = "cmty-page-topic-list";
+			}
+
+			this.myPage.setClass(page_class);
+
+			this.myPage.showElement({
+				id: "cmty-category" + category_identifier + "-tpl",
+				constructor: _.bind(function () {
+					return new (Views.fetchCategoryCellCategoryTopConstructor(
+						coords.category.get("category_type")
+					))({
+						model: coords.category,
+						focus_tag: this.model.get("focus_tag"),
+						master: this.model,
+						url_router_base: this.url_router_base,
+						url_cmty_path: this.url_cmty_path,
+						push_state_attribute: this.push_state_attribute,
+					});
+				}, this),
+				location: "cmty-topic-view-top",
+			});
+
+			if (this.direct_to_topic) {
+				// this makes me sad.  Maybe I'll fix it someday
+				this.parseWindowSize();
+			}
+
+			// Construct or fetch the Community.Models.FilteredTopicList that matches
+			//  the set of parameters we seek.
+			// Gets called twice for topics that are shorn of tags, but we can live with that, I think
+			//  That will be rare.  We could do a property check, though.  Might be more expensive than it's worth.
+			coords.topic_list = this.model.fetchFilteredTopicList({
+				category: coords.category,
+				category_id: coords.category_id,
+				tag_ids:
+					coords.tag_id > 0
+						? [
+								{
+									tag_id: coords.tag_id,
+									tag_forum_id: coords.tag_forum_id,
+								},
+						  ]
+						: [], //currently assumes at most one tag_id.
+			});
+			this.current_topic_list = coords.topic_list;
+			// Not enough topics in this list; I'm gonna get more.
+			if (
+				coords.topic_list.length <=
+					AoPS.Community.Constants.min_topic_list_initial_length &&
+				!coords.topic_list.all_topics_fetched
+			) {
+				this.takeAjaxDetour({
+					func: _.bind(coords.topic_list.fetchMoreTopics, coords.topic_list),
+					cat_name: coords.category.get("category_name"),
+					onFinish: _.bind(function () {
+						this.buildThePage(coords);
+						$(window).trigger("resize");
+					}, this),
+				});
+			} else {
+				// If topic_id is nonzero, category will get marked on the change of focus topic
+				if (coords.topic_id === 0) {
+					coords.category.markVisited();
+				}
+				this.buildThePage(coords);
+			}
+		},
+
+		/**
+		 * Finally, we build the page.
+		 *
+		 * @param coords: settings used to build the page.
+		 */
+		buildThePage: function (coords) {
+			var topic_list_app,
+				reveal_type,
+				topic_identifier,
+				topic_element = null,
+				tag_filter_properties,
+				category_identifier = coords.category_id;
+
+			if (!this.stay_on_list) {
+				topic_list_app = {
+					id:
+						"cmty-cat-" +
+						category_identifier +
+						"-tag-" +
+						coords.tag_id +
+						"-forum-" +
+						coords.tag_forum_id,
+					constructor: _.bind(function () {
+						return new (Views.fetchTopicsListConstructor(
+							coords.category.get("category_type")
+						))({
+							collection: coords.topic_list,
+							main_color: coords.category.get("main_color"),
+							secondary_color: coords.category.get("secondary_color"),
+							focus_tag: this.model.get("focus_tag"),
+							master: this.model,
+							category_id: coords.category_id,
+							url_router_base: this.url_router_base,
+							url_cmty_path: this.url_cmty_path,
+							can_toggle_scroll_style: true,
+							push_state_attribute: this.push_state_attribute,
+						});
+					}, this),
+					location: "cmty-topic-view-left",
+				};
+
+				this.model.set("focus_topic_list", coords.topic_list);
+			}
+
+			if (coords.category.get("has_tag_filter")) {
+				tag_filter_properties = {
+					id: "cmty-category-tag-search-" + category_identifier,
+					constructor: _.bind(function () {
+						return new Views.CategoryTagFilter({
+							model: coords.category,
+							focus_tag: this.model.get("focus_tag"),
+							master: this.model,
+							url_router_base: this.url_router_base,
+							url_cmty_path: this.url_cmty_path,
+							push_state_attribute: this.push_state_attribute,
+						});
+					}, this),
+					location: "cmty-topic-view-left",
+				};
+				this.myPage.addClass("cmty-page-has-tag-filter");
+			} else {
+				this.myPage.removeClass("cmty-page-has-tag-filter");
+			}
+
+			this.myPage.hideLoader();
+			if (
+				coords.topic_id > 0 &&
+				this.model &&
+				typeof this.model === "object" &&
+				Object.keys(this.model).length
+			) {
+				if (!this.stay_on_list) {
+					if (coords.category.get("has_tag_filter")) {
+						this.myPage.showElement(tag_filter_properties);
+					}
+
+					this.topic_list_element = this.myPage.showElement(topic_list_app);
+				} else {
+					this.$loader.detach();
+					this.myPage.addClass("cmty-page-topic");
+					this.myPage.removeClass("cmty-page-topic-list");
+				}
+
+				// Keep the category identifier in the topic_identifier.  Topics are
+				//  in many categories, and get rendered a bit differently in each.
+				if (coords.category.get("category_type") === "user_search_posts") {
+					topic_identifier =
+						"cmty-topic-" +
+						category_identifier +
+						"-user-" +
+						coords.user_id +
+						"-topic-" +
+						coords.topic_id +
+						"-post-" +
+						coords.post_id;
+				} else if (
+					coords.category.get("category_type") === "user_search_posts"
+				) {
+					topic_identifier =
+						"cmty-topic-" +
+						category_identifier +
+						"-search-" +
+						coords.search_id +
+						"-topic-" +
+						coords.topic_id +
+						"-post-" +
+						coords.post_id;
+				} else {
+					topic_identifier =
+						"cmty-topic-" +
+						category_identifier +
+						/* '-tag-' + coords.tag_id +*/ "-topic-" +
+						coords.topic_id;
+				}
+				if (coords.post_id > 0) {
+					reveal_type = "show_from_middle";
+				} else {
+					if (coords.state === 0) {
+						reveal_type = "show_from_start";
+					} else if (coords.state === 1) {
+						reveal_type = "show_from_end";
+					} else if (coords.state === 2) {
+						reveal_type = "show_unread";
+					}
+				}
+
+				// If we have a topic, then here's how we add its element
+				// RR removed tag_id from the id on 6/19/14; let's see if anything goes wrong.
+				//this.previous_topic_element_id = topic_identifier;
+				topic_element = this.myPage.showElement({
+					id: topic_identifier,
+					constructor: _.bind(function () {
+						var newthing = new Views.TopicFull({
+							model: coords.topic,
+							route_category_id: coords.category_id,
+							reveal_type: reveal_type,
+							post_id: coords.post_id,
+							url_router_base: this.url_router_base,
+							url_cmty_path: this.url_cmty_path,
+							push_state_attribute: this.push_state_attribute,
+						});
+						return newthing;
+					}, this),
+					on_add_settings: {
+						reveal_type: reveal_type,
+						post_id: coords.post_id,
+					},
+					location: "cmty-topic-view-right", //'topics-view-bottomd'//'cmty-no-topic-view-bottom'
+				});
+			} else {
+				if (!this.stay_on_list) {
+					if (coords.category.get("has_tag_filter")) {
+						this.myPage.showElement(tag_filter_properties);
+					}
+
+					this.topic_list_element = this.myPage.showElement(topic_list_app);
+				} else {
+					this.myPage.addClass("cmty-page-topic-list");
+					this.myPage.removeClass("cmty-page-topic");
+				}
+				this.previous_topic_element_id = null;
+
+				/*if (coords.tag_id > 0) {
+					this.setTitle(coords.category.get('category_name') + ' '
+						+ coords.tag_name);
+
+					this.buildCoreCommunityBreadcrumbs(coords.category, {
+						extra_crumb : {
+							text : coords.tag_name
+						}
+					});
+
+				} else {
+					this.setTitle(coords.category.get('category_name'));
+					this.buildCoreCommunityBreadcrumbs(coords.category);
+				}*/
+			}
+
+			this.parseWindowSize();
+			// When going direct to topic on page load,
+			//  there's some time offset for when things are happening.
+			//  I'm sure there's a smarter way to handle this.
+			if (this.direct_to_topic) {
+				if (topic_element) {
+					topic_element.view.setHeight();
+				}
+				if (this.topic_list_element) {
+					this.topic_list_element.view.setPopoutVisibility();
+					this.topic_list_element.view.onAddToPage();
+				}
+			}
+
+			this.direct_to_topic = false;
+		},
+
+		onAddToPage: function (obj) {
+			if (!AoPS.bootstrap_data.is_community_active) {
+				this.onCommunityInactive();
+				return;
+			}
+
+			var self = this,
+				url = this.prepareUrl(obj.url);
+			this.parseWindowSize();
+			if (url !== this.url) {
+				this.parseUrl(url);
+			}
+			$(window).on("resize.cmty", function () {
+				self.parseWindowSize();
+			});
+
+			/**
+				If we have a topic list set, and it's on the page,
+				we want to call its onAddToPage method.
+			**/
+			if (
+				typeof this.topic_list_element === "object" &&
+				typeof this.topic_list_element.view === "object" &&
+				typeof this.topic_list_element.view.onAddToPage === "function" &&
+				this.topic_list_element.view.$el.is(":visible")
+			) {
+				this.topic_list_element.view.onAddToPage();
+			}
+		},
+
+		onRemoveFromPage: function () {
+			AoPS.updateLayout();
+			$("#main-content").css("height", "");
+			$("#main-column").css("height", "");
+			$(window).off("resize.cmty");
+			this.url = null;
+		},
+
+		parseWindowSize: function () {
+			var window_width,
+				window_height,
+				top_height,
+				header_height,
+				main_column_standard_height,
+				footer_height,
+				cat_cell_height,
+				top_bar_height,
+				campus_picker_height,
+				page_height_adjustment,
+				breadcrumbs_height,
+				$header,
+				$footer;
+
+			AoPS.updateLayout();
+			$("#main-content").css("height", "");
+
+			document.body.style.overflow = "hidden";
+
+			window_width = $(document).width();
+			document.body.style.overflow = "";
+
+			if (window_width <= AoPS.Community.Constants.phone_mode_max_width) {
+				$("#main-column").css("height", "100%");
+				$("#main-content").css("height", "100%");
+				$("#cmty-topic-view-left").css("height", "auto");
+				$("#cmty-topic-view-right").css("height", "auto");
+			} else {
+				// height: no padding, margin, or border
+				// outerHeight: includes padding and border, but not margin unless true is passed in
+				// innerHeight: padding but not margin or border
+
+				$header = $("#header-wrapper"); // Header. Includes info bar. Does not include #top-bar or .campus-picker
+				$footer = $("#small-footer-wrapper"); // The small footer
+				header_height = $header.is(":visible") ? $header.outerHeight() : 5;
+				footer_height = $footer.is(":visible") ? $footer.outerHeight() : 5;
+				window_height = $(window).height(); // Height of viewport
+				cat_cell_height = $("#cmty-topic-view-top").height(); // Category title + tags
+				page_height_adjustment = this.fetchHeightAdjustment(); // In grid: title + tabs + 5
+				top_height = cat_cell_height + page_height_adjustment;
+				top_bar_height = $("#top-bar").outerHeight() || 0;
+				campus_picker_height = $(".campus-picker").outerHeight() || 0;
+				breadcrumbs_height =
+					$(".academy #breadcrumbs-wrapper").outerHeight() || 0;
+
+				$("#main-column").css("height", "100%");
+				$("#main-content").outerHeight(
+					window_height -
+						header_height -
+						footer_height -
+						top_bar_height -
+						breadcrumbs_height -
+						campus_picker_height
+				);
+
+				main_column_standard_height = $("#main-content").outerHeight();
+
+				$("#community-all").outerHeight(
+					main_column_standard_height - page_height_adjustment
+				);
+				$("#cmty-topic-view-right").outerHeight(
+					main_column_standard_height - top_height
+				);
+				$("#cmty-topic-view-left").outerHeight(
+					main_column_standard_height - top_height
+				);
+
+				//$('#cmty-no-topic-view-bottom').outerHeight(main_column_standard_height - top_height);
+			}
+		},
+	});
+
+	return ComEmbed;
+})(AoPS.Community.Embeddable || {});

@@ -1,0 +1,210 @@
+                                    Shoot on the Move Theory Proof
+                                               Charging Champions - 6560
+
+                                                         Anish Kumar
+                                                       January 16, 2026
+
+
+1     Theory
+By applying kinematics calculations based on odometry readings of the position and velocity of the robot and position of the
+target, vectors can be calculated and processed to result in a final target vector for velocity and direction of the shoot. This
+would then be translated through physical constants and some formulas to derive the RPM of the roller-compression system.
+Additional effects like air resistance and efficiency of spin transfer constants can be calculated post-implementation.
+
+
+2     Setup
+Goal: Get the RPM and turret angle to shoot at while moving at a velocity ⃗v
+
+There are 2 main vectors to keep track of (at the beginning):
+
+let ⃗r be a ”relative position vector”, used to track the difference between the robot and target’s positions regardless of
+vertical height
+
+let ⃗v be a yagsl-determined vector to show the robots velocity in 2 dimensions, also disregarding vertical height
+
+These will not be combined directly, as they are position and velocity, and instead operations will be performed to translate
+the position vector into a velocity vector.
+
+
+
+3     Kinematics
+Imagine a triangle in a 2d plane, similar to a standard kinematics projectile motion problem with vectors for velocity and
+it’s components forming a right triangle with an angle θ
+Let the vectors on this triangle be made of
+                                                          ⃗l, ⃗lx , ⃗ly
+
+
+By solving like a normal projectile motion question, we can separate the vector into componenets and solve from there
+                                                                          1
+                                                 y(t) = y0 + ∥⃗l∥sin(θ)t − gt2
+                                                                          2
+
+And
+
+                                                        x(t) = ∥⃗l∥cos(θ)t
+
+But, drag aplies to both the x and y functions So, using a standard calculation for drag force:
+                                                              1
+                                                    Fdrag =     · ρ · A · Cd · v 2
+                                                              2
+
+Density of air is ≈ 1.225
+Contact area = πd = π · 0.15m ≈ 0.47124
+                                            1
+                                  Fdrag =     · 1.225 · 0.47124 · Cd · ⃗l2 ≈ 0.2886345 · Cd · ∥⃗l∥2
+                                            2
+
+                                                                 1
+Substituting into x(t)
+                                                                     1
+                                               x(t) = ∥⃗l∥cos(θ)t −    (Fdrag )t2
+                                                                    2m
+                                                              1
+                                        x(t) = ∥⃗l∥cos(θ)t −    (0.2886345 · Cd · ∥⃗l∥2 )t2
+                                                             2m
+                                        2mx = mt(2∥⃗l∥cos(θ) − (0.2886345 · Cd · ∥⃗l∥2 )t)
+                                       −(0.2886345Cd ∥⃗l∥2 )t2 + 2mt∥⃗l∥cos(θ) − 2mx = 0
+
+
+(Holy what is this)                                p
+                                    −2mtcos(θ) ±       (−2mtcos(θ))2 − 4(−0.2886345Cd t2 )(−2mx)
+                             ∥⃗l∥ =
+                                                          2(−0.2886345Cd t2 )
+
+
+Using an angle 45° as the value for theta (based on alphabot for now)
+                                            √    q       √
+                                        −mt 2 ± (−mt 2)2 − 4(−0.2886345Cd t2 )(−2mx)
+                                 ∥⃗l∥ =
+                                                        2(−0.2886345Cd t2 )
+                                                 √     √
+                                            −mt 2 ± 2m2 t2 − 2.309076Cd m2 t2 x
+                                          =
+                                                        −0.577269Cd t2
+                                                     √      √
+                                                    − 2 ± t( 2 − 2.309076Cd x)
+                                             = mt ·
+                                                           −0.577269Cd
+
+
+Take only the + solution because we want the highest arc:
+                                                                 √
+                                                 2.44983458729 t( 2 − 2.309076Cd x)
+                                        = mt · (              +                     )
+                                                       Cd          −0.577269Cd
+
+Drag Coefficients can be determined experimentally, but seeing as we don’t have an easy way to experimentally do so, we
+can estimate it by using Reynold’s numbers.
+
+Cd is calculated as a piecewise function of the object’s Reynold’s number (Re),
+
+                                                                      ρ∥⃗l∥D
+                                                         Ref uel =
+                                                                         µ
+
+
+ρ is the density of air, D is the diameter of the sphere, µ is the viscosity of air.
+
+                                                                1.225 · ∥⃗l∥ · 0.15
+                                                    Ref uel =
+                                                                   1.8 · 10−5
+
+                                                         ≈ 10, 208.33∥⃗l∥
+
+
+And with exit velocity being in the range from 5 to 20 mph,
+                                                                         m
+                                     Ref uel ≈ 10, 208.33(2.24 to 9.94     ) ≈ 2 · 104 to 9 · 104
+                                                                         s
+
+Since this value is in the subcritical drag range, below drag crisis, Cd can be approximated as 0.47
+                                                 √                                          √
+                 ⃗           2.44983458729 t( 2 − 2.309076Cd x)                           t( 2 − 1.08526572x)
+                ∥l∥ = mt · (                +                        ) ≈ mt · (5.212414 +                     )
+                                   Cd              −0.577269Cd                                −0.27131643
+                                                                  √
+                                                            mt2 ( 2 − 1.08526572x)
+                                            ≈ 5.212414mt +
+                                                                   −0.27131643
+
+                                                                  2
+Fuel mass according to the game manual is mf uel ≈ (0.203 to 0.227kg) so can be used as ≈ 0.215 kg
+
+                                                                          √
+                                                ∥⃗l(x, t)∥ ≈ 1.12t − 0.8t2 2 − 1.085x
+
+
+
+Substituting back into y(t)
+                                                                   F
+                                                         ∥⃗l∥t (g − drag
+                                                                     m )t
+                                                                          2
+                                                      y= √ −
+                                                            2       2
+                        √             √           0.2886345 · Cd · ∥⃗l∥2             √
+                       2 2y = 2t∥⃗l∥ − 2t2 · (g −                        ) ≈ 2t∥⃗l∥ − 2t2 · (g − 0.630968∥⃗l∥2 )
+                                                          m
+
+Solve for ∥⃗l(y, t)∥
+                                           √                                       √
+                                          − 2t2 · (g − 0.630968∥⃗l∥2 ) + 2t∥⃗l∥ − 2 2y = 0
+                                                                 √
+                                                        1.122      4 + 10.08y + 5.04g
+                                             ∥⃗l∥ = −         +
+                                                          t             1.782t
+                                                                 √
+                                                              2 + 53.4424 + 10.08y
+                                              ∥⃗l(y, t)∥ = −
+                                                                      1.782t
+
+Then solve for time of flight:
+                                          p                                       √
+                                   −2 −    53.4424 + 10.08y = 1.782t(1.12t − 0.8t2 2 − 1.085x)
+
+
+The nature of this function means it is irreducible, even through Newton-Raphson method. However, time of flight can be
+implicitly defined as a function of x or y,
+                                                    √                p
+                                    t(x, y) = −1.4t3 2 − 1.1x + 2t2 + 53.44 + 10.1y + 2 = 0
+
+
+When actually running, x and y would be inputted into t(x, y). This would result in a cubic, irreducible function of solely t,
+meaning Newton-Raphson method can be used to approximate the roots of the function. From there, the value t and the x
+could be substituted into ∥⃗l(x, t)∥ to finally determine the exit velocity.
+
+
+
+
+                                                                  3
+4    Vector Processes
+Now that there is a vector for magnitude in that plane, we need to work in the ground plane for direction calculations:
+
+First, convert ⃗l’s magnitude to a ground-relative vector, aka l⃗x , and call it ⃗g to store ground velocity of the ball.
+                                                                         r
+                                                                   x              g
+                                             ∥⃗g ∥ = ∥⃗l∥cos(θ) = = x
+                                                                    t       2(x − y)
+
+
+Since the stationary ground velocity of the ball would retain the heading of the position vector ⃗r,
+
+                                                    arg(⃗g ) = ϕ = atan2(r⃗y , r⃗x )
+This would mean that 0°is upfield and ϕ would increase counter-clockwise from that
+
+Then break it into components:
+
+                                              ⃗g = ∥⃗l(x, t)∥cos(ϕ)ı̂ + ∥⃗l(y, t)∥sin(ϕ)ȷ̂
+
+
+This vector ⃗g is the field relative target velocity vector.
+Next we have to determine the robot’s field-relative velocity ⃗v Given a gyro reading of β, ⃗v can be calculated
+                                                                                  π
+                                                 ⃗v = (v⃗x cos(β) − v⃗y sin(β −     ))ı̂
+                                                                                  2
+
+
+
+
+                                                                   4
+

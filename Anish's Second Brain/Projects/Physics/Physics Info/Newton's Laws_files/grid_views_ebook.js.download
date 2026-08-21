@@ -1,0 +1,207 @@
+AoPS.Utils.initKeyChain(AoPS, "Grid", "Views");
+
+AoPS.Grid.Views = (function (Views) {
+	Views.GridTabEbook = Views.GridTab.extend({
+		template_id: "#grid-tab-ebook-tpl",
+		constructCrumbs: function () {
+			var eb = _.findWhere(this.model.get("ebooks"), {
+				sku: this.model.get("master").get("grid_data").ebook.sku,
+			});
+			if (this.innerView && this.innerView.breadcrumb_data) {
+				return [
+					{
+						text: eb ? eb.title : "Book",
+						url: this.options.base_tab_url + "/" + (eb ? eb.sku : "book") + "/",
+					},
+					this.innerView.breadcrumb_data[
+						this.innerView.breadcrumb_data.length - 1
+					],
+				];
+			} else {
+				return [
+					{
+						text: eb ? eb.title : "Book",
+					},
+				];
+			}
+		},
+		onAddToPage: function (obj) {
+			this.innerView.onAddToPage(obj);
+		},
+		prerenderHelper: function () {
+			this.innerView = new Views.GridEbookContainer({
+				model: this.model,
+				parentView: this,
+				full: true,
+			});
+		},
+		innerView: null,
+		renderHelper: function () {
+			this.$el.append(this.innerView.$el);
+		},
+	});
+
+	Views.GridFakeTabEbook = Views.GridTabLikeView.extend({
+		template_id: "#grid-tab-ebook-tpl",
+		onAddToPage: function (obj) {
+			this.innerView.onAddToPage(obj);
+		},
+		prerenderHelper: function () {
+			this.innerView = new Views.GridEbookContainer({
+				model: this.model,
+				parentView: this,
+				full: false,
+			});
+		},
+		innerView: null,
+		renderHelper: function () {
+			this.$el.append(this.innerView.$el);
+		},
+	});
+
+	// Encapsulate in a tablike view.
+	Views.GridEbookContainer = AoPS.View.extend({
+		template_id: "#grid-ebook-container-tpl",
+		className: "grid-ebook-container",
+		vars: {},
+		initialize: function (options) {
+			this.options = options;
+			this.parentView = options.parentView;
+			this.full = options.full;
+			this.render();
+		},
+		render: function () {
+			this.controller = this.model.get("ebook_controller");
+			if (!this.controller) {
+				this.$el.text(
+					"Ebooks are down for maintenance right now. Please come back later."
+				);
+				return;
+			}
+			this.vars.ebook_book_id = this.model
+				.get("master")
+				.get("grid_data").ebook.sku;
+			this.vars.show_ebook_selector = this.model.get("ebooks").length > 1;
+			this.vars.ebooks = _.map(this.model.get("ebooks"), _.clone);
+			this.vars.class_string = this.model.get("class_string");
+			if (
+				(this.vars.selected_ebook = _.findWhere(this.vars.ebooks, {
+					sku: this.vars.ebook_book_id,
+				}))
+			) {
+				this.vars.selected_ebook.selected = true;
+			}
+			this.$el.html(this.getTemplate(this.template_id, this.vars));
+
+			this.$(".grid-ebook-container-inner").append(this.controller.view.$el);
+			// The router has some listeners that change the controller's present_url, so
+			//  we can't just track the present book url within the GridTabEbook view.
+			this.controller.present_url = _.rest(this.parentView.options.args).join(
+				"/"
+			);
+			this.selected_url = this.parentView.options.selected_url;
+			this.page_url =
+				this.parentView.options.base_tab_url +
+				"/" +
+				this.model.get("master").get("grid_data").ebook.sku +
+				"/" +
+				this.controller.present_url;
+			if (this.options.full) {
+				// Only perform this default action when called from the real eBook tab
+				this.goToSection();
+			}
+			this.listenTo(
+				Backbone,
+				"reset_ebook_page_feed",
+				this.onResetEbookPageFeed
+			);
+
+			this.listenTo(this.controller, "breadcrumbs", function (data) {
+				this.breadcrumb_data = data;
+				Backbone.trigger("reset_breadcrumbs");
+			});
+		},
+		onAddToPage: function (obj) {
+			if (!this.controller) {
+				return;
+			}
+
+			var new_present_url;
+			// Needed to control print access to ebooks
+			$("body").addClass("ebooks");
+
+			if (obj.args.length > 0) {
+				new_present_url = _.rest(obj.args).join("/");
+				if (new_present_url != this.controller.present_url) {
+					this.parentView.options.args = obj.args;
+					this.controller.present_url = _.rest(
+						this.parentView.options.args
+					).join("/");
+					this.goToSection();
+				}
+			}
+			if (this.options.full) {
+				// Only refresh URL when called from the real eBook tab
+				this.resetPageUrl();
+				// Added by PM to fix a bug where the URL does not update when switching back to Ebook tab.
+				this.controller.resyncUrlBar(this.controller.present_url);
+			}
+		},
+		goToSection: function () {
+			this.controller.processUrl(this.controller.present_url);
+		},
+		resetPageUrl: function () {
+			var url_bits, section_idx;
+			this.page_url =
+				this.parentView.options.base_tab_url +
+				"/" +
+				this.model.get("master").get("grid_data").ebook.sku +
+				"/" +
+				this.controller.present_url;
+			url_bits = this.controller.present_url.split("/");
+			section_idx = _.indexOf(url_bits, "section");
+
+			// START HERE AFTER PALMER'S CHANGE.
+			// I MAY BE ABLE TO RIP STUFF OUT OF THE SERVER-SIDE
+
+			if (section_idx > -1) {
+				this.section_id = url_bits[section_idx + 1];
+			} else {
+				section_idx = _.indexOf(url_bits, "prob");
+				if (section_idx > -1) {
+					var prob_id = url_bits[section_idx + 1];
+					this.section_id =
+						this.controller.book_model.get("problem_fragments")[
+							parseInt(prob_id)
+						];
+					this.page_url =
+						this.parentView.options.base_tab_url +
+						"/" +
+						this.model.get("master").get("grid_data").ebook.sku +
+						"/section/" +
+						this.section_id;
+				}
+			}
+		},
+		onResetEbookPageFeed: function (obj) {
+			this.resetPageUrl();
+			this.setPageFeed();
+		},
+		setPageFeed: function () {
+			if (_.isUndefined(this.section_id)) {
+				return;
+			}
+			var section_model = this.controller.book_model
+				.get("sections")
+				.get(this.section_id);
+			var feed_data = section_model.getFeedData(this.controller.url_table);
+			AoPS.Feed.setPageFeed(
+				feed_data.category_id,
+				feed_data.main_url,
+				feed_data.subtitle
+			);
+		},
+	});
+
+	return Views;
+})(AoPS.Grid.Views);

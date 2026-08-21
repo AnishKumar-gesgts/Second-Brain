@@ -1,0 +1,38 @@
+Shoot on the Move Theory Proof
+Charging Champions - 6560
+Anish Kumar
+January 16, 2026
+1
+Theory
+By applying kinematics calculations based on odometry readings of the position and velocity of the robot and position of the
+target, vectors can be calculated and processed to result in a final target vector for velocity and direction of the shoot. This
+would then be translated through physical constants and some formulas to derive the RPM of the roller-compression system.
+Additional effects like air resistance and efficiency of spin transfer constants can be calculated post-implementation.
+2
+Setup
+Goal: Get the RPM and turret angle to shoot at while moving at a velocity ⃗v
+There are 2 main vectors to keep track of (at the beginning):
+let ⃗r be a ”relative position vector”, used to track the difference between the robot and target’s positions regardless of
+vertical height
+let ⃗v be a yagsl-determined vector to show the robots velocity in 2 dimensions, also disregarding vertical height
+These will not be combined directly, as they are position and velocity, and instead operations will be performed to translate
+the position vector into a velocity vector.
+3
+Kinematics
+Imagine a triangle in a 2d plane, similar to a standard kinematics projectile motion problem with vectors for velocity and
+it’s components forming a right triangle with an angle θ
+Let the vectors on this triangle be made of
+⃗l,⃗lx,⃗ly
+By solving like a normal projectile motion question, we can separate the vector into componenets and solve from there
+y(t) = y0 + ∥⃗l∥sin(θ)t −1
+2gt2
+And
+x(t) = ∥⃗l∥cos(θ)t
+But, drag aplies to both the x and y functions So, using a standard calculation for drag force:
+Fdrag = 1
+2 · ρ · A · Cd · v2
+Density of air is ≈1.225
+Contact area = πd = π · 0.15m ≈0.47124
+Fdrag = 1
+2 · 1.225 · 0.47124 · Cd ·⃗l2 ≈0.2886345 · Cd · ∥⃗l∥2
+1

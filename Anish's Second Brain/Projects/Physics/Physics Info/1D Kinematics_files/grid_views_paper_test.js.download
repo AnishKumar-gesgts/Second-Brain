@@ -1,0 +1,1185 @@
+AoPS.Utils.initKeyChain(AoPS, "Grid", "Views");
+
+AoPS.Grid.Views = (function (Views) {
+	Views.GridTabPaper = Views.GridTab.extend({
+		template_id: "#grid-tab-paper-tpl",
+		postInitializePostRender: function () {
+			this.listenTo(this.model, "rebuild-papers", this.render);
+		},
+		constructCrumbs: function () {
+			if (this.selected) {
+				return [
+					{
+						text: this.options.tab_caption,
+						url: this.options.base_tab_url + this.options.user_string,
+					},
+					{text: this.selected.get("name")},
+				];
+			} else {
+				return [{text: this.options.tab_caption}];
+			}
+		},
+		processPaper: function (paper) {
+			var row = _.clone(paper.attributes);
+			row.user_id = this.model.get("perms").user.user_id;
+			row.submission = _.first(row.submissions);
+			row.submitted = row.submission && 1;
+			row.submittable =
+				(!row.is_collected ||
+					this.model.get("perms").me.can_submit_hw_of_another) &&
+				row.released &&
+				row.files.length;
+			row.released_at_fmt = moment(row.released_at).format("MMM D, YYYY");
+			row.solution_at_fmt = moment(row.solution_at).format("MMM D, YYYY");
+			row.link =
+				this.options.base_tab_url + "/" + row.index + this.options.user_string;
+			row.paper = paper;
+
+			if (row.data && _.isArray(row.data.selections)) {
+				row.selections = row.data.selections.slice(0);
+			} else if (this.model.get("course_id") == "woot") {
+				row.selections = [
+					{
+						caption: "Beginning (Problems 1 - 3)",
+						problems: [1, 2, 3],
+					},
+					{
+						caption: "Intermediate (Problems 3 - 5)",
+						problems: [3, 4, 5],
+					},
+					{caption: "Advanced (Problems 5 - 7)", problems: [5, 6, 7]},
+				];
+			} else {
+				row.selections = [
+					{
+						caption: row.name,
+						problems: _.range(1, 1 + row.num_problems),
+					},
+				];
+			}
+
+			if (row.data && _.isArray(row.data.problem_aliases)) {
+				row.problem_aliases = row.data.problem_aliases.slice(0);
+			} else {
+				row.problem_aliases = _.range(1, 1 + row.num_problems);
+			}
+			row.problem_aliases = _.map(row.problem_aliases, function (a) {
+				return a.toString();
+			});
+
+			if (row.submission && _.isArray(row.submission.problems)) {
+				_.each(row.submission.problems, function (p) {
+					p.problem_number_fmt =
+						row.problem_aliases[p.problem_number - 1] ||
+						p.problem_number.toString();
+				});
+			}
+
+			if (row.submission && _.isArray(row.submission.grades)) {
+				_.each(row.submission.grades, function (g) {
+					g.problem_number_fmt =
+						row.problem_aliases[g.problem_number - 1] ||
+						g.problem_number.toString();
+				});
+			}
+
+			return row;
+		},
+		prerenderHelper: function () {
+			this.vars.user_id = this.model.get("perms").user.user_id;
+			this.vars.class_id = this.model.get("class_id");
+			this.vars.class_name = this.model.get("class_name");
+			this.vars.is_woot = AoPS.Utils.isMathWootCourse(
+				this.model.get("course_id")
+			);
+			this.vars.base_tab_url = this.options.base_tab_url;
+			this.vars.user_string = this.options.user_string;
+		},
+		renderHelper: function () {
+			var index = parseInt(_.first(this.options.args));
+
+			this.selected = null;
+			if (index) {
+				this.selected = this.model.get("papers").findWhere({
+					index: index,
+				});
+			}
+
+			if (this.selected) {
+				this.selectedView = new Views.GridTabPaperSelected({
+					model: this.selected,
+					tabView: this,
+				});
+				this.$el.append(this.selectedView.$el);
+				this.$el.append($("<hr />"));
+			}
+
+			this.subView = new Views.GridTabPaperAll({
+				model: this.model,
+				selected: this.selected,
+				tabView: this,
+			});
+			this.$el.append(this.subView.$el);
+		},
+		onAddToPage: function (obj) {
+			if (obj.args.join("/") != this.options.args.join("/")) {
+				this.options.args = obj.args;
+				this.render();
+			}
+		},
+	});
+
+	Views.GridTabPracticeTest = Views.GridTab.extend({
+		template_id: "#grid-tab-practice-test-tpl",
+		postInitializePostRender: function () {
+			this.listenTo(this.model, "rebuild-tests", this.render);
+		},
+		constructCrumbs: function () {
+			if (this.vars.multi_tests) {
+				if (this.selected) {
+					return [
+						{
+							text: this.options.tab_caption,
+							url: this.options.base_tab_url + this.options.user_string,
+						},
+						{text: this.selected.get("name")},
+					];
+				} else {
+					return [{text: this.options.tab_caption}];
+				}
+			} else {
+				if (this.selected) {
+					return [{text: this.selected.get("name")}];
+				} else {
+					return [{text: this.options.tab_caption}];
+				}
+			}
+		},
+		processTest: function (test) {
+			var row = _.clone(test.attributes);
+			row.response = _.first(row.responses);
+			row.score =
+				row.response && row.response.submitted_at ? row.response.score : "";
+			row.submitted = row.response && row.response.submitted_at ? 1 : 0;
+			row.submittable = row.released;
+			row.released_at_fmt = moment(row.released_at).format("MMM D, YYYY");
+			row.solution_at_fmt = moment(row.solution_at).format("MMM D, YYYY");
+			row.link =
+				this.options.base_tab_url + "/" + row.index + this.options.user_string;
+			row.is_aime = row.test_type == "aime";
+			row.is_amc = row.test_type == "amc" || row.test_type == "amc8";
+			row.is_amc8 = row.test_type == "amc8";
+			row.is_fma = row.test_type == "fma";
+			row.test = test;
+
+			return row;
+		},
+		prerenderHelper: function () {
+			this.vars.class_id = this.model.get("class_id");
+			this.vars.class_name = this.model.get("class_name");
+			this.vars.is_woot = AoPS.Utils.isMathWootCourse(
+				this.model.get("course_id")
+			);
+			this.vars.base_tab_url = this.options.base_tab_url;
+			this.vars.user_string = this.options.user_string;
+		},
+		renderHelper: function () {
+			var index = parseInt(_.first(this.options.args));
+
+			this.selected = null;
+			if (this.model.get("tests").length == 1) {
+				this.selected = this.model.get("tests").first();
+			} else if (index) {
+				this.selected = this.model.get("tests").findWhere({index: index});
+			}
+			this.vars.multi_tests = this.model.get("tests").length > 1;
+
+			if (this.selected) {
+				this.selectedView = new Views.GridTabPracticeTestSelected({
+					model: this.selected,
+					tabView: this,
+				});
+				this.$el.append(this.selectedView.$el);
+				if (this.vars.multi_tests) {
+					this.$el.append($("<hr />"));
+				}
+			}
+
+			if (!this.selected || this.vars.multi_tests) {
+				this.subView = new Views.GridTabPracticeTestAll({
+					model: this.model,
+					selected: this.selected,
+					tabView: this,
+				});
+				this.$el.append(this.subView.$el);
+			}
+		},
+		onAddToPage: function (obj) {
+			if (obj.args.join("/") != this.options.args.join("/")) {
+				this.options.args = obj.args;
+				this.render();
+			}
+		},
+	});
+
+	Views.GridTabPracticeTestAll = AoPS.View.extend({
+		template_id: "#grid-tab-practice-test-all-tpl",
+		initialize: function (options) {
+			this.options = options;
+			this.render();
+		},
+		render: function () {
+			this.vars = _.clone(this.options.tabView.vars);
+			this.vars.tests = [];
+			this.model.get("tests").each(
+				_.bind(function (test) {
+					this.vars.tests.push(this.options.tabView.processTest(test));
+				}, this)
+			);
+			_.each(
+				this.vars.tests,
+				_.bind(function (test) {
+					test.is_selected =
+						this.options.selected &&
+						this.options.selected.get("index") == test.index;
+				}, this)
+			);
+			this.$el.html(this.getTemplate(this.template_id, this.vars));
+		},
+	});
+
+	Views.GridTabPracticeTestSelected = AoPS.View.extend({
+		template_id: "#grid-tab-practice-test-selected-tpl",
+		initialize: function (options) {
+			this.options = options;
+			this.render();
+		},
+		render: function () {
+			this.vars = _.clone(this.options.tabView.vars);
+			this.vars.selected = this.options.tabView.processTest(this.model);
+			this.$el.html(this.getTemplate(this.template_id, this.vars));
+
+			if (
+				this.model.get("responses").length &&
+				this.model.get("responses")[0].submitted_at
+			) {
+				this.subViewDisplay = new Views.GridTabPracticeTestSelectedDisplay({
+					model: this.model,
+					parentView: this,
+					tabView: this.options.tabView,
+					constructByColumns: this.constructByColumns,
+				});
+				this.$el.append(this.subViewDisplay.$el);
+			} else if (this.vars.selected.submittable) {
+				if (this.vars.selected.is_aime) {
+					this.subViewSubmit = new Views.GridTabPracticeTestSelectedSubmitAIME({
+						model: this.model,
+						parentView: this,
+						tabView: this.options.tabView,
+						constructByColumns: this.constructByColumns,
+					});
+					this.$el.append(this.subViewSubmit.$el);
+				}
+
+				if (this.vars.selected.is_amc) {
+					this.subViewSubmit = new Views.GridTabPracticeTestSelectedSubmitAMC({
+						model: this.model,
+						parentView: this,
+						tabView: this.options.tabView,
+					});
+					this.$el.append(this.subViewSubmit.$el);
+				}
+
+				if (this.vars.selected.is_fma) {
+					this.subViewSubmit = new Views.GridTabPracticeTestSelectedSubmitFma({
+						model: this.model,
+						parentView: this,
+						tabView: this.options.tabView,
+					});
+					this.$el.append(this.subViewSubmit.$el);
+				}
+			}
+		},
+		// construct columns of question numbers for display
+		constructByColumns: function (num_questions) {
+			var by_columns = [];
+			var num_cols = Math.ceil(num_questions / 5);
+			var num_rows = 5;
+			for (var i = 0; i < num_cols; ++i) {
+				var row_end = Math.min(i * num_rows + num_rows + 1, num_questions + 1);
+				var row = _.range(i * num_rows + 1, row_end);
+				by_columns.push(row);
+			}
+			return by_columns;
+		},
+	});
+
+	Views.GridTabPracticeTestSelectedDisplay = AoPS.View.extend({
+		template_id: "#grid-tab-practice-test-selected-display-tpl",
+		initialize: function (options) {
+			this.options = options;
+			this.render();
+		},
+		render: function () {
+			this.vars = _.clone(this.options.parentView.vars);
+			this.$el.html(this.getTemplate(this.template_id, this.vars));
+
+			this.by_columns = this.options.constructByColumns(
+				this.vars.selected.num_questions
+			);
+			// fill in submitted answers
+			_.each(
+				this.by_columns,
+				_.bind(function (column) {
+					var $ol = $("<ol />");
+					_.each(
+						column,
+						_.bind(function (index) {
+							var is_correct = this.vars.selected.response.correct[index];
+							var my_answer = this.vars.selected.response.answers[index]
+								? this.vars.selected.response.answers[index]
+								: "";
+							var class_to_add;
+							if (is_correct) {
+								class_to_add = "correct";
+							} else if (!this.vars.selected.is_amc8 && my_answer.toString()) {
+								class_to_add = "wrong";
+							} else {
+								class_to_add = "none";
+							}
+							$ol.append(
+								$("<li />")
+									.attr({value: index})
+									.addClass(class_to_add)
+									[my_answer ? "text" : "html"](
+										my_answer ? my_answer : "&nbsp;"
+									)
+							);
+						}, this)
+					);
+					$ol.appendTo(this.$(".grid-practice-test-answer-display"));
+				}, this)
+			);
+		},
+	});
+
+	Views.GridTabPracticeTestSelectedSubmitAIME = AoPS.View.extend({
+		template_id: "#grid-tab-practice-test-selected-submit-aime-tpl",
+		initialize: function (options) {
+			this.options = options;
+			this.render();
+		},
+		render: function () {
+			this.vars = _.clone(this.options.parentView.vars);
+			this.$el.html(this.getTemplate(this.template_id, this.vars));
+
+			this.by_columns = this.options.constructByColumns(
+				this.vars.selected.num_questions
+			);
+			// fill in submitted answers
+			this.$inputs = [];
+			_.each(
+				this.by_columns,
+				_.bind(function (column) {
+					var $ol = $("<ol />");
+					_.each(
+						column,
+						_.bind(function (index) {
+							var $input = $("<input />");
+							$input
+								.attr({
+									name: index,
+									tabindex: index,
+									size: 3,
+									maxlength: 3,
+								})
+								.change(
+									_.bind(function (e) {
+										this.updateInputs();
+									}, this)
+								);
+							this.$inputs.push($input);
+							$ol.append($("<li />").attr({value: index}).append($input));
+						}, this)
+					);
+					$ol.appendTo(this.$(".grid-practice-test-submit-aime"));
+				}, this)
+			);
+			this.$(".save-btn").click(
+				_.bind(function (e) {
+					e.preventDefault();
+					this.submit();
+				}, this)
+			);
+		},
+		submit: function () {
+			AoPS.Ui.Modal.showConfirm(
+				"Are you sure you want to submit? You can only submit your answers once.",
+				_.bind(function (confirm) {
+					if (confirm) {
+						var responses = {},
+							invalid = [];
+						this.updateInputs();
+						_.each(this.$inputs, function ($input) {
+							if ($input.parent().hasClass("red")) {
+								invalid.push($input.attr("name"));
+							}
+							responses[$input.attr("name")] = $input.val();
+						});
+
+						if (invalid.length) {
+							var msg =
+								"Your response" + (invalid.length < 2 ? "" : "s") + " to #";
+							if (invalid.length < 2) {
+								msg += invalid[0];
+							} else if (invalid.length < 3) {
+								msg += invalid[0] + " and " + invalid[1];
+							} else {
+								var end = invalid.pop();
+								msg += invalid.join(", ") + " and " + end;
+							}
+							msg +=
+								" must be " +
+								(invalid.length < 2
+									? "a three-digit integer"
+									: "three-digit integers");
+							msg += " from 000 to 999.";
+							$("<div />")
+								.hide()
+								.text(msg)
+								.insertBefore(this.$(".grid-practice-test-submit-aime"))
+								.slideDown("slow")
+								.delay(4000)
+								.slideUp("slow");
+						} else {
+							this.model.respond(responses);
+						}
+					}
+				}, this),
+				{confirm_button_ok: "Yes", confirm_button_cancel: "No"}
+			);
+		},
+		updateInputs: function () {
+			_.each(this.$inputs, function ($input) {
+				if (!/\d\d\d/.exec($input.val())) {
+					$input.parent().addClass("red");
+				} else {
+					$input.parent().removeClass("red");
+				}
+			});
+		},
+	});
+
+	Views.GridTabPracticeTestSelectedSubmitAMC = AoPS.View.extend({
+		template_id: "#grid-tab-practice-test-selected-submit-amc-tpl",
+		initialize: function (options) {
+			this.options = options;
+			this.render();
+		},
+		render: function () {
+			this.vars = _.clone(this.options.parentView.vars);
+			this.$el.html(this.getTemplate(this.template_id, this.vars));
+
+			for (var i = 1; i <= this.vars.selected.num_questions; i++) {
+				_.bind(function () {
+					var $tr = $("<tr />").appendTo(
+						this.$(".grid-practice-test-submit-amc tbody")
+					);
+					var columns = ["", "A", "B", "C", "D", "E"];
+					$tr.append($("<th />").text(i + "."));
+					_.each(
+						columns,
+						_.bind(function (val) {
+							$tr.append(
+								$("<td />").append(
+									$("<label />").append(
+										$("<input />")
+											.attr({
+												type: "radio",
+												name: "answer-" + i,
+											})
+											.addClass("amc")
+											.prop("checked", !val)
+											.val(val)
+									)
+								)
+							);
+						}, this)
+					);
+				}, this)();
+			}
+
+			this.$(".save-btn").click(
+				_.bind(function (e) {
+					e.preventDefault();
+					this.submit();
+				}, this)
+			);
+		},
+		submit: function () {
+			var num_blanks = 0;
+			var i;
+			for (i = 1; i <= this.vars.selected.num_questions; i++) {
+				if (!this.$('input.amc[name="answer-' + i + '"]:checked').val()) {
+					num_blanks++;
+				}
+			}
+
+			var msg =
+				"Are you sure you want to submit?" +
+				(num_blanks && this.vars.selected.is_amc8
+					? "<p>You have left " +
+					  num_blanks +
+					  " problem(s) unanswered, and there is no penalty for guessing.</p>"
+					: "") +
+				"<p>You can only submit your answers once.</p>";
+			AoPS.Ui.Modal.showConfirm(
+				msg,
+				_.bind(function (confirm) {
+					if (confirm) {
+						var responses = {};
+						for (i = 1; i <= this.vars.selected.num_questions; i++) {
+							responses[i] = this.$(
+								'input.amc[name="answer-' + i + '"]:checked'
+							).val();
+						}
+
+						this.model.respond(responses);
+					}
+				}, this),
+				{confirm_button_ok: "Yes", confirm_button_cancel: "No"}
+			);
+		},
+	});
+
+	Views.GridTabPracticeTestSelectedSubmitFma = AoPS.View.extend({
+		template_id: "#grid-tab-practice-test-selected-submit-fma-tpl",
+		initialize: function (options) {
+			this.options = options;
+			this.render();
+		},
+		render: function () {
+			this.vars = _.clone(this.options.parentView.vars);
+			this.$el.html(this.getTemplate(this.template_id, this.vars));
+
+			for (var i = 1; i <= this.vars.selected.num_questions; i++) {
+				_.bind(function () {
+					var $tr = $("<tr />").appendTo(
+						this.$(".grid-practice-test-submit-amc tbody")
+					);
+					var columns = ["", "A", "B", "C", "D", "E"];
+					$tr.append($("<th />").text(i + "."));
+					_.each(
+						columns,
+						_.bind(function (val) {
+							$tr.append(
+								$("<td />").append(
+									$("<label />").append(
+										$("<input />")
+											.attr({
+												type: "radio",
+												name: "answer-" + i,
+											})
+											.addClass("amc")
+											.prop("checked", !val)
+											.val(val)
+									)
+								)
+							);
+						}, this)
+					);
+				}, this)();
+			}
+
+			this.$(".save-btn").click(
+				_.bind(function (e) {
+					e.preventDefault();
+					this.submit();
+				}, this)
+			);
+		},
+		submit: function () {
+			var num_blanks = 0;
+			var i;
+			for (i = 1; i <= this.vars.selected.num_questions; i++) {
+				if (!this.$('input.amc[name="answer-' + i + '"]:checked').val()) {
+					num_blanks++;
+				}
+			}
+
+			var msg =
+				"Are you sure you want to submit?" +
+				(num_blanks
+					? "<p>You have left " +
+					  num_blanks +
+					  " problem(s) unanswered, and there is no penalty for guessing.</p>"
+					: "") +
+				"<p>You can only submit your answers once.</p>";
+			AoPS.Ui.Modal.showConfirm(
+				msg,
+				_.bind(function (confirm) {
+					if (confirm) {
+						var responses = {};
+						for (i = 1; i <= this.vars.selected.num_questions; i++) {
+							responses[i] = this.$(
+								'input.amc[name="answer-' + i + '"]:checked'
+							).val();
+						}
+						this.model.respond(responses);
+					}
+				}, this),
+				{confirm_button_ok: "Yes", confirm_button_cancel: "No"}
+			);
+		},
+	});
+
+	Views.GridTabPaperAll = AoPS.View.extend({
+		template_id: "#grid-tab-paper-all-tpl",
+		initialize: function (options) {
+			this.options = options;
+			this.render();
+		},
+		render: function () {
+			this.vars = _.clone(this.options.tabView.vars);
+			this.vars.papers = [];
+			this.vars.ungraded = [];
+			this.vars.caption = this.model
+				.get("my_grid_tabs")
+				.findWhere({prototype_name: "Paper"})
+				.get("caption");
+			this.vars.caption =
+				this.vars.caption == "Homework" ? "Challenge Set" : this.vars.caption;
+			this.vars.file_width = 1;
+			this.papers = [];
+
+			// get custom file column names based on first word of each file's name in each paper
+			// then, set order with the default list
+			var custom_file_columns = [];
+			var file_columns_default = [
+				"Beginning",
+				"Intermediate",
+				"Advanced",
+				"All",
+			];
+
+			this.model.get("papers").each(
+				_.bind(function (paper) {
+					this.papers.push(this.options.tabView.processPaper(paper));
+					paper.get("files").forEach((file) => {
+						var name_split = file.name.split(" ");
+						var name_first_word = name_split.length > 1 ? name_split[0] : "";
+						if (
+							name_first_word.length > 0 &&
+							custom_file_columns.indexOf(name_first_word) < 0
+						) {
+							custom_file_columns.push(name_first_word);
+						}
+					});
+					this.vars.file_width = Math.max(
+						this.vars.file_width,
+						paper.get("files").length
+					);
+				}, this)
+			);
+			if (this.vars.file_width == 1) {
+				this.vars.file_columns = ["Set"];
+			} else {
+				// order custom rows based on order of default rows
+				custom_file_columns.sort(function (a, b) {
+					return (
+						file_columns_default.indexOf(a) - file_columns_default.indexOf(b)
+					);
+				});
+				// add empty vals and select last N for flexible length
+				custom_file_columns = ["", "", "", "", ...custom_file_columns];
+				this.vars.file_columns = custom_file_columns.slice(
+					0 - this.vars.file_width
+				);
+			}
+			this.vars.graded_width = this.vars.file_width + 5;
+			this.vars.ungraded_width = this.vars.file_width + 4;
+
+			_.each(
+				this.papers,
+				_.bind(function (paper) {
+					paper.is_selected =
+						this.options.selected &&
+						this.options.selected.get("index") == paper.index;
+
+					while (paper.files.length < this.vars.file_width) {
+						paper.files.unshift({});
+					}
+					if (paper.solution_files.length == 0) {
+						paper.solution_files.unshift({});
+					} else {
+						while (paper.solution_files.length > 1) {
+							paper.solution_files.pop();
+						}
+					}
+
+					if (paper.is_evaluated) {
+						this.vars.papers.push(paper);
+					} else {
+						this.vars.ungraded.push(paper);
+					}
+				}, this)
+			);
+			this.$el.html(this.getTemplate(this.template_id, this.vars));
+		},
+	});
+
+	Views.GridTabPaperSelected = AoPS.View.extend({
+		template_id: "#grid-tab-paper-selected-tpl",
+		initialize: function (options) {
+			this.options = options;
+			this.render();
+		},
+		render: function () {
+			this.vars = _.clone(this.options.tabView.vars);
+			this.vars.selected = this.options.tabView.processPaper(this.model);
+			this.$el.html(this.getTemplate(this.template_id, this.vars));
+
+			if (this.vars.selected.submittable && this.vars.selected.is_evaluated) {
+				this.subViewDisplay = new Views.GridTabPaperSelectedDisplay({
+					model: this.model,
+					parentView: this,
+					tabView: this.options.tabView,
+				});
+				this.$el.append(this.subViewDisplay.$el);
+
+				this.subViewSubmit = new Views.GridTabPaperSelectedSubmit({
+					model: this.model,
+					parentView: this,
+					tabView: this.options.tabView,
+				});
+				this.$el.append(this.subViewSubmit.$el);
+			} else {
+				this.subViewDisplay = new Views.GridTabPaperSelectedDisplay({
+					model: this.model,
+					parentView: this,
+					tabView: this.options.tabView,
+				});
+				this.$el.append(this.subViewDisplay.$el);
+			}
+		},
+	});
+
+	Views.GridTabPaperSelectedSubmit = AoPS.View.extend({
+		className: "grid-submit-woot",
+		template_id: "#grid-tab-paper-selected-submit-tpl",
+		initialize: function (options) {
+			this.options = options;
+			this.render();
+		},
+		render: function () {
+			this.vars = _.clone(this.options.parentView.vars);
+			this.vars.email_subject =
+				this.vars.class_name +
+				" (" +
+				this.vars.class_id +
+				") " +
+				this.vars.selected.name;
+			this.vars.email = "woot@artofproblemsolving.com";
+			this.vars.email_href =
+				"mailto:" +
+				this.vars.email +
+				"?" +
+				$.param({
+					subject: this.vars.email_subject,
+					body:
+						"See attached solutions for " +
+						this.model.get("class").get("perms").user.username +
+						" (" +
+						this.model.get("class").get("perms").user.user_id +
+						").",
+				}).replace(/\+/g, "%20");
+			this.$el.html(this.getTemplate(this.template_id, this.vars));
+			this.vars.selections = this.vars.selected.selections;
+			this.vars.problem_aliases = this.vars.selected.problem_aliases;
+
+			this.subViewMarker = new Views.GridTabPaperSelectedSubmitMarkProblems({
+				model: this.model,
+				parentView: this,
+				tabView: this.options.tabView,
+				problems: _.range(1, 1 + this.vars.selected.num_problems),
+				selections: this.vars.selections,
+			});
+			this.$(".marker").append(this.subViewMarker.$el);
+
+			this.subViewUpload = new Views.GridTabPaperSelectedSubmitUpload({
+				model: this.model,
+				parentView: this,
+				tabView: this.options.tabView,
+			});
+			this.$(".upload").append(this.subViewUpload.$el);
+		},
+	});
+
+	Views.GridTabPaperSelectedSubmitUpload = AoPS.View.extend({
+		className: "grid-paper-upload",
+		template_id: "#grid-tab-paper-selected-submit-upload-tpl",
+		initialize: function (options) {
+			this.options = options;
+			this.render();
+		},
+		render: function () {
+			this.vars = _.clone(this.options.parentView.vars);
+
+			this.vars.files = [];
+			if (this.vars.selected.submission && this.vars.selected.submission.file) {
+				if (
+					this.vars.selected.submission.file_info &&
+					this.vars.selected.submission.file_info.zip_files
+				) {
+					_.each(
+						this.vars.selected.submission.file_info.zip_files,
+						_.bind(function (file) {
+							this.vars.files.push({
+								name: file.name,
+								size: file.size,
+								url:
+									this.vars.selected.submission.url +
+									"&extract=" +
+									encodeURIComponent(file.name),
+							});
+						}, this)
+					);
+				} else {
+					this.vars.files.push({
+						name: this.vars.selected.submission.file,
+						size: this.vars.selected.submission.file_info.size,
+						url: this.vars.selected.submission.url,
+					});
+				}
+			}
+
+			this.$el.html(this.getTemplate(this.template_id, this.vars));
+			_.each(
+				this.$("a.remove-file"),
+				_.bind(function (el) {
+					$(el).click(
+						_.bind(function (e) {
+							e.preventDefault();
+							this.model.deleteFile($(el).attr("remove"));
+						}, this)
+					);
+				}, this)
+			);
+
+			var myView = this;
+			this.$(".dropzone").dropzone({
+				url: "/m/class/zipup.php",
+				maxFiles: 1,
+				parallelUploads: 1,
+				acceptedFiles: "application/pdf",
+				addRemoveLinks: true,
+				init: function () {
+					myView.myDropzone = this;
+				},
+				sending: function (file, xhr, formData) {
+					formData.append("class_id", myView.model.get("class_id"));
+					formData.append(
+						"user_id",
+						myView.model.get("class").get("perms").user.user_id
+					);
+					formData.append("index", myView.model.get("index"));
+				},
+				removedfile: function (file) {
+					var _ref;
+					if (file.name && file.uploaded) {
+						myView.model.deleteFile(file.name);
+					}
+					if ((_ref = file.previewElement) != null) {
+						_ref.parentNode.removeChild(file.previewElement);
+					}
+					return this._updateMaxFilesReachedClass();
+				},
+				maxFilesize: 8,
+				success: function (file, response) {
+					var data = JSON.parse(response);
+					if (data.error_code) {
+						AoPS.Ui.Modal.showAlert(data.error_msg);
+						this.removeFile(file);
+					} else {
+						file.uploaded = 1;
+						if (data.response.papers) {
+							$(file.previewElement).addClass("dz-success");
+							myView.model
+								.get("class")
+								.addOrUpdatePaper(_.values(data.response.papers));
+							myView.model.get("class").trigger("rebuild-papers");
+						}
+					}
+				},
+				error: function (file, error) {
+					if (error.substr(0, 15) === "File is too big") {
+						AoPS.Ui.Modal.showAlert(
+							"Your file is too large. You may only upload files up to 8 MB."
+						);
+					} else {
+						AoPS.Ui.Modal.showAlert(error);
+					}
+					this.removeFile(file);
+				},
+			});
+
+			_.each(
+				this.vars.files,
+				_.bind(function (file) {
+					this.myDropzone.emit("addedfile", {
+						name: file.name,
+						size: file.size || 64378,
+						uploaded: 1,
+					});
+					this.myDropzone.options.maxFiles--;
+				}, this)
+			);
+		},
+	});
+
+	Views.GridTabPaperSelectedSubmitMarkProblems = AoPS.View.extend({
+		className: "grid-paper-mark-problems",
+		template_id: "#grid-tab-paper-selected-submit-mark-problems-tpl",
+		initialize: function (options) {
+			this.options = options;
+			this.model.markProblems(
+				{},
+				_.bind(function (submitted) {
+					this.submitted = submitted;
+					this.render();
+				}, this)
+			);
+		},
+		render: function () {
+			this.vars = _.clone(this.options.parentView.vars);
+			this.vars.problems = this.options.problems;
+			this.vars.selections = _.clone(this.options.selections);
+			_.each(
+				this.vars.selections,
+				_.bind(function (selection) {
+					selection.disabled = false;
+					selection.columns = [];
+					selection.merged = selection.problems.join();
+					_.each(
+						this.options.problems,
+						_.bind(function (num) {
+							selection.columns.push({
+								problem_number: num,
+								active: _.indexOf(selection.problems, num) >= 0,
+								selected: _.indexOf(this.submitted, num) >= 0,
+							});
+						}, this)
+					);
+					_.each(this.submitted, function (num) {
+						if (_.indexOf(selection.problems, num) < 0) {
+							selection.disabled = true;
+						}
+					});
+				}, this)
+			);
+
+			this.submitted.sort();
+			if (this.submitted.length == 1) {
+				this.vars.submitted_fmt =
+					"Problem " + this.vars.problem_aliases[this.submitted[0] - 1];
+			} else {
+				this.vars.submitted_fmt = "Problems ";
+				_.each(
+					this.submitted,
+					_.bind(function (num, index) {
+						var sep = "";
+						if (index && index == this.submitted.length - 1) {
+							sep = " and ";
+						} else if (index) {
+							sep = ", ";
+						}
+						this.vars.submitted_fmt += sep + this.vars.problem_aliases[num - 1];
+					}, this)
+				);
+			}
+
+			if (
+				this.submitted.length == 0 &&
+				this.vars.selected.submission &&
+				this.vars.selected.submission.file
+			) {
+				this.vars.notes = {
+					style: "error",
+					text: "You have not marked any problems for grading. Please select the problems you have submitted.",
+				};
+			} else if (
+				_.where(this.vars.selections, {disabled: true}).length >=
+				this.vars.selections.length
+			) {
+				_.each(this.vars.selections, function (selection) {
+					selection.disabled = false;
+				});
+				this.vars.notes = {
+					style: "error",
+					text: "You have marked more problems than can be graded. Please fix.",
+				};
+			} else if (
+				this.submitted.length &&
+				this.vars.selected.submission &&
+				this.vars.selected.submission.file
+			) {
+				this.vars.notes = {
+					style: "info",
+					text:
+						"We have received your submission and you have marked " +
+						this.vars.submitted_fmt +
+						" for grading. Thank you very much!",
+				};
+			} else if (this.submitted.length) {
+				this.vars.notes = {
+					style: "error",
+					text:
+						"You have marked " +
+						this.vars.submitted_fmt +
+						" for grading. However, you have not uploaded a file yet.",
+				};
+			} else {
+				this.vars.notes = {
+					style: "warning",
+					text: "Please upload one file and mark completed problems.",
+				};
+			}
+			this.$el.html(this.getTemplate(this.template_id, this.vars));
+
+			_.each(
+				this.$(".enabled .problem.active"),
+				_.bind(function (el) {
+					$(el)
+						.click(
+							_.bind(function () {
+								var options = {};
+								options[$(el).hasClass("marked") ? "unmark" : "mark"] = [
+									$(el).attr("problem"),
+								];
+								this.model.markProblems(
+									options,
+									_.bind(function (submitted) {
+										this.submitted = submitted;
+										this.render();
+									}, this)
+								);
+							}, this)
+						)
+						.hover(
+							function () {
+								$(el).addClass("hover");
+							},
+							function () {
+								$(el).removeClass("hover");
+							}
+						);
+				}, this)
+			);
+
+			_.each(
+				this.$(".enabled .select-all"),
+				_.bind(function (el) {
+					$(el)
+						.click(
+							_.bind(function () {
+								this.model.markProblems(
+									{
+										mark: $(el).attr("problems").split(","),
+									},
+									_.bind(function (submitted) {
+										this.submitted = submitted;
+										this.render();
+									}, this)
+								);
+							}, this)
+						)
+						.hover(
+							function () {
+								if (
+									$(el).parent().find(".problem.active:not(.marked)").length
+								) {
+									$(el).addClass("hover");
+									$(el)
+										.parent()
+										.find(".problem.active:not(.marked)")
+										.addClass("hover");
+								}
+							},
+							function () {
+								$(el).removeClass("hover");
+								$(el).parent().find(".problem.active").removeClass("hover");
+							}
+						);
+				}, this)
+			);
+		},
+	});
+
+	Views.GridTabPaperSelectedDisplay = AoPS.View.extend({
+		template_id: "#grid-tab-paper-selected-display-tpl",
+		initialize: function (options) {
+			this.options = options;
+			this.render();
+		},
+		render: function () {
+			this.vars = _.clone(this.options.parentView.vars);
+			this.vars.ungraded = [];
+			if (
+				this.vars.selected.class &&
+				this.vars.selected.class.get("course_id") === "woot-chem" &&
+				this.vars.selected.submission &&
+				this.vars.selected.submission.grades
+			) {
+				_.each(this.vars.selected.submission.grades, function (gradeObj) {
+					gradeObj.style = false;
+				});
+			}
+			if (this.vars.selected.paper_type == "woot") {
+				if (this.vars.selected.submissions.length) {
+					_.each(
+						this.vars.selected.submissions[0].problems,
+						_.bind(function (problem) {
+							if (
+								!_.findWhere(this.vars.selected.submissions[0].grades, {
+									problem_number: problem.problem_number,
+								})
+							) {
+								this.vars.ungraded.push(problem);
+							}
+						}, this)
+					);
+				}
+			} else {
+				if (this.vars.selected.submissions.length) {
+					if (this.vars.selected.submissions[0].grades.length == 0) {
+						this.vars.ungraded.push({
+							class_id: this.vars.selected.class_id,
+							index: this.vars.selected.index,
+							user_id: this.vars.selected.user_id,
+							problem_number: 0,
+						});
+					}
+				}
+			}
+
+			this.$el.html(this.getTemplate(this.template_id, this.vars));
+			if (this.vars.selected.submissions.length) {
+				_.each(
+					this.vars.selected.submissions[0].grades,
+					_.bind(function (grade) {
+						if (grade.problem_number && _.isNull(grade.thanked_at)) {
+							this.$(".thank-grader-" + grade.problem_number).click(
+								_.bind(function (e) {
+									this.model.thankGrader(grade.problem_number);
+									e.preventDefault();
+								}, this)
+							);
+						}
+					}, this)
+				);
+			}
+		},
+	});
+
+	return Views;
+})(AoPS.Grid.Views);

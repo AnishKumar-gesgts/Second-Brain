@@ -1,0 +1,12 @@
+{
+  "accentColor": "#7b8cff",
+  "baseFontSize": 24,
+  "interfaceFontFamily": "Segoe UI Variable, Segoe UI",
+  "textFontFamily": "Aptos, Segoe UI Variable, Segoe UI",
+  "monospaceFontFamily": "Cascadia Code, Cascadia Mono, Consolas",
+  "enabledCssSnippets": [
+    "second-brain-studio"
+  ],
+  "showViewHeader": true,
+  "translucency": false
+}

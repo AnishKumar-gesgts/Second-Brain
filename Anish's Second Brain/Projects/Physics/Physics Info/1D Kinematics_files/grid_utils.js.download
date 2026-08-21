@@ -1,0 +1,382 @@
+AoPS.Utils.initKeyChain(AoPS, "Grid", "Utils");
+
+AoPS.Grid.Utils = (function (Utils) {
+	Utils = _.extend({}, AoPS.Ecole.Utils);
+
+	Utils.ajax_runner = new AoPS.Ajax.ScriptRunner("/m/class/ajax.php", {
+		use_queue: true,
+		filter_interval: 0,
+	});
+
+	Utils.judge_ajax_runner = new AoPS.Ajax.ScriptRunner("/m/class/ajax.php", {
+		timeout: 60000,
+		filter_interval: 5000,
+	});
+
+	Utils.PreservedAopsScrollTops = {};
+
+	Utils.MakeAopsScrollBar = function ($el) {
+		var id = $el.uniqueId().attr("id");
+		var o = {
+			$el: $el,
+			id: $el.uniqueId(),
+			$outer: $el.find(".aops-scroll-outer").first(),
+			$scrollbar: $el.find(".aops-scroll-outer .aops-scroll-bar").first(),
+			$content: $el.find(".aops-scroll-outer .aops-scroll-content").first(),
+			$inner: $el.find(".aops-scroll-outer .aops-scroll-inner").first(),
+			myScrollTop: (Utils.PreservedAopsScrollTops[id] || {}).myScrollTop,
+		};
+		AoPS.Ui.buildAopsScrollbar({
+			$scrollbar: o.$scrollbar,
+			$content: o.$content,
+			show_on_hover: true,
+			fade_start_class: "aops-scroll-fade-top aops-scroll-faders",
+			fade_end_class: "aops-scroll-fade-bottom aops-scroll-faders",
+			onScroll: _.debounce(function () {
+				o.myScrollTop = o.$inner.scrollTop();
+			}, 50),
+		});
+		$(window).trigger("resize");
+		if (!_.isUndefined(o.myScrollTop)) {
+			o.$inner.scrollTop(o.myScrollTop);
+			setTimeout(function () {
+				o.$inner.scrollTop(o.myScrollTop);
+			}, 25);
+		}
+		Utils.PreservedAopsScrollTops[id] = o;
+	};
+
+	Utils.RestoreAopsScrollBar = function () {
+		$(window).trigger("resize");
+		_.each(Utils.PreservedAopsScrollTops, function (o) {
+			if (!_.isUndefined(o.myScrollTop) && o.$inner.is(":visible")) {
+				o.$inner.scrollTop(o.myScrollTop);
+				setTimeout(function () {
+					o.$inner.scrollTop(o.myScrollTop);
+				}, 25);
+			}
+		});
+	};
+
+	Utils.MakeCalendarRange = function (start, end) {
+		start = moment(start).startOf("day");
+		end = moment(end).startOf("day");
+		var num_days = end.diff(start, "days");
+		var first_day = start.isoWeekday() % 7,
+			last_day = first_day + num_days;
+		var m = moment(start).subtract(first_day, "day");
+
+		var range = [];
+		for (var r_index = 0; r_index <= last_day; r_index += 7) {
+			var week = [];
+			for (var index = r_index; index < r_index + 7; index++) {
+				week.push({
+					m: moment(m),
+					fmt: m.format("YYYY-MM-DD"),
+					month_fmt: m.format("MMM"),
+					month: parseInt(m.format("M")),
+					day: parseInt(m.format("D")),
+					weekday: index % 7,
+					in_range: first_day <= index && index <= last_day,
+				});
+				m.add(1, "day");
+			}
+			range.push(week);
+		}
+		return range;
+	};
+
+	Utils.RescaleScore = function (score) {
+		var map = AoPS.bootstrap_data.rescale_map;
+		score = Math.max(0, Math.min(1, score));
+		for (var i = 1; i < map.length; i++) {
+			if (score <= map[i].from || i + 1 >= map.length) {
+				return (
+					map[i - 1].to +
+					((map[i].to - map[i - 1].to) *
+						Math.min(map[i].from - map[i - 1].from, score - map[i - 1].from)) /
+						(map[i].from - map[i - 1].from)
+				);
+			}
+		}
+		return 0;
+	};
+
+	Utils.CreateProgressBar = function ($div, bar) {
+		return $div.append(
+			$("<div />")
+				.addClass("grid-report-bar-container")
+				.append(
+					$("<div />")
+						.addClass("aops-rogb-topic-container")
+						.append(
+							$("<div />")
+								.addClass("aops-rogb-container")
+								.append(
+									$("<div />")
+										.addClass("aops-rogb-bar aops-rogb-" + bar.color)
+										.css({
+											width: bar.length + "%",
+										})
+								)
+						)
+				)
+				.append(
+					$("<div />")
+						.append(
+							$("<div />")
+								.addClass("aops-rogb-mark aops-rogb-orange")
+								.css({left: "30%"})
+						)
+						.append(
+							$("<div />")
+								.addClass("aops-rogb-mark aops-rogb-green")
+								.css({left: "75%"})
+						)
+						.append(
+							$("<div />")
+								.addClass("aops-rogb-mark aops-rogb-blue")
+								.css({left: "87%"})
+						)
+				)
+		);
+	};
+
+	Utils.CreateProgressInsetBar = function ($div, bar) {
+		return $div.append(
+			$("<div />")
+				.addClass("grid-report-bar-container")
+				.append(
+					$("<div />")
+						.addClass("aops-rogb-topic-container")
+						.append(
+							$("<div />")
+								.addClass("aops-rogb-container .aops-rogb-inset")
+								.append(
+									$("<div />")
+										.addClass("aops-rogb-bar aops-rogb-" + bar.color)
+										.css({
+											width: bar.length + "%",
+										})
+								)
+						)
+				)
+				.append(
+					$("<div />")
+						.append(
+							$("<div />")
+								.addClass("aops-rogb-mark aops-rogb-dark aops-rogb-orange")
+								.css({left: "30%"})
+						)
+						.append(
+							$("<div />")
+								.addClass("aops-rogb-mark aops-rogb-dark aops-rogb-green")
+								.css({left: "75%"})
+						)
+						.append(
+							$("<div />")
+								.addClass("aops-rogb-mark aops-rogb-dark aops-rogb-blue")
+								.css({left: "87%"})
+						)
+				)
+		);
+	};
+
+	Utils.maxTaskListSize = 12;
+
+	Utils.SelfPacedColorOrder = {
+		red: 1,
+		orange: 2,
+		yellow: 3,
+		default: 4,
+		inactive: 5,
+		gray: 6,
+		"light-gray": 12,
+		"light-green": 12,
+		"dark-gray": 12,
+		uncolored: 12,
+		green: 10,
+		blue: 11,
+	};
+
+	Utils.DetectIE = function () {
+		var ua = window.navigator.userAgent;
+
+		var msie = ua.indexOf("MSIE ");
+		if (msie > 0) {
+			// IE 10 or older => return version number
+			return parseInt(ua.substring(msie + 5, ua.indexOf(".", msie)), 10);
+		}
+
+		var trident = ua.indexOf("Trident/");
+		if (trident > 0) {
+			// IE 11 => return version number
+			var rv = ua.indexOf("rv:");
+			return parseInt(ua.substring(rv + 3, ua.indexOf(".", rv)), 10);
+		}
+
+		var edge = ua.indexOf("Edge/");
+		if (edge > 0) {
+			// Edge (IE 12+) => return version number
+			return parseInt(ua.substring(edge + 5, ua.indexOf(".", edge)), 10);
+		}
+
+		// other browser
+		return false;
+	};
+
+	/**
+	 * Resolve special links such as classLink or handoutsClassLink
+	 *
+	 * @param {object} data
+	 * @param {string} data.base_class_url
+	 * @param {number} data.class_id
+	 * @param {number} [data.user_id]
+	 * @param {number} [data.lesson]
+	 * @param {function(resolveWritingProjectLink: function(crypt_project_id: number, crypt_milestone_id: number)): void} [data.writingDataSupplier]
+	 * @return {function(a: HTMLAnchorElement): void} a function which resolves classLink urls and replaces the href with the resolved url
+	 */
+	Utils.ClassLinkURLResolver = function (data) {
+		function resolveClassLink($el) {
+			var href = $el.attr("href");
+
+			// No link, so nothing to resolve
+			if (!href) {
+				return;
+			}
+
+			var isClassLink = href.match(/^(https?:\/)?\/classLink/i);
+
+			var canResolveClassLink = data.base_class_url && data.lesson;
+
+			if (isClassLink && canResolveClassLink) {
+				$el.attr({
+					href: $el
+						.attr("href")
+						.replace(/^(https?:\/)?\/classLink/i, data.base_class_url)
+						.replace(/\/:currentLesson/i, "/" + data.lesson),
+					nav_grid: "1",
+				});
+			}
+		}
+
+		function resolveHandoutClassLink($el) {
+			var handoutsClassLinkMatches = $el
+				.attr("href")
+				.match(/^(https?:\/)?\/handoutsClassLink\/(\d+)/i);
+
+			var canResolveHandoutsLink = !!data.user_id;
+
+			if (handoutsClassLinkMatches && canResolveHandoutsLink) {
+				var document_id = +handoutsClassLinkMatches[2];
+				AoPS.Grid.Utils.ajax_runner.run(
+					"resolve_handout_link",
+					{
+						class_id: data.class_id,
+						user_id: data.user_id,
+						document_id: document_id,
+					},
+					function (success, res) {
+						if (success) {
+							var uri = res.response.url;
+							$el.attr({
+								href: uri,
+								nav_grid: "1",
+							});
+						} else {
+							$el.removeAttr("href");
+						}
+					}
+				);
+			}
+		}
+
+		function resolveCurrentWritingLink($el) {
+			var isCurrentWritingLink = $el.attr("href")
+				? $el.attr("href").match(/\/:currentWriting(Project|Milestone)/i)
+				: false;
+			var canResolveCurrentWritingLink = !!data.writingDataSupplier;
+
+			if (isCurrentWritingLink && canResolveCurrentWritingLink) {
+				var applyDataToHref = function (crypt_project_id, crypt_milestone_id) {
+					$el.attr(
+						"href",
+						$el
+							.attr("href")
+							.replace(
+								/\/:currentWritingProject/i,
+								crypt_project_id ? "/" + crypt_project_id : ""
+							)
+							.replace(
+								/\/:currentWritingMilestone/i,
+								crypt_milestone_id ? "/" + crypt_milestone_id : ""
+							)
+					);
+				};
+				data.writingDataSupplier(applyDataToHref);
+			}
+		}
+
+		return function (a) {
+			var $el = $(a);
+
+			resolveClassLink($el);
+			resolveHandoutClassLink($el);
+			resolveCurrentWritingLink($el);
+		};
+	};
+
+	/**
+	 * Get the color of a bar based on its length
+	 * Based on getColorHelper in class.GridReport.php
+	 * @param {number} bar_length
+	 * @returns {string} bar color
+	 */
+	Utils.GetBarColor = function (bar_length) {
+		let color = "";
+		if (bar_length >= 0 && bar_length < 30) {
+			color = "red";
+		} else if (bar_length >= 30 && bar_length < 75) {
+			color = "orange";
+		} else if (bar_length >= 75 && bar_length < 87) {
+			color = "green";
+		} else if (bar_length >= 87 && bar_length <= 100) {
+			color = "blue";
+		}
+		return color;
+	};
+
+	/**
+	 * Calculate the length of a BAO progress bar from an array of topics
+	 * See computeBaoBarLengthFromTopics and computeBaoBarV2Helper in class.GridReports.php for reference
+	 * @param {array} bao_topics object available in the grid model for a report lesson
+	 * @param {number} min minimum bar length to display, defaults to 5
+	 * @returns {number} bar length
+	 */
+	Utils.CalculateBaoBarLength = function (bao_topics, min = 5) {
+		let num = 0;
+		let denom = 0;
+
+		bao_topics.forEach((item) => {
+			let num_stars = item.stars;
+			if (num_stars >= 3) {
+				num += 100;
+			} else if (num_stars >= 2) {
+				num += 90;
+			} else if (num_stars) {
+				num += 75;
+			}
+			denom += 1;
+		});
+
+		if (denom === 0) {
+			return 0;
+		} else if (min) {
+			return Math.max(num / denom, min);
+		} else {
+			return num / denom;
+		}
+	};
+
+	return Utils;
+})(AoPS.Grid.Utils);

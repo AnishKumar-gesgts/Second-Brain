@@ -1,0 +1,3083 @@
+/* global pythonTool, Base64, Motors */
+
+AoPS.Utils.initKeyChain(AoPS, "Grid", "Views");
+
+AoPS.Grid.Views = (function (Views) {
+	Views.GridTabAssignmentsCronus = AoPS.View.extend({
+		template_id: "#grid-tab-assignments-cronus-tpl",
+		className: "grid-tab-assignments-problem",
+		initialize: function (options) {
+			this.options = options;
+			this.current = null;
+			this.children = {};
+			this.listenTo(
+				this.model,
+				"rebuild",
+				_.bind(function () {
+					this.current = _.clone(this.vars);
+					this.render();
+				}, this)
+			);
+		},
+		events: {
+			"click .grid-start-topic": "onClickStartTopic",
+			"click .grid-open-page-feed": "onClickOpenFeed",
+			"click .report-bug": "reportBug",
+			"click .give-up": "giveUp",
+			"click .get-help": "getHelp",
+			"click .view-solution": "viewSolution",
+			"click .show-formatting-tips": "showFormattingTips",
+			"click .show-halper-tips": "onClickHalperTips",
+			"click .reset-problem": "resetProblem",
+		},
+		render: function (first) {
+			this.oldVars = first ? null : _.clone(this.vars);
+
+			this.vars = {};
+			_.each(
+				this.model.attributes,
+				_.bind(function (value, key) {
+					if (!(value instanceof Backbone.Model)) {
+						this.vars[key] = value;
+					} else if (value instanceof AoPS.Grid.Models.CryptConstant) {
+						this.vars[key] = value.attributes;
+					} else if (value instanceof AoPS.Grid.Models.GridClassLesson) {
+						if (
+							value.get("due_at") &&
+							_.isUndefined(value.get("due_at_should_be_shown"))
+						) {
+							value.set(
+								"due_at_should_be_shown",
+								this.model.get("class").shouldShowDate(value.get("due_at"))
+							);
+						}
+						this.vars[key] = value.attributes;
+					}
+				}, this)
+			);
+
+			this.vars.config = this.model.get("master").get("grid_data").config;
+			if ((this.vars.is_gorilla = this.vars.crypt_problem_type.is_gorilla)) {
+				this.$el.addClass("grid-problem-gorilla");
+			}
+			this.vars.is_vocab = this.vars.problem_type == "vocab";
+			this.vars.has_forum = this.model.get("class").get("forum_id") > 0;
+			this.vars.is_reading = this.vars.problem_type == "reading";
+			this.vars.is_sp_nova = this.model.get("class").get("is_sp_nova");
+
+			this.vars.is_test = this.options.is_test;
+			if (!this.vars.is_test) {
+				this.vars.is_test = false;
+			}
+
+			if (
+				this.vars.crypt_problem_type.uses_identifier &&
+				this.vars.persistent_problem_ids.length > 1
+			) {
+				var persistent_index = this.vars.persistent_problem_ids.indexOf(
+					this.vars.problem_id
+				);
+				var sequence = {};
+
+				if (persistent_index > 0) {
+					sequence.prev = this.model
+						.get("class")
+						.get("problems")
+						.findWhere({
+							problem_id:
+								this.vars.persistent_problem_ids[persistent_index - 1],
+						});
+				}
+
+				if (persistent_index < this.vars.persistent_problem_ids.length - 1) {
+					sequence.next = this.model
+						.get("class")
+						.get("problems")
+						.findWhere({
+							problem_id:
+								this.vars.persistent_problem_ids[persistent_index + 1],
+						});
+				}
+
+				_.each(
+					sequence,
+					_.bind(function (problem, key) {
+						if (problem) {
+							this.vars["persistent_" + key] = {
+								text:
+									this.model.get("class").get("lesson_units").singular +
+									" " +
+									problem.get("lesson") +
+									" " +
+									problem.get("markup"),
+								href:
+									this.options.parentView.options.base_tab_url +
+									"/" +
+									problem.get("lesson") +
+									this.options.parentView.options.user_string +
+									"#problem" +
+									problem.get("problem_id"),
+							};
+							this.vars.persistent_continuation = true;
+						}
+					}, this)
+				);
+			}
+
+			this.vars.aname = "problem" + this.model.get("problem_id");
+			this.vars.mylink =
+				this.options.parentView.options.base_tab_url +
+				"/" +
+				this.model.get("lesson") +
+				this.options.parentView.options.user_string +
+				"#problem" +
+				this.model.get("problem_id");
+			this.vars.permalink =
+				this.options.parentView.options.base_class_url +
+				"/hw" +
+				this.model.get("problem_id");
+			this.vars.show_submission =
+				(this.vars.crypt_problem_type.is_free_response &&
+					(this.vars.can_submit || this.vars.submission)) ||
+				!this.vars.crypt_problem_type.is_free_response;
+			this.vars.is_academy = this.model.get("class").get("campus_id") != "web";
+			this.vars.is_physical_campus =
+				this.vars.is_academy && !this.model.get("class").get("is_virtual");
+			this.vars.is_community_active = AoPS.bd.is_community_active;
+
+			if (first) {
+				this.$el.html(this.getTemplate(this.template_id, this.vars));
+				this.$body = this.$(".problem-body");
+				this.$popup = this.$(".problem-popup");
+				this.$appendix = this.$(".problem-appendix");
+				this.problemSubViewTypes = [];
+				this.problemSubViewTypes.push("Header");
+				this.problemSubViewTypes.push("Problem");
+				this.problemSubViewTypes.push("Solution");
+				this.problemSubViewTypes.push("Hints");
+				if (this.vars.crypt_problem_type.is_discussion) {
+					this.problemSubViewTypes.push("Discussion");
+					this.problemSubViewTypes.push("DiscussionExplanation");
+				} else if (this.vars.crypt_problem_type.is_judged) {
+					this.problemSubViewTypes.push("Judged");
+					this.problemSubViewTypes.push("Evaluation");
+				} else if (this.vars.crypt_problem_type.is_free_response) {
+					this.problemSubViewTypes.push("FreeResponse");
+					if (this.vars.crypt_problem_type.has_attachment) {
+						this.problemSubViewTypes.push("Files");
+					}
+					this.problemSubViewTypes.push("Evaluation");
+					this.problemSubViewTypes.push("FinalizeButton");
+				} else if (this.vars.crypt_problem_type.is_parsed) {
+					if (this.vars.is_sp_nova) {
+						this.problemSubViewTypes.push("Flex");
+					}
+					if (
+						this.vars.crypt_problem_type.is_math &&
+						!this.model
+							.get("class")
+							.get("course_id")
+							.match(/\bcalculus\b/)
+					) {
+						this.problemSubViewTypes.push("Renderer");
+					}
+					if (this.vars.crypt_problem_type.has_motor) {
+						this.problemSubViewTypes.push("Motor");
+						this.$body.addClass("motor-homework-body");
+					} else if (this.vars.crypt_answer_type.is_matrix_or_vector) {
+						this.problemSubViewTypes.push("MatrixOrVector");
+					} else if (this.vars.crypt_answer_type.is_physics) {
+						this.problemSubViewTypes.push("Physics");
+					} else {
+						this.problemSubViewTypes.push("ShortAnswer");
+					}
+					this.problemSubViewTypes.push("Status");
+					this.problemSubViewTypes.push("FormattingTips");
+					this.problemSubViewTypes.push("Trials");
+				}
+				if (this.vars.is_sp_nova) {
+					this.reorderProblemSubViewTypesForSelfPaced();
+				}
+				if (this.vars.show_halper_tips) {
+					this.problemSubViewTypes.push("HalperTips");
+				}
+
+				var anchor = this.$body;
+				var firstSplitPoint = this.mySelfPacedOrder.indexOf("-");
+				var secondSplitPoint = this.mySelfPacedOrder.lastIndexOf("-");
+				this.problemSubViews = {};
+				_.each(
+					this.problemSubViewTypes,
+					_.bind(function (subViewType) {
+						var subViewModel = Views["GridTabAssignmentsCronus" + subViewType];
+						if (subViewModel) {
+							if (this.vars.is_sp_nova) {
+								var index = this.mySelfPacedOrder.indexOf(subViewType);
+								if (index > secondSplitPoint) {
+									anchor = this.$appendix;
+								} else if (index > firstSplitPoint) {
+									anchor = this.$popup;
+								}
+							}
+							this.problemSubViews[subViewType] = new subViewModel({
+								model: this.model,
+								subViewType: subViewType,
+								parent: this,
+								anchor: anchor,
+							});
+						}
+					}, this)
+				);
+
+				if (this.vars.is_sp_nova) {
+					_.each(
+						this.$(".aops-scroll-outer"),
+						_.bind(function (el) {
+							AoPS.Grid.Utils.MakeAopsScrollBar($(el).parent());
+						}, this)
+					);
+					this.$scrollable = this.$(".aops-scroll-outer .aops-scroll-inner");
+				}
+			}
+
+			_.each(
+				this.problemSubViews,
+				_.bind(function (subView) {
+					if (!first && _.isFunction(subView.refresh)) {
+						subView.updateVarsFromParent();
+						subView.refresh();
+					} else if (subView.render) {
+						subView.updateVarsFromParent();
+						subView.render();
+					}
+				}, this)
+			);
+
+			if (
+				!first &&
+				!this.oldVars.solution_viewed_at &&
+				this.vars.solution_viewed_at
+			) {
+				// When a student finishes a problem, they will newly be
+				//  able to access topics connected to solutions to that problem.
+				//  We need to reset the class's category in order to get those
+				//  newly gettable topics.
+				if (this.model.get("class").get("forum_id") > 0) {
+					AoPS.Community.MasterModel.resetCategory(
+						this.model.get("class").get("forum_id")
+					);
+				}
+				this.render();
+			} else if (!first && this.vars.parser_branches_fmt) {
+				var inner = [];
+				_.each(
+					this.vars.parser_branches_fmt,
+					_.bind(function (text) {
+						if (
+							!_.isArray(this.oldVars.parser_branches_fmt) ||
+							_.indexOf(this.oldVars.parser_branches_fmt, text) < 0
+						) {
+							inner.push(text);
+						}
+					}, this)
+				);
+
+				if (inner.length) {
+					var $el = $("<div />").append(
+						$("<h3 />").text("Here's a thought...").css({"margin-top": "0"})
+					);
+					_.each(inner, function (text) {
+						$el.append($("<p />").html(text));
+					});
+					AoPS.Grid.Utils.CreateModalAlert($el);
+				}
+			}
+
+			if (this.vars.is_sp_nova) {
+				this.options.parentView.createNextButton();
+			}
+		},
+		onClickStartTopic: function (e) {
+			e.preventDefault();
+			if (this.vars.crypt_problem_type.has_unique_topic) {
+				return;
+			}
+
+			var class_model = this.model.get("class");
+			var target_url = this.vars.permalink;
+			var week_str =
+				this.model.get("class").get("lesson_units").singular +
+				" " +
+				this.model.get("lesson");
+			var target_text = week_str + " " + this.vars.markup;
+			var page_url =
+				this.options.parentView.options.base_tab_url +
+				"/" +
+				this.model.get("lesson");
+
+			if (class_model.get("is_self_paced")) {
+				var class_string = class_model.get("class_string");
+				target_url =
+					"/class/" + class_string + "/hw" + this.model.get("problem_id");
+				page_url = target_url;
+			}
+
+			var hidden_tags = [page_url];
+			var restricted_tags = [];
+
+			// check if this is a shared class forum and get settings
+			var has_shared_forum = class_model.get("has_shared_forum") || false;
+			var shared_forum_data = class_model.get("shared_forum_data") || false;
+
+			if (!_.isNull(this.model.get("solution_viewed_at"))) {
+				// Important: We must use the class_id instead of class_string for solutions.
+				restricted_tags.push(
+					"/" +
+						AoPS.router_root +
+						"/" +
+						this.model.get("class_id") +
+						"/sol" +
+						this.model.get("problem_id")
+				);
+				target_text += " solution";
+			}
+
+			var tags = [
+				week_str +
+					" " +
+					(this.options.parentView.options.tab_caption || "Homework"),
+			];
+			var linked_tag =
+				week_str + " " + this.vars.markup.replace(/[^a-zA-Z0-9 _-]/g, "");
+
+			// prepend a class-specific tag to each normal tag in homework problem topics
+			// 	if shared_forum_data.prefix_class_name_tag
+			if (has_shared_forum && shared_forum_data.prefix_class_name_tag) {
+				var tag_prepend_str = shared_forum_data.prefix_class_name_tag + " ";
+				tags[0] = tag_prepend_str + tags[0];
+				linked_tag = tag_prepend_str + linked_tag;
+				// also prepend this to the target text (for target link)
+				target_text = tag_prepend_str + target_text;
+			}
+
+			// add custom tag to each homework problem topic if shared_forum_data.tag_linked_topics
+			if (has_shared_forum && shared_forum_data.tag_linked_topics) {
+				tags.push(shared_forum_data.tag_linked_topics);
+			}
+
+			// add problem description to hw topics (hidden on initial post)
+			// 	use this if the classes have different homework problems
+			var problem_text = "";
+			if (has_shared_forum && shared_forum_data.add_problem_hw_topics) {
+				problem_text =
+					"[quote]" + this.model.get("problem_text") + "[/quote]\n\n";
+			}
+
+			// if current and linked urls don't match, hide link
+			if (
+				has_shared_forum &&
+				shared_forum_data.hide_target_links_to_diff_classes
+			) {
+				hidden_tags.push("hide_target_links_to_diff_classes");
+			}
+
+			AoPS.Feed.startNewTopic({
+				category_id: this.model.get("class").get("forum_id"),
+				content:
+					"[b]What I've tried so far:[/b]\n\n" +
+					"<Describe what you have tried so far here. That way, we can do a better job helping you!>\n\n" +
+					"[b]Where I'm stuck:[/b]\n\n" +
+					"<Describe what's confusing you, or what your question is here!>",
+				tags: tags,
+				target_url: target_url,
+				linked_tag: linked_tag,
+				target_text: target_text,
+				subtitle: this.vars.markup,
+				hidden_tags: hidden_tags,
+				restricted_tags: restricted_tags,
+				problem_text: problem_text,
+			});
+		},
+		onClickOpenFeed: function (e) {
+			e.preventDefault();
+			if (this.vars.crypt_problem_type.has_unique_topic) {
+				if (this.vars.topic_id > 0) {
+					AoPS.Feed.openTopicSetFeed(
+						this.vars.topic_id,
+						this.model.get("class").get("forum_id"),
+						this.vars.permalink,
+						this.model.get("class").get("lesson_units").singular +
+							" " +
+							this.model.get("lesson") +
+							" " +
+							this.vars.markup
+					);
+				} else {
+					// WHAT TO DO ON FAIL
+				}
+			} else {
+				if (this.model.get("class").get("is_self_paced")) {
+					var week_str =
+						this.model.get("class").get("lesson_units").singular +
+						" " +
+						this.model.get("lesson");
+					AoPS.Feed.openPageFeed({
+						category_id: this.model.get("class").get("forum_id"),
+						tag_text:
+							week_str + " " + this.vars.markup.replace(/[^a-zA-Z0-9 _-]/g, ""),
+						subtitle: this.vars.markup,
+					});
+				} else {
+					AoPS.Feed.openPageFeed(
+						this.model.get("class").get("forum_id"),
+						this.vars.permalink,
+						this.model.get("class").get("lesson_units").singular +
+							" " +
+							this.model.get("lesson") +
+							" " +
+							this.vars.markup
+					);
+				}
+			}
+		},
+		reportBug: function (e) {
+			e.preventDefault();
+			var popup = new Views.GridTabAssignmentsProblemReportBugModal({
+				model: this.model,
+				parentView: this,
+				vars: this.vars,
+			});
+			popup.options.modal = popup.$el.showPlainModal({
+				scrollable: true,
+				onClose: function () {
+					popup.close();
+				},
+			});
+		},
+
+		/**
+		 * Called when user clicks Give Up button
+		 */
+		giveUp: function (e) {
+			e.preventDefault();
+
+			// Define the text for the modal
+			var text =
+				"Aw, shucks. Are you sure you want to give up?" +
+				(this.model.get("class").get("forum_id")
+					? " Remember that you can always get help on the message board if you're stuck!"
+					: "");
+
+			// Define the buttons
+			var buttons = [{text: "Give Up", value: "giveup"}];
+			if (this.vars.show_ai_help) {
+				buttons.unshift({
+					text: "Get Help",
+					value: "help",
+					btnClass: "btn-highlight",
+				});
+			} else {
+				buttons.push({text: "Keep Trying!", value: "try"});
+			}
+
+			// Open the modal
+			const self = this;
+			var modal = AoPS.Ui.Modal.showMessage(text, {
+				buttons: buttons,
+				onButtonClick: function (value) {
+					AoPS.Ui.Modal.removeModal(modal);
+					if (value === "giveup") {
+						self.model.respond("", true);
+					} else if (value === "help") {
+						self.getHelp(e);
+					}
+				},
+			});
+
+			// Blur the button
+			modal.$obj.find(".aops-modal-btn").first().blur();
+		},
+		/**
+		 * Click callback for the Get Help buttons
+		 */
+		getHelp: function (e) {
+			e.preventDefault();
+
+			// Make sure the url is set in the config
+			if (
+				typeof AoPS.bd.tutorbot_base_url === "undefined" ||
+				AoPS.bd.tutorbot_base_url === ""
+			) {
+				AoPS.Grid.Utils.CreateModalAlert("Unknown error. Please try again.");
+			}
+			// If it is open tutorbot in a new window
+			else {
+				const classId = this.vars.class_id;
+				const problemId = this.vars.problem_id;
+				const url = `${AoPS.bd.tutorbot_base_url}/problem/${classId}/${problemId}`;
+				window.open(url, "_blank");
+			}
+		},
+		resetProblem: function (e) {
+			/*
+			 * I don't actually know the model structure and just copied these
+			 * to get this done, and couldn't find a definition either
+			 */
+			const userId = this.model.get("class").get("perms").user.user_id;
+			const classId = this.model.get("class").get("class_id");
+			const problemId = this.vars.problem_id;
+			const text = `Are you sure you want to reset progress on problem ${problemId} in class ${classId} for user ${userId}?`;
+			const modal = AoPS.Grid.Utils.CreateModalConfirm(
+				text,
+				_.bind(function () {
+					const action = "reset-grid-problem";
+					const parameters = {
+						problem_id: problemId,
+						class_id: classId,
+						user_id: userId,
+					};
+					const callback = function (ok, data) {
+						if (!ok) {
+							AoPS.Grid.Utils.CreateModalAlert(data.error_msg);
+							return;
+						}
+						const textForModalThatRefreshesPage =
+							"Successfully reset the problem. Press ok to refresh the page.";
+						AoPS.Grid.Utils.CreateModalAlert(
+							textForModalThatRefreshesPage,
+							_.bind(function () {
+								window.location.reload();
+							})
+						);
+					};
+					AoPS.Grid.Utils.ajax_runner.run(action, parameters, callback);
+				}, this),
+				null
+			);
+			modal.$obj.find(".aops-modal-btn").first().blur();
+		},
+		viewSolution: function (e) {
+			e.preventDefault();
+			if (
+				this.problemSubViews["FreeResponse"] &&
+				this.problemSubViews["FreeResponse"].editing
+			) {
+				AoPS.Grid.Utils.ScrollToVisible(
+					this.problemSubViews["FreeResponse"].$el
+				);
+				AoPS.Grid.Utils.CreateModalAlert(
+					"You are currently editing your response for this problem. Please save or cancel before you view the solution."
+				);
+			} else if (this.model.get("problem_type") === "woot-ungraded-writing") {
+				/**
+				 * `woot-ungraded-writing` responses can be edited even after
+				 * viewing the solution, so we don't send a warning message
+				 * about finalizing the submission.
+				 *
+				 * https://linear.app/artofproblemsolving/issue/CSYS-127/investigate-if-we-can-make-woot-free-responses-editable-after-viewing
+				 */
+				this.model.respond("", true);
+			} else {
+				var $confirm = $("<div />")
+					.text(
+						this.vars.crypt_problem_type.has_solution
+							? "Are you sure you want to view the solution for this problem? Once you do this, you will no longer be able to request a time extension on your writing problems."
+							: "Are you sure that you are finished with your submission?"
+					)
+					.css("max-width", "480px");
+
+				if (this.model.get("class").get("is_self_paced")) {
+					$confirm
+						.append(
+							$("<p />").text(
+								"By finalizing this problem you are submitting it to be graded."
+							)
+						)
+						.append(
+							$("<p />").text(
+								"You will not be able to edit your work again once you've viewed the solution, so make sure you're totally done."
+							)
+						);
+				}
+
+				AoPS.Grid.Utils.CreateModalConfirm(
+					$confirm,
+					_.bind(function () {
+						this.model.respond("", true);
+						if (this.model.get("class_lesson")) {
+							this.model
+								.get("class_lesson")
+								.set("evaluated_solution_viewed_at", moment());
+						}
+					}, this)
+				);
+			}
+		},
+		showFormattingTips: function (e) {
+			var $tips = this.$(".formatting-tips");
+			e.preventDefault();
+			if ($tips.length && !$tips.hasClass("rendered")) {
+				if (window.MathJax) {
+					MathJax.Hub.Queue(["Typeset", MathJax.Hub, $tips.get(0)]);
+				}
+				$tips.addClass("rendered");
+			}
+			if ($tips.is(":visible")) {
+				if (this.vars.is_sp_nova) {
+					this.$(".show-formatting-tips").text("Show Formatting Tips");
+				}
+				$tips.slideUp();
+			} else {
+				if (this.vars.is_sp_nova) {
+					this.$(".show-formatting-tips").text("Hide Formatting Tips");
+				}
+				$tips.slideDown();
+			}
+		},
+		mySelfPacedOrder: [
+			"Header",
+			"Problem",
+			"Solution",
+			"Hints",
+			"Flex",
+			"FormattingTips",
+			"Trials",
+			"FreeResponse",
+			"Files",
+			"Evaluation",
+			"DiscussionExplanation",
+			"-",
+			"Renderer",
+			"Status",
+			"-",
+			"FinalizeButton",
+			"MatrixOrVector",
+			"ShortAnswer",
+			"Discussion",
+		],
+		reorderProblemSubViewTypesForSelfPaced: function (e) {
+			this.problemSubViewTypes.sort(
+				_.bind(function (a, b) {
+					return (
+						this.mySelfPacedOrder.indexOf(a) - this.mySelfPacedOrder.indexOf(b)
+					);
+				}, this)
+			);
+		},
+		onClickHalperTips: function (e) {
+			e.preventDefault();
+
+			var $tips = this.$(".halper-tips");
+			if ($tips.length && !$tips.hasClass("rendered")) {
+				$tips.addClass("rendered");
+			}
+
+			if ($tips.is(":visible")) {
+				$tips.slideUp();
+			} else {
+				$tips.slideDown();
+			}
+		},
+	});
+
+	Views.GridTabAssignmentsCronusSubView = AoPS.View.extend({
+		initialize: function (options) {
+			this.options = options;
+			this.$el.addClass("CronusSubView " + this.options.subViewType);
+			this.parent = this.options.parent;
+			(this.options.anchor || this.parent.$body)[this.placeFunction](this.$el);
+			this.vars = {};
+			this.updateVarsFromParent();
+		},
+		placeFunction: "append",
+		updateVarsFromParent: function () {
+			_.extend(this.vars, this.parent.vars);
+		},
+		render: function () {
+			if (_.isFunction(this.preRenderHelper)) {
+				this.preRenderHelper();
+			}
+			/**
+			 * I couldn't figure out why two specific motors (test collection 390 lesson 29 problems 17/21, venn diagram motors)
+			 * would wind up with empty response_fmt in all of their trials specifically when submitting correct answer
+			 * Backfilling the response_fmts for now because I also need to finish other tasks, but this should be investigated eventually
+			 * Would be nice if we could delete this block later
+			 */
+			if (this.vars.problem_type === "motor") {
+				try {
+					//The missing response_fmts were only observed on VennDiagram, so localizing this change specifically to that motor
+					if (JSON.parse(this.vars.motor_json).type === "VennDiagram") {
+						this.vars.trials.forEach(function (trial) {
+							if (trial.response_fmt === "") {
+								trial.response_fmt = trial.response;
+							}
+						});
+					}
+				} catch (e) {
+					//Just putting above in try catch so this doesn't bug out the whole page if the motor_json is missing or badly formed
+				}
+			}
+			this.$el.html(this.getTemplate(this.template_id, this.vars));
+			var checked_html = this.$el.html();
+			AoPS.Motors.Utils.processMotorsInText(this, checked_html);
+			// ignore-security-checks
+			this.$el.html(
+				this.$el.html().replace(AoPS.Motors.Utils.GLOBAL_MOTOR_REGEX, "")
+			);
+			if (this.$("a.bbcode_url").length) {
+				this.resolveClassLinks();
+			}
+			if (_.isFunction(this.postRenderHelper)) {
+				this.postRenderHelper();
+			}
+		},
+		resolveClassLinks: function () {
+			var resolveURL = AoPS.Grid.Utils.ClassLinkURLResolver({
+				class_id: this.parent.options.model.get("class").get("class_id"),
+				user_id: this.parent.options.model.get("class").get("perms").user
+					.user_id,
+				base_class_url: this.parent.options.parentView.options.base_class_url,
+				lesson: this.model.get("lesson"),
+				writingDataSupplier: _.bind(function (resolveWritingProjectLink) {
+					var lesson = this.model.get("lesson");
+					this.model.get("class").fetchWritingProjects(
+						_.bind(function (projects) {
+							var project = _.first(
+								_.filter(projects, function (item) {
+									return item.min_lesson <= lesson && lesson <= item.max_lesson;
+								})
+							);
+							var milestone = _.findWhere((project || {}).milestones || [], {
+								lesson: lesson,
+							});
+
+							if (project && milestone) {
+								resolveWritingProjectLink(
+									project.crypt_project_id,
+									milestone.crypt_milestone_id
+								);
+							}
+						}, this)
+					);
+				}, this),
+			});
+
+			_.each(this.$("a.bbcode_url"), resolveURL);
+		},
+	});
+
+	Views.GridTabAssignmentsCronusHeader =
+		Views.GridTabAssignmentsCronusSubView.extend({
+			template_id: "#grid-tab-assignments-cronus-header-tpl",
+			placeFunction: "before",
+			postRenderHelper: function () {
+				if (this.options.parent.options.parentView.$spDueDate) {
+					this.$(".problem-header").prepend(
+						this.options.parent.options.parentView.$spDueDate
+					);
+				}
+			},
+		});
+
+	Views.GridTabAssignmentsCronusProblem =
+		Views.GridTabAssignmentsCronusSubView.extend({
+			template_id: "#grid-tab-assignments-cronus-problem-tpl",
+			refresh: function () {
+				if (
+					this.parent.vars.solution_viewed_at &&
+					!this.parent.oldVars.solution_viewed_at
+				) {
+					this.$(".problem-box")
+						.removeClass("white")
+						.addClass(this.vars.is_sp_nova ? "graded white" : "gray");
+				}
+			},
+			postRenderHelper: function () {
+				AoPS.Grid.Utils.ProcessProblemText(this.$el);
+				try {
+					if (
+						this.model.get("class").get("course_id").match(/-la/) &&
+						this.vars.header === "Problem"
+					) {
+						this.vars.header = "";
+						this.$(".header-inner").hide();
+					}
+				} catch (err) {
+					// Not a homework collection
+				}
+
+				if (this.vars.crypt_problem_type.has_motor) {
+					this.renderMotorProblem();
+				}
+
+				if (this.vars.problem_type == "clickable-single") {
+					this.$(".body").append(
+						$("<div />").html(
+							"Type your answer as a single letter in the box below. " +
+								"For example, if you think the answer is A, type <b>A</b>."
+						)
+					);
+				} else if (
+					this.vars.problem_type == "clickable-multiple" &&
+					this.vars.answer_type == "clickable-olist"
+				) {
+					this.$(".body").append(
+						$("<div />").html(
+							"Type your answer as a list of letters in the box below. " +
+								"Make sure to put the letters in the right order! " +
+								"Put commas between the letters, like this: <b>M, P, H, R, Z</b>"
+						)
+					);
+				} else if (this.vars.problem_type == "clickable-multiple") {
+					this.$(".body").append(
+						$("<div />").html(
+							"Type your answer as a list of letters in the box below. " +
+								"Put commas between the letters, like this: <b>M, P, H, R, Z</b>"
+						)
+					);
+				}
+
+				AoPS.Grid.Utils.CreateTooltip(
+					this.$(".grid-start-topic"),
+					"Ask a question about this problem"
+				);
+				AoPS.Grid.Utils.CreateTooltip(
+					this.$(".grid-open-page-feed"),
+					"View discussions about this problem"
+				);
+				AoPS.Grid.Utils.CreateTooltip(this.$(".report-bug"), "Report an error");
+			},
+			renderMotorProblem: function () {
+				var $motor_wrapper = $("<div></div>");
+				this.$motor_wrapper = $motor_wrapper;
+				this.$(".body").append($motor_wrapper);
+
+				var motor = null;
+
+				if (!this.vars.graded_at) {
+					var driverType = this.vars.motor_type + "Driver";
+					var driver = new Motors.Drivers[driverType]();
+					var controller = new Motors.Controller({driver});
+
+					// Update submission on motor output.
+					if (!this.isReview) {
+						this.vars.num_rendered = 0;
+
+						driver.addResolveListener(
+							_.debounce(
+								_.bind(function (output) {
+									this.model.set(
+										"submit_button_enabled",
+										AoPS.Motors.Utils.getMotorCanSubmit(
+											output,
+											this.vars.motor_json
+										)
+									);
+
+									this.model.set(
+										"current_motor_input",
+										AoPS.Motors.Utils.computeGridCurrentMotorInput(
+											output,
+											this.vars.motor_json
+										)
+									);
+									if (!this.vars.num_rendered) {
+										this.model.set(
+											"starting_motor_input",
+											JSON.parse(
+												JSON.stringify(this.model.get("current_motor_input"))
+											)
+										);
+										this.vars.num_rendered++;
+									}
+								}, this),
+								0
+							)
+						);
+					}
+
+					controller.start(JSON.parse(this.vars.motor_json).options);
+					motor = controller.render();
+				} else {
+					motor = AoPS.Motors.Utils.generateStaticMotor(
+						this.generateMotorProblemWithInput()
+					);
+				}
+
+				this.listenTo(
+					this.model,
+					"change:graded_at",
+					this.rerenderMotorProblemWithResponse
+				);
+
+				Motors.render(motor, $motor_wrapper[0]);
+			},
+			/**
+			 * Attach a motor as a manipulative to the problem
+			 */
+			async attachMotor(motor_ref) {
+				var $motor_wrapper = $("<div></div>").addClass("motor_wrapper");
+				/**
+				 * putting this line in an else statement after if (problem) later wasn't working
+				 * this text gets overwritten by the motor if one does get found
+				 */
+				$motor_wrapper.text("Motor " + motor_ref + " Not Found");
+				var $body = this.$(".body");
+				$body.append($motor_wrapper);
+				var motor_wrapper_index = $(".motor_wrapper").length - 1;
+				try {
+					var problem = await AoPS.Motors.Utils.findMotorWithRef(
+						motor_ref,
+						this.model.get("class").get("class_id"),
+						this.model.get("class").get("perms").user.user_id
+					);
+					if (problem) {
+						//graded or not doesn't matter because it's just a prop
+						var driverType = problem.motor_type + "Driver";
+						var driver = new Motors.Drivers[driverType]();
+						var controller = new Motors.Controller({driver});
+						controller.start(JSON.parse(problem.motor_json).options);
+						var motor = controller.render();
+						Motors.render(motor, $(".motor_wrapper")[motor_wrapper_index]);
+						$body.trigger("create");
+					} else {
+						$(".motor_wrapper")[motor_wrapper_index].setAttribute(
+							"style",
+							"color:red"
+						);
+					}
+				} catch (e) {
+					$motor_wrapper.text("Error Retrieving Motor").css("color", "red");
+				}
+			},
+			/**
+			 * Convert last submission (or correct answer) to valid input format
+			 * and add it to the initial motor options.
+			 *
+			 * We use model attributes to get most recent data.
+			 */
+			generateMotorProblemWithInput() {
+				var prevInput = null;
+				var wasPopulatedFromAnswer = false;
+
+				/**
+				 * The MultipleChoice motor has a special subtype where
+				 * responses are stored on the backend as arrays of values
+				 * instead of arrays of indices, as if they're formatted.
+				 *
+				 * We need to check for motors of this type so that we can call
+				 * `convertTrialData` first (even though the data are
+				 * immediately un-converted by `modifyMotorJsonWithInput`.)
+				 */
+				let specialMultipleChoiceFormat = false;
+				try {
+					const parsedMotorJson = JSON.parse(this.vars.motor_json);
+					if (
+						parsedMotorJson.type === "MultipleChoice" &&
+						parsedMotorJson.outputDisplayFormat === "selectedValues"
+					) {
+						specialMultipleChoiceFormat = true;
+					}
+				} catch (_e) {
+					// Failed to parse JSON
+				}
+
+				var lastTrial = _.last(this.model.get("trials") || []);
+				if ((lastTrial || {}).correct === "Y") {
+					if (specialMultipleChoiceFormat) {
+						prevInput = AoPS.Motors.Utils.convertTrialData(
+							this.vars.motor_json,
+							lastTrial.response
+						);
+					} else {
+						prevInput = lastTrial.response;
+					}
+				} else if (
+					this.model.get("answer") !== undefined &&
+					this.model.get("answer") !== null
+				) {
+					prevInput = this.model.get("answer");
+					wasPopulatedFromAnswer = true;
+				}
+
+				return JSON.parse(
+					AoPS.Motors.Utils.modifyMotorJsonWithInput(
+						this.vars.motor_json,
+						prevInput,
+						wasPopulatedFromAnswer
+					)
+				);
+			},
+			rerenderMotorProblemWithResponse() {
+				if (this.$motor_wrapper) {
+					// Note: We have to unmount the existing motor, otherwise
+					// the Motors.render() function won't render a new one.
+					Motors.unmountComponentAtNode(this.$motor_wrapper[0]);
+					var motorJson = this.generateMotorProblemWithInput();
+					var motor = AoPS.Motors.Utils.generateStaticMotor(motorJson);
+					Motors.render(motor, this.$motor_wrapper[0]);
+				}
+			},
+		});
+
+	Views.GridTabAssignmentsCronusSolution =
+		Views.GridTabAssignmentsCronusSubView.extend({
+			template_id: "#grid-tab-assignments-cronus-solution-tpl",
+			refresh: function () {
+				if (
+					this.parent.vars.solution_viewed_at !=
+					this.parent.oldVars.solution_viewed_at
+				) {
+					this.render();
+				}
+			},
+			events: {
+				"click .cheat-solution .header": "toggleCheatSolution",
+			},
+			toggleCheatSolution: function () {
+				var expanded = this.$(".cheat-solution").hasClass("expanded");
+				this.$(".cheat-solution")[expanded ? "removeClass" : "addClass"](
+					"expanded"
+				);
+				this.$(".cheat-solution .body")[expanded ? "slideUp" : "slideDown"](
+					"fast"
+				);
+				this.$(".cheat-solution .header .expand")[expanded ? "show" : "hide"]();
+				this.$(".cheat-solution .header .collapse")[
+					expanded ? "hide" : "show"
+				]();
+			},
+			postRenderHelper: function () {
+				this.$(".cheat-solution .header .collapse").hide();
+			},
+		});
+
+	Views.GridTabAssignmentsCronusFlex =
+		Views.GridTabAssignmentsCronusSubView.extend({
+			template_id: "#grid-tab-assignments-cronus-flex-tpl",
+		});
+
+	Views.GridTabAssignmentsCronusHints =
+		Views.GridTabAssignmentsCronusSubView.extend({
+			template_id: "#grid-tab-assignments-cronus-hints-tpl",
+			events: {
+				"click .get-hint": "getHint",
+			},
+			getHint: function (e) {
+				e.preventDefault();
+				this.model.getHint();
+			},
+		});
+
+	Views.GridTabAssignmentsCronusHalperTips =
+		Views.GridTabAssignmentsCronusSubView.extend({
+			template_id: "#grid-tab-assignments-cronus-halper-tips-tpl",
+			show: function () {
+				this.$(".halper-tips").show();
+			},
+			hide: function () {
+				this.$(".halper-tips").hide();
+			},
+		});
+
+	Views.GridTabAssignmentsCronusDiscussion =
+		Views.GridTabAssignmentsCronusSubView.extend({
+			template_id: "#grid-tab-assignments-cronus-discussion-tpl",
+		});
+
+	Views.GridTabAssignmentsCronusDiscussionExplanation =
+		Views.GridTabAssignmentsCronusSubView.extend({
+			template_id: "#grid-tab-assignments-cronus-discussion-explanation-tpl",
+		});
+
+	// Auto-save
+	Views.GridTabAssignmentsCronusFreeResponse =
+		Views.GridTabAssignmentsCronusSubView.extend({
+			template_id: "#grid-tab-assignments-cronus-free-response-tpl",
+			events: {
+				"click .trigger-edit": "triggerEdit",
+				"click .trigger-copy-curl": "copyCurlBody",
+			},
+			triggerEdit: function (e) {
+				e.preventDefault();
+				this.showEditMode(true);
+			},
+			handleCopyCurlBodyClick: function (e) {
+				e.preventDefault();
+				this.copyCurlBody(e);
+			},
+			refresh: function () {
+				if (!this.editing) {
+					this.render();
+				} else {
+					this.updateDefaultAutosaveValue();
+					this.updateAutosaveStatus();
+				}
+			},
+			updateDefaultAutosaveValue: function () {
+				if (this.vars.crypt_problem_type.is_python) {
+					this.vars.default_autosave =
+						"[pyStudentResponse]" +
+						(this.vars.submission.python || "").replace(
+							/\[\/?pystudentresponse\]/gi,
+							""
+						) +
+						"[/pyStudentResponse]";
+				} else {
+					this.vars.default_autosave = "";
+				}
+			},
+			preRenderHelper: function () {
+				this.updateDefaultAutosaveValue();
+				this.getLocalStorage();
+			},
+			getPython: function () {
+				if (this.$python && this.$python.length) {
+					return pythonTool.getPyStudentResponse(this.$python, true);
+				} else {
+					return (
+						(this.vars.submission ? this.vars.submission.python : "") || ""
+					);
+				}
+			},
+			getResponse: function () {
+				var input_val = this.$input
+					.val()
+					.replace(/\[\/?pystudentresponse\]/gi, "")
+					.trim();
+				if (this.vars.crypt_problem_type.is_python) {
+					var python = this.getPython();
+					if (python) {
+						input_val += "[pyStudentResponse]";
+						input_val += python.replace(/\[\/?pystudentresponse\]/gi, "");
+						input_val += "[/pyStudentResponse]";
+					}
+				}
+				return input_val;
+			},
+			getSavedResponse: function () {
+				var input_val =
+					(this.vars.submission ? this.vars.submission.response : "") || "";
+				if (this.vars.crypt_problem_type.is_python) {
+					var python =
+						(this.vars.submission ? this.vars.submission.python : "") || "";
+					if (python) {
+						input_val += "[pyStudentResponse]";
+						input_val += python.replace(/\[\/?pystudentresponse\]/gi, "");
+						input_val += "[/pyStudentResponse]";
+					}
+				}
+				return input_val;
+			},
+			hasChanged: function () {
+				if (
+					(this.vars.submission ? this.vars.submission.response : "") !=
+					this.$input.val()
+				) {
+					return true;
+				} else if (
+					this.vars.crypt_problem_type.is_python &&
+					this.vars.submission.python != this.getPython()
+				) {
+					return true;
+				} else {
+					return false;
+				}
+			},
+			getAutosaveStack: function (format) {
+				var saved = this.getSavedResponse();
+				var server =
+					(this.vars.submission ? this.vars.submission.autosave : "") || "";
+				var local = this.local_autosave || "";
+
+				var stack = [
+					{
+						hash: "saved",
+						caption: "Last Saved Response",
+						is_saved: true,
+						response: saved,
+						timestamp: this.vars.submission
+							? this.vars.submission.updated_at
+							: 0,
+					},
+				];
+				if (server && server != saved) {
+					stack.push({
+						hash: "server",
+						caption: "Server Draft",
+						is_saved: false,
+						response: server,
+						timestamp: this.vars.submission
+							? this.vars.submission.autosaved_at
+							: 0,
+					});
+				}
+				if (local && local != saved && (server == "" || server != local)) {
+					stack.push({
+						hash: "local",
+						caption: "Local Draft",
+						is_saved: false,
+						response: local,
+						timestamp: this.local_autosaved_at || 0,
+					});
+				}
+				if (format) {
+					var index = 1;
+					_.each(stack, function (s) {
+						s.index = index;
+						if (s.hash != "saved") {
+							s.caption =
+								"Unsaved Draft" + (stack.length > 2 ? " #" + index : "");
+							index++;
+						}
+					});
+				}
+
+				return stack;
+			},
+			showViewMode: function (anchor_to_end) {
+				var scrollFrom = $(window).scrollTop() - this.$input_form.height();
+				if (!_.isUndefined(this.$python)) {
+					this.$python.removeClass("editing");
+				}
+				this.$(".fr-edit-mode").hide();
+				this.$(".fr-view-mode").show();
+				if (this.editing && anchor_to_end) {
+					$(window).scrollTop(scrollFrom + this.$view.height());
+				}
+				this.editing = false;
+
+				this.$el.off(".parent-update");
+				this.$el.off(".autosave");
+				this.$el.off(".local-autosave");
+			},
+			showAutosaveDialog: function () {
+				var popup = new Views.GridTabAssignmentsCronusAutosaveDialog({
+					model: this.model,
+					parent: this,
+				});
+				popup.modal = popup.$el.showPlainModal({
+					scrollable: true,
+					onClose: function () {
+						popup.close();
+					},
+				});
+			},
+			showEditMode: function (focus) {
+				if (
+					this.model.get("class").get("perms").user.bant &&
+					this.model.get("crypt_problem_type").get("is_collected")
+				) {
+					// Prevent editing for bant users only if the problem is graded.
+				} else if (!this.editing) {
+					if (this.getAutosaveStack().length > 1) {
+						this.showAutosaveDialog();
+					} else {
+						var default_text = this.vars.submission
+							? this.vars.submission.response
+							: "";
+						this.$input.val(default_text);
+						this.editing = true;
+						if (!_.isUndefined(this.$python)) {
+							this.$python.addClass("editing");
+						}
+						this.$(".fr-view-mode").hide();
+						this.$(".fr-edit-mode").show();
+						if (focus) {
+							this.$input.focus();
+						}
+
+						if (_.isUndefined(this.debouncedAutosave)) {
+							this.debouncedAutosave = _.debounce(
+								_.bind(function () {
+									setTimeout(_.bind(this.autosave, this), 5000);
+								}, this),
+								20000,
+								true
+							);
+						}
+
+						if (_.isUndefined(this.debouncedLocalAutosave)) {
+							this.debouncedLocalAutosave = _.debounce(
+								_.bind(this.localAutosave, this),
+								500
+							);
+						}
+
+						_.each(
+							["input", "change", "keydown", "keyup", "cut", "paste"],
+							_.bind(function (event) {
+								this.$el.on(
+									event + ".parent-update",
+									this.parent.options.parentView.debouncedUpdateHasChanged
+								);
+								this.$el.on(event + ".autosave", this.debouncedAutosave);
+								this.$el.on(event + ".local-save", this.debouncedLocalAutosave);
+							}, this)
+						);
+					}
+				}
+			},
+			copyCurlBody: function (e) {
+				AoPS.Grid.Utils.ajax_runner.run(
+					"get-curl-body",
+					{
+						class_id: this.model.get("class").get("class_id"),
+						problem_id: this.vars.problem_id,
+						user_id: this.model.get("class").get("perms").user.user_id,
+					},
+					_.bind(function (ok, data) {
+						if (ok) {
+							AoPS.Ui.Flyout.display("Copied curl body to clipboard");
+							navigator.clipboard.writeText(data.response.curl_body);
+						} else {
+							AoPS.Ui.Flyout.display("Failed to copy curl body to clipboard");
+						}
+					}, this)
+				);
+			},
+			hasChangedSinceLocalAutosave: function () {
+				if (
+					this.hasChanged() &&
+					this.getResponse() !=
+						(this.local_autosave || this.vars.default_autosave)
+				) {
+					return true;
+				} else {
+					return false;
+				}
+			},
+			localAutosave: function () {
+				if (this.hasChangedSinceLocalAutosave()) {
+					this.setLocalStorage(this.getResponse());
+				}
+			},
+			getLocalStorageVariableName: function () {
+				return [
+					"grid-problem-response",
+					this.model.get("class").get("perms").user.user_id,
+					this.model.get("class").get("class_id"),
+					this.vars.problem_id,
+				].join("-");
+			},
+			getLocalStorage: function () {
+				var returned;
+				try {
+					var found =
+						(localStorage
+							? localStorage.getItem(this.getLocalStorageVariableName())
+							: "{}") || "{}";
+					returned = JSON.parse(Base64.decode(found));
+					if (!_.isObject(returned)) {
+						returned = {};
+					}
+				} catch (e) {
+					returned = {};
+				}
+				this.local_autosave = returned.text || "";
+				this.local_autosaved_at = returned.timestamp || 0;
+				return this.local_autosave;
+			},
+			setLocalStorage: function (text) {
+				if (localStorage) {
+					if (_.isNull(text)) {
+						localStorage.removeItem(this.getLocalStorageVariableName());
+					} else {
+						localStorage.setItem(
+							this.getLocalStorageVariableName(),
+							Base64.encode(
+								JSON.stringify({
+									timestamp: Math.floor((Date.now || Date.getTime)() / 1000),
+									text: text,
+								})
+							)
+						);
+					}
+				}
+				return this.getLocalStorage();
+			},
+			hasChangedSinceAutosave: function () {
+				if (
+					this.hasChanged() &&
+					this.getResponse() !=
+						(this.vars.submission
+							? this.vars.submission.autosave || this.vars.default_autosave
+							: "")
+				) {
+					return true;
+				} else {
+					return false;
+				}
+			},
+			autosave: function () {
+				if (this.hasChangedSinceAutosave()) {
+					this.model.autosave(this.getResponse());
+				}
+			},
+			updateAutosaveStatus: function () {
+				if (!this.editing) {
+					var stack = this.getAutosaveStack();
+					if (stack.length > 1) {
+						this.$(".grid-free-response-draft-status .draft").text(
+							stack.length > 2 ? "unsaved drafts" : "an unsaved draft"
+						);
+						this.$(".grid-free-response-draft-status-outer").show();
+						this.$(".btn.trigger-edit").text("Recover");
+					} else {
+						this.$(".grid-free-response-draft-status-outer").hide();
+						this.$(".btn.trigger-edit").text("Edit");
+					}
+				}
+			},
+			cancelEdit: function (anchor_to_end) {
+				if (this.hasChanged()) {
+					AoPS.Grid.Utils.CreateModalConfirm(
+						"Are you sure you want to cancel and discard all changes?",
+						_.bind(function () {
+							this.model.autosave(
+								"",
+								_.bind(function () {
+									this.setLocalStorage(null);
+									if (!_.isUndefined(this.$python)) {
+										pythonTool.externalReset(this.$python);
+									}
+									this.showViewMode(anchor_to_end);
+									this.parent.options.parentView.updateHasChanged();
+								}, this)
+							);
+						}, this)
+					);
+				} else {
+					this.showViewMode(anchor_to_end);
+				}
+			},
+			respond: function () {
+				this.respondHelper(this.getResponse(), null);
+			},
+			respondHelper: function (response, success, failure) {
+				this.editing = false;
+				this.setLocalStorage(null);
+				this.parent.options.parentView.updateHasChanged();
+				this.model.respond(
+					response,
+					false,
+					this.$('input[name="aops_code"]').prop("checked"),
+					_.bind(function () {
+						if (_.isFunction(this.parent.options.parentView.renderHeader)) {
+							this.parent.options.parentView.renderHeader();
+						}
+						if (_.isFunction(success)) {
+							success();
+						}
+					}, this),
+					failure
+				);
+			},
+			setupResponse: function () {
+				this.$('input[name="aops_code"]').prop("checked", true).parent().hide();
+				this.$edit_block = this.$("div.free-response-submission");
+				this.$view = this.$("div.problem-view");
+				this.$input_form = this.$("form.problem-input");
+				this.$input = this.$('form.problem-input textarea[name="response"]');
+				if (
+					this.vars.submission &&
+					this.vars.submission.response &&
+					this.vars.submission.response.trim()
+				) {
+					if (this.vars.submission.response_fmt === null) {
+						this.$view
+							.find(".problem-view-inner")
+							.html(
+								"We're having trouble processing your solution right now. Don't worry - you can still edit it and we can still read your solution."
+							)
+							.css({color: "red"});
+					} else {
+						this.$view
+							.find(".problem-view-inner")
+							.html(this.vars.submission.response_fmt);
+					}
+				} else {
+					this.$view
+						.find(".problem-view-inner")
+						.html(this.$view.attr("default"))
+						.css({color: "lightgray"});
+				}
+
+				this.$(".save-response")
+					.click(
+						_.bind(function (e) {
+							e.stopImmediatePropagation();
+							e.preventDefault();
+							this.respond();
+						}, this)
+					)
+					.keypress(
+						_.bind(function (e) {
+							if (e.which == 13 || e.which == 32) {
+								e.stopImmediatePropagation();
+								e.preventDefault();
+								this.respond();
+							}
+						}, this)
+					);
+				_.each(
+					this.$(".cancel-edit"),
+					_.bind(function (btn, index) {
+						$(btn)
+							.click(
+								_.bind(function (e) {
+									e.stopImmediatePropagation();
+									e.preventDefault();
+									this.cancelEdit(index);
+								}, this)
+							)
+							.keypress(
+								_.bind(function (e) {
+									if (e.which == 13 || e.which == 32) {
+										e.stopImmediatePropagation();
+										e.preventDefault();
+										this.cancelEdit(index);
+									}
+								}, this)
+							);
+					}, this)
+				);
+			},
+			setupPython: function () {
+				this.$python = this.$(".python-submission .body .py-student-response");
+				this.$python.html(this.vars.submission.python_fmt);
+				this.$python.find(".pywindow").on(
+					"pywindow_focus",
+					_.bind(function () {
+						var checkExist = setInterval(
+							_.bind(function () {
+								if (
+									!this.editing &&
+									this.$python.find(".pywindow .CodeMirror").length
+								) {
+									var scrollFrom = $(window).scrollTop() - this.$view.height();
+									this.showEditMode(false);
+									$(window).scrollTop(scrollFrom + this.$input_form.height());
+									clearInterval(checkExist);
+								} else if (this.editing) {
+									clearInterval(checkExist);
+								}
+							}, this),
+							100
+						);
+					}, this)
+				);
+			},
+			postRenderHelper: function () {
+				if (this.vars.can_submit) {
+					if (
+						this.model.get("class").get("perms").user.bant &&
+						(this.model.get("crypt_problem_type").get("is_collected") ||
+							this.model.get("class").get("is_self_paced"))
+					) {
+						var bant = Handlebars.compile(
+							this.model.get("class").get("perms").user.bant
+						);
+						var $body = this.$(".free-response-submission .body");
+						$body.find(".fr-edit-mode").hide();
+						$body.find(".grid-free-response-status-bar").hide();
+						$body
+							.find(".problem-view-inner")
+							.removeClass("trigger-edit")
+							.addClass("bant");
+						$body.find(".bant").html(
+							bant({
+								class_string: this.model.get("class").get("class_string"),
+								class_id: this.model.get("class_id"),
+								class_name: this.model.get("class_name"),
+							})
+						);
+						$body.find(".bant a").attr({target: "_blank"});
+					} else {
+						this.setupResponse();
+						if (this.vars.crypt_problem_type.is_python) {
+							this.setupPython();
+						}
+						this.showViewMode();
+						this.updateAutosaveStatus();
+					}
+				} else {
+					if (this.vars.submission && this.vars.submission.response) {
+						this.$(".free-response-submission .body").html(
+							this.vars.submission.response_fmt
+						);
+					} else {
+						this.$(".free-response-submission").hide();
+					}
+					if (this.vars.crypt_problem_type.is_python) {
+						this.$(".python-submission .body").html(
+							this.vars.submission.python_fmt
+						);
+					}
+				}
+			},
+		});
+
+	Views.GridTabAssignmentsCronusAutosaveDialog = AoPS.View.extend({
+		template_id: "#grid-tab-assignments-cronus-autosave-dialog-tpl",
+		className: "grid-tab-assignments-problem-autosave-dialog-modal",
+		initialize: function (options) {
+			this.options = options;
+			this.parent = this.options.parent;
+			this.vars = {};
+			this.render();
+		},
+		selectHash: function (hash) {
+			this.$(".selector a.select-draft").removeClass("selected");
+			this.$(".problem-text").hide();
+			this.$(".selector a.select-draft." + hash).addClass("selected");
+			this.$(".problem-text." + hash).show();
+		},
+		selectDraft: function (e) {
+			e.preventDefault();
+			_.each(
+				this.vars.stack,
+				_.bind(function (s) {
+					if ($(e.currentTarget).hasClass(s.hash)) {
+						this.selectHash(s.hash);
+					}
+				}, this)
+			);
+		},
+		saveAndClose: function (e) {
+			var selected = null;
+			e.preventDefault();
+			_.each(
+				this.vars.stack,
+				_.bind(function (s) {
+					if ($(".selector a.select-draft." + s.hash).hasClass("selected")) {
+						selected = s;
+					}
+				}, this)
+			);
+			if (selected) {
+				this.$(".hideable").hide().last().after($("<p />").html("Saving..."));
+				this.parent.respondHelper(
+					selected.response,
+					_.bind(function () {
+						// Success
+						AoPS.Ui.Modal.removeModal(this.modal);
+					}, this),
+					_.bind(function () {
+						// Failure
+						AoPS.Ui.Modal.removeModal(this.modal);
+					}, this)
+				);
+			} else {
+				AoPS.Ui.Modal.removeModal(this.modal);
+				AoPS.Grid.Utils.CreateModalAlert("Unknown error. Please try again.");
+			}
+		},
+		cancelAndClose: function (e) {
+			e.preventDefault();
+			AoPS.Ui.Modal.removeModal(this.modal);
+		},
+		events: {
+			"click .selector .select-draft": "selectDraft",
+			"click .save": "saveAndClose",
+			"click .cancel": "cancelAndClose",
+		},
+		render: function () {
+			this.vars.stack = this.parent.getAutosaveStack(true);
+			_.each(
+				this.vars.stack,
+				_.bind(function (s) {
+					s.text = s.response;
+					if (this.parent.vars.crypt_problem_type.is_python) {
+						var match = s.response.match(
+							/^([\s\S]*)\[pystudentresponse\]([\s\S]*)\[\/pystudentresponse\]/i
+						);
+						if (match) {
+							s.text = match[1];
+							s.python = match[2];
+						}
+					}
+					s.saved_at = s.timestamp ? moment(s.timestamp, "X").fromNow() : "";
+				}, this)
+			);
+			this.$el.html(this.getTemplate(this.template_id, this.vars));
+			this.selectHash(_.last(this.vars.stack).hash);
+		},
+	});
+
+	Views.GridTabAssignmentsCronusEvaluation =
+		Views.GridTabAssignmentsCronusSubView.extend({
+			template_id: "#grid-tab-assignments-cronus-evaluation-tpl",
+			events: {
+				"click .thank-grader": "thankGrader",
+				"click .grid-hw-file a.delete": "openDeleteModal",
+			},
+			preRenderHelper: function () {
+				// check if problem can still be submitted to grader
+				if (this.vars.crypt_problem_type.is_judged) {
+					// if this problem is for a cs test that has ended, it is considered to be finalized
+					var is_cs_test =
+						this.model.get("lesson") >
+						this.model.get("master").get("class").get("max_disp_schedule");
+					if (is_cs_test && this.model.get("master").get("cs_test").ended_at) {
+						this.vars.has_been_finalized = 1;
+					}
+					// for judged problems, can_submit is always true. instead check for finalization
+					this.vars.can_submit_to_grader = !this.vars.has_been_finalized;
+				} else {
+					this.vars.can_submit_to_grader = this.vars.can_submit;
+				}
+
+				this.vars.is_reading_tab =
+					this.options.parent.options.parentView.options.tab_hash ===
+					"bb-reading";
+
+				this.vars.show_view_solution = this.showViewSolution();
+			},
+			thankGrader: function (e) {
+				e.preventDefault();
+				this.model.thankGrader();
+			},
+
+			/**
+			 * We show the view solution button if this problem type has a solution
+			 * the solution has not yet been viewed and there are no pending extension requests
+			 */
+			showViewSolution: function () {
+				let showViewSolution = false;
+				let lesson = this.model;
+
+				if (
+					lesson.get("crypt_problem_type").get("has_solution") &&
+					!lesson.get("solution_viewed_at") &&
+					!AoPS.bd.has_extensions_pending
+				) {
+					showViewSolution = true;
+				}
+				return showViewSolution;
+			},
+		});
+
+	Views.GridTabAssignmentsCronusFinalizeButton =
+		Views.GridTabAssignmentsCronusSubView.extend({
+			template_id: "#grid-tab-assignments-cronus-finalize-button-tpl",
+			refresh: function () {
+				this.render();
+			},
+			render: function () {
+				if (
+					this.vars.can_submit &&
+					this.vars.crypt_problem_type.is_finalized &&
+					this.vars.answered_at &&
+					!this.vars.solution_viewed_at
+				) {
+					const vars = {
+						...this.vars,
+
+						/**
+						 * Tells Handlebars that the button should say "Show
+						 * Solution," not "Finalize and Show Solution." This is
+						 * provided as a separate variable because we can't
+						 * infer it from properties in the `crypt_problem_types`
+						 * table.
+						 *
+						 * https://linear.app/artofproblemsolving/issue/CSYS-127/investigate-if-we-can-make-woot-free-responses-editable-after-viewing
+						 */
+						is_woot_ungraded_writing:
+							this.vars.crypt_problem_type.hash === "woot-ungraded-writing",
+					};
+					this.$el.html(this.getTemplate(this.template_id, vars)).show();
+				} else {
+					this.$el.html("");
+				}
+			},
+		});
+
+	Views.GridTabAssignmentsCronusFiles =
+		Views.GridTabAssignmentsCronusSubView.extend({
+			template_id: "#grid-tab-assignments-cronus-files-tpl",
+			events: {
+				"click .attach-a-file": "openAttachModal",
+				"click .grid-hw-file a.delete": "openDeleteModal",
+			},
+			preRenderHelper: function () {
+				this.vars.can_upload =
+					this.vars.can_submit &&
+					!this.model.get("class").get("perms").user.bant;
+				this.vars.can_see_files =
+					this.vars.files.length > 0 &&
+					(!this.vars.can_submit ||
+						!this.model.get("class").get("perms").user.bant);
+			},
+			openAttachModal: function (e) {
+				e.preventDefault();
+				var popup = new Views.GridTabAssignmentsProblemAttachFileModal({
+					model: this.model,
+					parentView: this.parentView,
+					vars: this.vars,
+				});
+				popup.options.modal = popup.$el.showPlainModal({
+					scrollable: true,
+					onClose: function () {
+						popup.close();
+					},
+				});
+			},
+			openDeleteModal: function (e) {
+				e.preventDefault();
+				AoPS.Grid.Utils.CreateModalConfirm(
+					"Are you sure you want to delete this file?",
+					_.bind(function () {
+						this.model.deleteFile($(e.currentTarget).attr("hw_file_id"));
+					}, this)
+				);
+			},
+		});
+
+	Views.GridTabAssignmentsCronusJudged =
+		Views.GridTabAssignmentsCronusSubView.extend({
+			template_id: "#grid-tab-assignments-cronus-judged-tpl",
+			events: {
+				"click .cronus-submit-btn": "submitFile",
+				"click .attach-a-file": "openAttachModal",
+				"click .grid-hw-file a.delete": "openDeleteModal",
+				"click .give-up-judged": "giveUp",
+			},
+			preRenderHelper: function () {
+				// if this problem is for a cs test that has ended, it is considered to be finalized
+				var is_cs_test =
+					this.model.get("lesson") >
+					this.model.get("master").get("class").get("max_disp_schedule");
+				if (is_cs_test && this.model.get("master").get("cs_test").ended_at) {
+					this.vars.has_been_finalized = 1;
+				}
+
+				this.vars.allowed_extensions_fmt = this.vars.allowed_extensions_fmt
+					? this.vars.allowed_extensions_fmt
+					: "C++17";
+
+				// this.vars.can_submit should always be 1 here, but I'm leaving the code using it in case this isn't true in the future
+				this.vars.can_upload =
+					this.vars.can_submit &&
+					!this.model.get("class").get("perms").user.bant;
+
+				this.vars.submitted_files = [];
+				this.vars.current_file = null;
+
+				// parses the judge results to look better in the template
+				for (var i = 0; i < this.vars.files.length; i++) {
+					if (
+						!this.vars.current_file &&
+						!this.vars.files[i].submitted_to_judge_at
+					) {
+						this.vars.current_file = this.vars.files[i];
+					} else {
+						if (this.vars.files[i].judge_results) {
+							this.vars.last_file = this.vars.files[i];
+							for (
+								var j = 0;
+								j < this.vars.last_file.judge_results.length;
+								j++
+							) {
+								//for compile errors only
+								if (this.vars.last_file.judge_results[j].result == "c") {
+									this.vars.last_file.has_compiler_error = 1;
+									if (!this.vars.last_file.judge_results[j].message) {
+										this.vars.last_file.message = "Compiler error";
+									} else {
+										this.vars.last_file.message =
+											this.vars.last_file.judge_results[j].message.trim();
+									}
+									// counts the number correct for frontend. NOTE: * == correct
+								} else if (this.vars.last_file.judge_results[j].result == "*") {
+									this.vars.last_file.judge_results[j].is_correct = 1;
+								} else if (this.vars.last_file.judge_results[j].result == "-") {
+									this.vars.last_file.judge_results[j].skip = 1;
+								}
+								this.vars.last_file.judge_results[j].result_num = j + 1;
+							}
+						}
+						this.vars.submitted_files.push(this.vars.files[i]);
+					}
+				}
+
+				// this is unused right now? maybe should check this.vars.has_been_finalized instead of this.vars.can_submit
+				this.vars.can_see_files =
+					this.vars.current_file &&
+					(!this.vars.can_submit ||
+						!this.model.get("class").get("perms").user.bant);
+			},
+			postRenderHelper: function () {
+				this.toggleSubmitButton();
+			},
+			renderLastJudgeResults: function () {},
+			openAttachModal: function (e) {
+				if (this.vars.current_file) {
+					AoPS.Grid.Utils.CreateModalAlert(
+						"You may only attach one file at a time. Please delete the attached file and try again."
+					);
+					return;
+				}
+				e.preventDefault();
+				var popup = new Views.GridTabAssignmentsProblemAttachFileModal({
+					model: this.model,
+					parentView: this.parentView,
+					vars: this.vars,
+					maxFiles: 1,
+				});
+				popup.options.modal = popup.$el.showPlainModal({
+					scrollable: true,
+					onClose: function () {
+						popup.close();
+					},
+				});
+			},
+			openDeleteModal: function (e) {
+				e.preventDefault();
+				AoPS.Grid.Utils.CreateModalConfirm(
+					"Are you sure you want to delete this file?",
+					_.bind(function () {
+						this.model.deleteFile($(e.currentTarget).attr("hw_file_id"));
+					}, this)
+				);
+			},
+			toggleSubmitButton: function () {
+				if (this.vars.current_file) {
+					this.$(".cronus-submit-btn").removeClass(
+						"btn-fully-disabled disabled"
+					);
+				} else {
+					this.$(".cronus-submit-btn").addClass("btn-fully-disabled disabled");
+				}
+			},
+			submitFile: function () {
+				if (!this.vars.current_file || !this.vars.current_file.hw_file_id) {
+					return;
+				}
+				this.model.submitJudged(
+					this.vars.current_file.hw_file_id,
+					this.vars.has_been_finalized
+				);
+			},
+			giveUp: function (e) {
+				e.preventDefault();
+				var text =
+					"Are you sure you want to finalize your solution? " +
+					"You will still be able to submit in practice mode, but submissions will no longer count toward your score." +
+					(this.model.get("class").get("forum_id")
+						? " Remember that you can always get help on the message board if you're stuck!"
+						: "");
+				var options = {
+					confirm_button_ok: "Finalize",
+					confirm_button_cancel: "Cancel",
+				};
+				var modal = AoPS.Grid.Utils.CreateModalConfirm(
+					text,
+					_.bind(function () {
+						this.model.respond("", true);
+					}, this),
+					null,
+					options
+				);
+				modal.$obj.find(".aops-modal-btn").first().blur();
+			},
+		});
+
+	Views.GridTabAssignmentsCronusRenderer =
+		Views.GridTabAssignmentsCronusSubView.extend({
+			template_id: "#grid-tab-assignments-cronus-renderer-tpl",
+			refresh: function () {
+				if (!this.parent.vars.can_submit) {
+					this.$el.hide();
+				}
+			},
+			postRenderHelper: function () {
+				this.$rendered = this.$(".grid-answer-rendered");
+				this.debouncedProcessor = _.debounce(
+					_.bind(this.processRendered, this),
+					500
+				);
+				this.processRendered();
+			},
+			processRendered: function () {
+				if (this.rendered) {
+					if (window.MathJax) {
+						var $hidden = $("<div />")
+							.appendTo($("body"))
+							.css({
+								position: "fixed",
+								top: "-100vh",
+								left: "-100vw",
+								opacity: 0,
+								"z-index": -9999,
+								"pointer-events": "none",
+							})
+							.text("$$" + this.rendered + "$$");
+						MathJax.Hub.Queue(["Typeset", MathJax.Hub, $hidden.get(0)]);
+						MathJax.Hub.Queue([
+							_.bind(function () {
+								// Not using clone will cause Safari to get weird
+								this.$rendered.html("").append($hidden.children());
+								this.$rendered.removeClass("warning-box info-box");
+								this.$rendered.addClass(
+									this.hasErrors ? "warning-box" : "info-box"
+								);
+								this.$el.show();
+								$hidden.remove();
+							}, this),
+						]);
+					}
+				} else {
+					this.$el.hide();
+				}
+			},
+			shouldRender: function (original, rendered) {
+				original = original || "";
+				rendered = rendered || "";
+				if (/[\\\^_]/.test(original)) {
+					return true;
+				}
+
+				var clean_original = original.replace(/[\s\$]/g, "");
+				var clean_rendered = rendered.replace(/[\s\$]/g, "");
+				if (clean_original !== clean_rendered) {
+					return true;
+				}
+				return false;
+			},
+			setData: function (original_input, rendered, has_errors) {
+				if (this.shouldRender(original_input, rendered)) {
+					this.rendered = rendered;
+					this.hasErrors = has_errors;
+				} else {
+					this.rendered = "";
+					this.hasErrors = false;
+				}
+				this.debouncedProcessor();
+			},
+		});
+
+	Views.GridTabAssignmentsCronusShortAnswer =
+		Views.GridTabAssignmentsCronusSubView.extend({
+			template_id: "#grid-tab-assignments-cronus-short-answer-tpl",
+			refresh: function () {
+				if (this.parent.oldVars.can_submit != this.parent.vars.can_submit) {
+					this.render();
+				}
+				if (this.$focused) {
+					this.$focused.focus();
+				}
+			},
+			postRenderHelper: function () {
+				this.$input_form = this.$("form.problem-input");
+				this.process();
+				this.enableFocusBoxes(this.$('.problem-input input[type="text"]'));
+			},
+			process: function () {
+				this.$input = this.$('form.problem-input input[name="response"]');
+				this.$input
+					.val(this.vars.last_response || this.$input.attr("default"))
+					.css({color: "lightgray"})
+					.focus(
+						_.bind(function (e) {
+							this.$input.css({color: "black"});
+							if (this.$input.val() == this.$input.attr("default")) {
+								this.$input.val(this.vars.cheat_answer);
+								current_text = this.$input.val();
+								this.onChangeInput(current_text);
+							}
+						}, this)
+					)
+					.blur(
+						_.bind(function (e) {
+							if (
+								this.$input.val() == "" ||
+								this.$input.val() == this.$input.attr("default")
+							) {
+								this.$input
+									.val(this.$input.attr("default"))
+									.css({color: "lightgray"});
+							}
+						}, this)
+					);
+
+				if (this.vars.problem_type == "vocab") {
+					var word_list = this.model.get("class").get("word_list");
+					if (_.isFunction(this.$input.autocomplete)) {
+						this.$input.autocomplete({
+							source: _.bind(function (req, response) {
+								response(
+									$.ui.autocomplete.filter(word_list, req.term).slice(0, 10)
+								);
+							}, this),
+						});
+					}
+				}
+
+				var current_text =
+					this.$input.val() != this.$input.attr("default")
+						? this.$input.val()
+						: "";
+
+				this.$input.on(
+					"input change keydown keyup cut paste",
+					_.bind(function () {
+						var new_text =
+							this.$input.val() != this.$input.attr("default")
+								? this.$input.val()
+								: "";
+						if (new_text !== current_text) {
+							current_text = new_text;
+							this.onChangeInput(current_text);
+						}
+					}, this)
+				);
+
+				this.$input_form.find('input[name="submit"]').click(
+					_.bind(function (e) {
+						current_text =
+							this.$input.val() != this.$input.attr("default")
+								? this.$input.val()
+								: "";
+						if (current_text) {
+							if (this.vars.crypt_problem_type.validation_query) {
+								var regex = new RegExp(
+									this.vars.crypt_problem_type.validation_query
+								);
+								if (current_text.match(regex)) {
+									this.respond(current_text);
+								} else {
+									AoPS.Grid.Utils.CreateModalAlert(
+										this.vars.crypt_problem_type.validation_error ||
+											"Validation Error! Please try again."
+									);
+								}
+							} else {
+								this.respond(current_text);
+							}
+						} else {
+							AoPS.Grid.Utils.CreateModalAlert("You must enter a response.");
+						}
+						e.preventDefault();
+						if (this.parent.options.parentView.debouncedUpdateHasChanged) {
+							this.parent.options.parentView.debouncedUpdateHasChanged();
+						}
+					}, this)
+				);
+
+				this.listenTo(
+					this.model,
+					"change:trials",
+					this.parent.options.parentView.updateHasChanged
+				);
+			},
+			hasChanged: function () {
+				var submitted_and_default = [this.$input.attr("default")];
+
+				if (this.vars["trials"]) {
+					this.vars["trials"].forEach(function (trial) {
+						submitted_and_default.push(trial.response);
+					});
+				}
+
+				if (this.vars["cheat_answer"]) {
+					submitted_and_default.push(this.vars["cheat_answer"].toString());
+				}
+
+				return submitted_and_default.indexOf(this.$input.val()) == -1;
+			},
+			onChangeInput: function (input) {
+				/**
+				 * renders LaTeX for math problems
+				 */
+				if (this.parent.problemSubViews["Renderer"]) {
+					var flags = this.vars.answer_type == "interval" ? "interval" : "";
+					var result = AoPS.parseMath(input || "", flags);
+					var has_errors = !!result.errors.length;
+					this.parent.problemSubViews["Renderer"].setData(
+						input,
+						result.submission,
+						has_errors
+					);
+				}
+
+				/**
+				 * enables and disables the submit button
+				 * depending on if there is text in the input
+				 * text boxes
+				 */
+				if (
+					this.$input.val() === this.$input.attr("default") ||
+					this.$input.val() === ""
+				) {
+					this.$(".cronus-submit-btn").addClass("btn-fully-disabled disabled");
+				} else {
+					this.$(".cronus-submit-btn").removeClass(
+						"btn-fully-disabled disabled"
+					);
+				}
+
+				// updates the master nag_controller when any changes
+				// are made to short answer inputs
+				if (this.parent.options.parentView.debouncedUpdateHasChanged) {
+					this.parent.options.parentView.debouncedUpdateHasChanged();
+				}
+			},
+			isNotEmpty: function () {
+				return this.$input.val() === this.$input.attr("default") ||
+					this.$input.val() === ""
+					? false
+					: true;
+			},
+			respond: function (response) {
+				this.model.respond(
+					response,
+					false,
+					false,
+					_.bind(function () {
+						if (this.parent.vars.can_submit && this.parent.vars.is_sp_nova) {
+							var $scrollable = this.parent.$scrollable;
+							$scrollable.scrollTop($scrollable.prop("scrollHeight"));
+						}
+					}, this)
+				);
+			},
+			enableFocusBoxes: function ($el) {
+				_.each(
+					$el,
+					_.bind(function (el) {
+						$(el)
+							.focus(
+								_.bind(function () {
+									this.$focused = $(el);
+									this.$('.problem-input input[type="text"]').addClass(
+										"focused"
+									);
+								}, this)
+							)
+							.blur(
+								_.bind(function () {
+									this.$('.problem-input input[type="text"]').removeClass(
+										"focused"
+									);
+								}, this)
+							);
+					}, this)
+				);
+			},
+		});
+
+	Views.GridTabAssignmentsCronusMotor =
+		Views.GridTabAssignmentsCronusSubView.extend({
+			template_id: "#grid-tab-assignments-cronus-motor-tpl",
+			refresh: function () {
+				if (this.parent.oldVars.can_submit != this.parent.vars.can_submit) {
+					this.render();
+				}
+				if (this.$focused) {
+					this.$focused.focus();
+				}
+			},
+			postRenderHelper: function () {
+				this.$input_form = this.$("form.problem-input");
+				this.process();
+
+				this.model.on(
+					"change:submit_button_enabled",
+					_.bind(function () {
+						if (this.model.get("submit_button_enabled")) {
+							this.$(".cronus-submit-btn").removeClass(
+								"btn-fully-disabled disabled"
+							);
+						} else {
+							this.$(".cronus-submit-btn").addClass(
+								"btn-fully-disabled disabled"
+							);
+						}
+					}, this)
+				);
+			},
+			process: function () {
+				this.$input_form.find('input[name="submit"]').click(
+					_.bind(function (e) {
+						var currentInput = this.model.get("current_motor_input");
+
+						if (currentInput !== undefined) {
+							this.respond(currentInput);
+						} else {
+							AoPS.Grid.Utils.CreateModalAlert("You must enter a response.");
+						}
+
+						e.preventDefault();
+						if (this.parent.options.parentView.debouncedUpdateHasChanged) {
+							this.parent.options.parentView.debouncedUpdateHasChanged();
+						}
+					}, this)
+				);
+
+				this.listenTo(
+					this.model,
+					"change:trials",
+					this.parent.options.parentView.updateHasChanged
+				);
+
+				this.listenTo(
+					this.model,
+					"change:current_motor_input",
+					this.onChangeInput
+				);
+			},
+			isNotEmpty: function () {
+				return this.model.get("current_motor_input") !== undefined;
+			},
+			hasChanged: function () {
+				var currentInput = this.model.get("current_motor_input");
+				var startingInput = this.model.get("starting_motor_input");
+
+				currentInput = currentInput.response_to_parse;
+
+				var submitted_and_default = [];
+
+				if (this.vars["trials"]) {
+					this.vars["trials"].forEach(function (trial) {
+						submitted_and_default.push(trial.response);
+					});
+				}
+
+				if (this.vars["cheat_answer"]) {
+					submitted_and_default.push(this.vars["cheat_answer"].toString());
+				}
+
+				submitted_and_default.push(startingInput.response_to_parse);
+
+				return submitted_and_default.indexOf(String(currentInput)) === -1;
+			},
+			onChangeInput: function (input) {
+				// updates the master nag_controller when any changes
+				// are made to short answer inputs
+				if (this.parent.options.parentView.debouncedUpdateHasChanged) {
+					this.parent.options.parentView.debouncedUpdateHasChanged();
+				}
+			},
+			respond: function (response) {
+				this.model.respond(
+					response,
+					false,
+					false,
+					_.bind(function () {
+						if (this.parent.vars.can_submit && this.parent.vars.is_sp_nova) {
+							var $scrollable = this.parent.$scrollable;
+							$scrollable.scrollTop($scrollable.prop("scrollHeight"));
+						}
+					}, this)
+				);
+			},
+		});
+
+	Views.GridTabAssignmentsCronusPhysics =
+		Views.GridTabAssignmentsCronusSubView.extend({
+			template_id: "#grid-tab-assignments-cronus-physics-tpl",
+			refresh: function () {
+				if (this.parent.oldVars.can_submit != this.parent.vars.can_submit) {
+					this.render();
+				}
+				if (this.$focused) {
+					this.$focused.focus();
+				}
+			},
+			postRenderHelper: function () {
+				this.$input_form = this.$("form.problem-input");
+				this.process();
+				this.enableFocusBoxes(this.$('.problem-input input[type="text"]'));
+			},
+			process: function () {
+				var $selector = this.$(".physic-unit");
+
+				this.vars["physics_unit_options"] = {};
+				this.model
+					.get("master")
+					.get("crypt_physics_units")
+					.each(
+						_.bind(function (a) {
+							this.vars["physics_unit_options"][a.get("symbol")] =
+								a.get("name");
+
+							$selector.append(
+								'<option value="' +
+									a.get("symbol") +
+									'" class="disabled selected hidden">' +
+									a.get("symbol") +
+									"</option>"
+							);
+						}, this)
+					);
+
+				function matcher(params, data) {
+					var compare_params = params.term || params;
+					var compare_data = data.text || data;
+					// Always return the object if there is nothing to compare
+					if (compare_params == null || compare_params.trim() === "") {
+						return data;
+					}
+
+					var original = compare_data.toUpperCase().replace(/[()]/g, "");
+					var term = compare_params.toUpperCase().replace(/[()]/g, "");
+
+					// Check if the text contains the term
+					if (original.indexOf(term) > -1) {
+						return data;
+					}
+
+					// If it doesn't contain the term, don't return anything
+					return null;
+				}
+
+				$selector.select2({
+					placeholder: "unit",
+					width: "resolve",
+					allowClear: true,
+					matcher: matcher,
+				});
+
+				this.vars["unit"] = $selector.val();
+
+				this.$input = this.$(
+					'form.problem-input input[name="numeric-response"]'
+				);
+				this.$input
+					.val(this.vars.last_response || this.$input.attr("default"))
+					.css({color: "lightgray"})
+					.focus(
+						_.bind(function (e) {
+							this.$input.css({color: "black"});
+							if (this.$input.val() == this.$input.attr("default")) {
+								this.$input.val(this.vars.cheat_answer);
+								current_text = this.$input.val();
+								this.onChangeInput(current_text);
+							}
+						}, this)
+					)
+					.blur(
+						_.bind(function (e) {
+							if (
+								this.$input.val() == "" ||
+								this.$input.val() == this.$input.attr("default")
+							) {
+								this.$input
+									.val(this.$input.attr("default"))
+									.css({color: "lightgray"});
+							}
+						}, this)
+					);
+
+				var current_text =
+					this.$input.val() != this.$input.attr("default")
+						? this.$input.val()
+						: "";
+
+				this.$input.on(
+					"input change keydown keyup cut paste",
+					_.bind(function () {
+						var new_text =
+							this.$input.val() != this.$input.attr("default")
+								? this.$input.val()
+								: "";
+						if (new_text !== current_text) {
+							current_text = new_text;
+							this.onChangeInput(current_text);
+						}
+					}, this)
+				);
+
+				this.$input_form.find('input[name="submit"]').click(
+					_.bind(function (e) {
+						current_text =
+							this.$input.val() != this.$input.attr("default")
+								? this.$input.val()
+								: "";
+						if (!current_text) {
+							AoPS.Grid.Utils.CreateModalAlert(
+								"You must enter a numeric value."
+							);
+						} else if (!$selector.val()) {
+							AoPS.Grid.Utils.CreateModalAlert("You must enter a unit.");
+						} else {
+							this.respond("[" + current_text + "," + $selector.val() + "]");
+						}
+						e.preventDefault();
+						if (this.parent.options.parentView.debouncedUpdateHasChanged) {
+							this.parent.options.parentView.debouncedUpdateHasChanged();
+						}
+					}, this)
+				);
+			},
+			hasChanged: function () {
+				var submitted_and_default = [this.$input.attr("default")];
+
+				if (this.vars["trials"]) {
+					this.vars["trials"].forEach(function (trial) {
+						submitted_and_default.push(
+							trial.response
+								.substring(1, trial.response.indexOf(","))
+								.replace(/\s/g, "")
+						);
+					});
+				}
+
+				if (this.vars["cheat_answer"]) {
+					submitted_and_default.push(
+						this.vars["cheat_answer"].toString().replace(/\s/g, "")
+					);
+				}
+
+				return (
+					submitted_and_default.indexOf(this.$input.val().replace(/\s/g, "")) ==
+					-1
+				);
+			},
+			onChangeInput: function (input) {
+				/**
+				 * enables and disables the submit button
+				 * depending on if there is text in the input
+				 * text boxes
+				 */
+				if (
+					this.$input.val() === this.$input.attr("default") ||
+					this.$input.val() === ""
+				) {
+					this.$(".cronus-submit-btn").addClass("btn-fully-disabled disabled");
+				} else {
+					this.$(".cronus-submit-btn").removeClass(
+						"btn-fully-disabled disabled"
+					);
+				}
+
+				// updates the master nag_controller when any changes
+				// are made to short answer inputs
+				if (this.parent.options.parentView.debouncedUpdateHasChanged) {
+					this.parent.options.parentView.debouncedUpdateHasChanged();
+				}
+			},
+			isNotEmpty: function () {
+				return this.$input.val() === this.$input.attr("default") ||
+					this.$input.val() === ""
+					? false
+					: true;
+			},
+			respond: function (response) {
+				this.model.respond(
+					response,
+					false,
+					false,
+					_.bind(function () {
+						if (this.parent.vars.can_submit && this.parent.vars.is_sp_nova) {
+							var $scrollable = this.parent.$scrollable;
+							$scrollable.scrollTop($scrollable.prop("scrollHeight"));
+						}
+					}, this)
+				);
+			},
+			enableFocusBoxes: function ($el) {
+				_.each(
+					$el,
+					_.bind(function (el) {
+						$(el)
+							.focus(
+								_.bind(function () {
+									this.$focused = $(el);
+									this.$('.problem-input input[type="text"]').addClass(
+										"focused"
+									);
+								}, this)
+							)
+							.blur(
+								_.bind(function () {
+									this.$('.problem-input input[type="text"]').removeClass(
+										"focused"
+									);
+								}, this)
+							);
+					}, this)
+				);
+			},
+		});
+
+	/**
+	 * extends CronusShortAnswer
+	 */
+	Views.GridTabAssignmentsCronusMatrixOrVector =
+		Views.GridTabAssignmentsCronusShortAnswer.extend({
+			template_id: "#grid-tab-assignments-cronus-matrix-or-vector-tpl",
+			process: function () {
+				var populate =
+					this.vars.last_response || this.vars.cheat_answer || null;
+
+				this.vars.table_num_rows = this.vars.default_rows;
+				this.vars.table_num_cols = this.vars.default_cols;
+				if (populate) {
+					if (this.vars.crypt_answer_type.is_vector) {
+						populate = AoPS.Grid.Utils.ParseVector(populate);
+					} else {
+						populate = AoPS.Grid.Utils.ParseMatrix(populate);
+						this.vars.table_num_cols = populate[0].length;
+					}
+					this.vars.table_num_rows = populate.length;
+				}
+
+				var i;
+				if (this.vars.crypt_answer_type.has_size) {
+					this.$mv_rows = $("<input />").attr({
+						name: "num_rows",
+						type: "hidden",
+					});
+				} else {
+					this.$mv_rows = $("<select />").attr({name: "num_rows"});
+					for (i = 1; i <= 9; i++) {
+						this.$mv_rows.append($("<option />", {value: i, text: i}));
+					}
+				}
+
+				if (
+					this.vars.crypt_answer_type.is_vector ||
+					this.vars.crypt_answer_type.has_size
+				) {
+					this.$mv_cols = $("<input />").attr({
+						name: "num_cols",
+						type: "hidden",
+					});
+				} else {
+					this.$mv_cols = $("<select />").attr({name: "num_cols"});
+					for (i = 1; i <= 9; i++) {
+						this.$mv_cols.append($("<option />", {value: i, text: i}));
+					}
+				}
+
+				this.$mv_heading = $("<div />")
+					.addClass("your-answer")
+					.text("Your Answer:");
+				this.$mv_dimension = $("<div />").addClass("dimension");
+				if (!this.vars.crypt_answer_type.has_size) {
+					if (this.vars.crypt_answer_type.is_vector) {
+						this.$mv_dimension.text("Dimension:");
+						this.$mv_dimension.append(
+							this.$mv_rows.val(this.vars.table_num_rows)
+						);
+						this.$mv_dimension.append(
+							this.$mv_cols.val(this.vars.table_num_cols)
+						);
+					} else {
+						this.$mv_dimension.text("Rows:");
+						this.$mv_dimension.append(
+							this.$mv_rows.val(this.vars.table_num_rows)
+						);
+						this.$mv_dimension.append($("<span />").text("Cols:"));
+						this.$mv_dimension.append(
+							this.$mv_cols.val(this.vars.table_num_cols)
+						);
+					}
+				} else {
+					this.$mv_dimension.append(
+						this.$mv_rows.val(this.vars.table_num_rows)
+					);
+					this.$mv_dimension.append(
+						this.$mv_cols.val(this.vars.table_num_cols)
+					);
+				}
+				this.$mv_heading.appendTo(this.$(".matrix-vector"));
+				this.$mv_dimension.appendTo(this.$(".matrix-vector"));
+				this.enableFocusBoxes(this.$mv_dimension.find("select"));
+
+				this.$mv_table = $("<table />").append($("<tbody />"));
+				this.$mv_table.appendTo(this.$(".matrix-vector"));
+				this.$mv_new_td = $("<td />").append($("<input />", {type: "text"})); // Because we will need this...
+				this.resizeMatrixOrVectorTable(true);
+				if (populate) {
+					if (this.vars.crypt_answer_type.is_vector) {
+						this.$mv_table.find("tbody tr td input").each(
+							_.bind(function (index, input) {
+								$(input).val(populate[index]);
+							}, this)
+						);
+					} else {
+						this.$mv_table.find("tbody tr").each(
+							_.bind(function (row, el) {
+								$(el)
+									.find("td input")
+									.each(
+										_.bind(function (col, input) {
+											$(input).val(populate[row][col]);
+										}, this)
+									);
+							}, this)
+						);
+					}
+					this.vars.table_num_rows = populate.length;
+					this.toggleSubmitButton();
+				}
+
+				this.$mv_dimension.find("select").change(
+					_.bind(function () {
+						this.resizeMatrixOrVectorTable();
+					}, this)
+				);
+
+				this.$input_form.find('input[name="submit"]').click(
+					_.bind(function (e) {
+						var output = [],
+							validated = true;
+						var validate_and_append = function (output_acc, index, input) {
+							$(input).val(
+								$(input)
+									.val()
+									.replace(/\[|\]|,/g, "")
+							);
+							if (!$(input).val().trim().length) {
+								validated = false;
+							}
+							output_acc.push($(input).val());
+						};
+						if (this.vars.crypt_answer_type.is_vector) {
+							this.$mv_table
+								.find("tbody tr td input")
+								.each(function (index, input) {
+									validate_and_append(output, index, input);
+								});
+						} else {
+							this.$mv_table.find("tbody tr").each(
+								_.bind(function (row, el) {
+									row = [];
+									$(el)
+										.find("td input")
+										.each(function (index, input) {
+											validate_and_append(row, index, input);
+										});
+									output.push(row);
+								}, this)
+							);
+						}
+
+						if (validated) {
+							this.respond(AoPS.Grid.Utils.ParseFromMatrixOrVector(output));
+						} else {
+							AoPS.Grid.Utils.CreateModalAlert(
+								"Please fill out every cell before submitting."
+							);
+						}
+
+						e.preventDefault();
+						if (this.parent.options.parentView.debouncedUpdateHasChanged) {
+							this.parent.options.parentView.debouncedUpdateHasChanged();
+						}
+					}, this)
+				);
+
+				this.listenTo(
+					this.model,
+					"change:trials",
+					this.parent.options.parentView.updateHasChanged
+				);
+			},
+			/**
+			 * Resizes the input table on vector or matrix problems
+			 * when there is a selection of matrix sizes as part of
+			 * the problem
+			 *
+			 * @param {boolean} first
+			 */
+			resizeMatrixOrVectorTable: function (first) {
+				var old_rows = this.$mv_table.find("tr").length;
+				var old_cols = this.$mv_table.find("tr:first td").length;
+				var new_rows = parseInt(this.$mv_rows.val());
+				var new_cols = parseInt(this.$mv_cols.val());
+				var i;
+
+				// Knock rows down to size
+				for (i = 0; i < old_rows - new_rows; i++) {
+					this.$mv_table.find("tbody tr:last").remove();
+				}
+
+				// Knock columns down to size
+				for (i = 0; i < old_cols - new_cols; i++) {
+					this.$mv_table.find("tbody tr").each(
+						_.bind(function (index, el) {
+							$(el).find("td:last").remove();
+						}, this)
+					);
+				}
+
+				// Expand columns
+				for (i = 0; i < new_cols - old_cols; i++) {
+					this.$mv_table.find("tbody tr").each(
+						_.bind(function (index, el) {
+							$(el).append(this.$mv_new_td.clone());
+						}, this)
+					);
+				}
+
+				// Expand rows
+				for (i = 0; i < new_rows - old_rows; i++) {
+					this.$mv_table.find("tbody").append($("<tr />"));
+					for (var j = 0; j < new_cols; j++) {
+						this.$mv_table
+							.find("tbody tr:last")
+							.append(this.$mv_new_td.clone());
+					}
+				}
+
+				/**
+				 * first will be true when when the matrix or vector view is
+				 * 	initially rendered on page load
+				 *
+				 * first will be false when this method is called via selecting
+				 * 	a matrix size option (eg. vector or matrix mult)
+				 *
+				 * basically it will make the input table not focused on initial
+				 * 	load and focused if the size is manually changed after page
+				 * 	load
+				 */
+				if (!first) {
+					this.$('.problem-input input[type="text"]').off().addClass("focused");
+					this.enableFocusBoxes(this.$('.problem-input input[type="text"]'));
+				}
+
+				/**
+				 * find all child input elements and determine if all contain text
+				 * if not: disable the submit button
+				 * else: enable the submit button
+				 */
+				if (_.isUndefined(this.debouncedToggleSubmitButton)) {
+					this.debouncedToggleSubmitButton = _.debounce(
+						_.bind(this.toggleSubmitButton, this),
+						100
+					);
+				}
+
+				var $vector_fields = this.$input_form.find('input[type="text"]');
+				var toggleSubmit = _.bind(this.debouncedToggleSubmitButton, this);
+				toggleSubmit();
+				_.each(
+					$vector_fields,
+					_.bind(function (el) {
+						var $el = $(el);
+
+						$el.on("input change keydown keyup cut paste", toggleSubmit);
+					}, this)
+				);
+			},
+			toggleSubmitButton: function () {
+				var $vector_fields = this.$input_form.find('input[type="text"]');
+				if (this.numFieldsFilled($vector_fields) !== $vector_fields.length) {
+					this.$input_form
+						.find(".cronus-submit-btn")
+						.addClass("disabled btn-fully-disabled");
+				} else {
+					this.$input_form
+						.find(".cronus-submit-btn")
+						.removeClass("disabled btn-fully-disabled");
+				}
+
+				if (this.parent.options.parentView.debouncedUpdateHasChanged) {
+					this.parent.options.parentView.debouncedUpdateHasChanged();
+				}
+			},
+			hasChanged: function () {
+				if (!this.isNotEmpty()) {
+					return false;
+				}
+				var output = [];
+				if (this.vars.crypt_answer_type.is_vector) {
+					this.$mv_table
+						.find("tbody tr td input")
+						.each(function (index, input) {
+							output.push(
+								$(input)
+									.val()
+									.replace(/\[|\]|,/g, "")
+							);
+						});
+				} else {
+					this.$mv_table.find("tbody tr").each(
+						_.bind(function (row, el) {
+							row = [];
+							$(el)
+								.find("td input")
+								.each(function (index, input) {
+									row.push(
+										$(input)
+											.val()
+											.replace(/\[|\]|,/g, "")
+									);
+								});
+							output.push(row);
+						}, this)
+					);
+				}
+
+				var submitted_and_default = [];
+
+				if (this.model.get("trials")) {
+					this.model.get("trials").forEach(function (trial) {
+						submitted_and_default.push(trial.response.replace(/[\s\[\]]/g, ""));
+					});
+				}
+
+				if (this.vars["cheat_answer"]) {
+					submitted_and_default.push(
+						this.vars["cheat_answer"].replace(/[\s\[\]]/g, "")
+					);
+				}
+
+				return (
+					submitted_and_default.indexOf(
+						AoPS.Grid.Utils.ParseFromMatrixOrVector(output).replace(
+							/[\s\[\]]/g,
+							""
+						)
+					) == -1
+				);
+			},
+			numFieldsFilled: function ($vector_fields) {
+				if (!$vector_fields) {
+					$vector_fields = this.$input_form.find('input[type="text"]');
+				}
+				var filtered = _.filter($vector_fields, function (field) {
+					return $(field).val().length !== 0;
+				});
+
+				return filtered.length;
+			},
+			isNotEmpty: function () {
+				return this.numFieldsFilled() !== 0;
+			},
+		});
+
+	Views.GridTabAssignmentsCronusFormattingTips =
+		Views.GridTabAssignmentsCronusSubView.extend({
+			template_id: "#grid-tab-assignments-cronus-formatting-tips-tpl",
+			events: {
+				"click .tip-content": "hideTipContent",
+			},
+			refresh: function () {
+				if (
+					this.parent.vars.solution_viewed_at !=
+					this.parent.oldVars.solution_viewed_at
+				) {
+					this.$(".formatting-tips").hide();
+				}
+			},
+			hideTipContent: function (e) {
+				e.preventDefault();
+
+				var $tipContent = $(e.currentTarget);
+
+				if ($(e.target).hasClass("tip-title")) {
+					var $tip = $(e.currentTarget).find(".tip");
+					if ($tip.hasClass("hidden")) {
+						$tip.slideDown("fast", function () {
+							$tip.removeClass("hidden");
+							$tipContent.find(".expand").addClass("hidden");
+							$tipContent.find(".collapse").removeClass("hidden");
+						});
+					} else {
+						$tip.slideUp("fast", function () {
+							$tip.addClass("hidden");
+							$tipContent.find(".expand").removeClass("hidden");
+							$tipContent.find(".collapse").addClass("hidden");
+						});
+					}
+				}
+			},
+		});
+
+	Views.GridTabAssignmentsCronusStatus =
+		Views.GridTabAssignmentsCronusSubView.extend({
+			template_id: "#grid-tab-assignments-cronus-status-tpl",
+			postRenderHelper: function () {
+				if (!this.vars.crypt_problem_type.has_motor) {
+					return;
+				}
+
+				if (AoPS.Motors.Utils.MATHJAX_MOTORS.includes(this.vars.motor_type)) {
+					// Render MathJax items.
+					if (window.MathJax) {
+						MathJax.Hub.Queue(["Typeset", MathJax.Hub, this.$el.get(0)]);
+					}
+				}
+			},
+		});
+
+	Views.GridTabAssignmentsCronusTrials =
+		Views.GridTabAssignmentsCronusSubView.extend({
+			template_id: "#grid-tab-assignments-cronus-trials-tpl",
+			preRenderHelper: function () {
+				// For motor problems, we may need to format the trial data
+				// in the proper outputDisplayFormat
+				if (!this.vars.crypt_problem_type.has_motor) {
+					return;
+				}
+
+				var motorJson = this.vars.motor_json;
+				var trials = this.vars.trials;
+				if (!motorJson || !trials) {
+					return;
+				}
+
+				for (var trial of trials) {
+					// Don't need to format "Give Up"
+					if (trial.correct === "G") {
+						continue;
+					}
+
+					var formatted = AoPS.Motors.Utils.convertTrialData(
+						motorJson,
+						trial.response
+					);
+
+					if (formatted !== null && formatted !== undefined) {
+						trial.response_fmt = formatted;
+					}
+
+					var outputDisplayFormat = JSON.parse(motorJson).outputDisplayFormat;
+					try {
+						var responseJson = JSON.parse(trial.response_fmt);
+						var responseString = "";
+						// inputValuesList gets saved into the db in inputValues format to help deal with
+						// the PortMap not having an inputValuesList key, so they need to be converted back
+						if (outputDisplayFormat === "inputValuesList") {
+							for (var [key, value] of Object.entries(responseJson)) {
+								responseString += key + ": " + value + ", ";
+							}
+							trial.response_fmt = responseString.slice(0, -2);
+						} else if (outputDisplayFormat === "selectedRegions") {
+							//This saved to the db as an array, but should display as a comma-separated list
+							for (var i in responseJson) {
+								responseString += responseJson[i] + ", ";
+							}
+							trial.response_fmt = responseString.slice(0, -2);
+						}
+					} catch (e) {
+						//just continue
+					}
+
+					// Some motors contain multi-line responses. Those should display a little differently.
+					if (trial.response_fmt && trial.response_fmt.includes("</br>")) {
+						this.vars.display_trial_as_block = true;
+					}
+				}
+			},
+			postRenderHelper: function () {
+				if (!this.vars.crypt_problem_type.has_motor) {
+					return;
+				}
+
+				if (AoPS.Motors.Utils.MATHJAX_MOTORS.includes(this.vars.motor_type)) {
+					// Render MathJax items.
+					if (window.MathJax) {
+						MathJax.Hub.Queue(["Typeset", MathJax.Hub, this.$el.get(0)]);
+					}
+				}
+			},
+		});
+
+	return Views;
+})(AoPS.Grid.Views);

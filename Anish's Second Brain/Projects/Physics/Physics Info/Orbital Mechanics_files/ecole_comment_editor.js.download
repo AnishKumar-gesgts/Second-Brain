@@ -1,0 +1,821 @@
+/* eslint-disable eqeqeq */
+
+AoPS.Utils.initKeyChain(AoPS, "Ecole", "Utils");
+
+AoPS.Ecole.Utils = (function (Utils) {
+	Utils.CreateCommentEditor = function ($outer, input, options) {
+		var CE = {
+			initialize: function () {
+				CE.$item = $("<div />").html((input || {}).html || "");
+
+				CE.comments = {};
+				_.each((input || {}).comments || {}, function (value, key) {
+					CE.comments[key] = {
+						uuid: key,
+						text: (value || {}).text || "",
+						html: (value || {}).html || "",
+						hasChanged: false,
+					};
+				});
+
+				CE.$editor = $("<div />")
+					.addClass("ecole-comment-editor-outer")
+					.appendTo($outer.first());
+				CE.$general = $("<div />")
+					.addClass("ecole-comment-editor-general")
+					.appendTo(CE.$editor);
+				CE.$wrapper = $("<div />")
+					.addClass("ecole-comment-editor-wrapper")
+					.appendTo(CE.$editor);
+				CE.$sidebar = $("<div />").addClass("ecole-comment-sidebar-inner");
+				CE.$addComment = $("<div />")
+					.text("+")
+					.addClass("ecole-comment-editor-add-comment");
+				CE.$deleteComment = $("<div />")
+					.html("&times;")
+					.addClass("ecole-comment-editor-delete-comment");
+
+				if (_.isUndefined(CE.comments.general)) {
+					CE.comments.general = {
+						uuid: "general",
+						text: "",
+						html: "",
+						hasChanged: false,
+					};
+				}
+
+				if (CE.comments.general.text.length || CE.isEditable()) {
+					CE.$general.show();
+				} else {
+					CE.$general.hide();
+				}
+
+				CE.$general.append("<strong>General Comments:</strong>");
+				CE.comments.general.$outer = $("<div />")
+					.addClass("ecole-comment-general-comment-outer")
+					.attr("uuid", "general")
+					.appendTo(CE.$general);
+				CE.comments.general.$wrapper = $("<div />")
+					.addClass("ecole-comment-general-comment-wrapper")
+					.appendTo(CE.comments.general.$outer);
+				CE.comments.general.$inner = $("<div />")
+					.addClass("ecole-comment-general-comment-inner")
+					.hover(
+						function () {
+							if (CE.isEditable()) {
+								CE.comments.general.$inner.css({
+									cursor: "pointer",
+									background: "rgba(0, 0, 0, 0.1)",
+								});
+							} else {
+								CE.comments.general.$inner.css({
+									cursor: "text",
+									background: "inherit",
+								});
+							}
+						},
+						function () {
+							CE.comments.general.$inner.css({
+								cursor: "text",
+								background: "inherit",
+							});
+						}
+					)
+					.appendTo(CE.comments.general.$wrapper);
+				CE.renderComment("general");
+
+				CE.$wrapper
+					.append(
+						$("<div />")
+							.addClass("ecole-comment-item-wrapper")
+							.append(CE.$item)
+							.append(CE.$addComment)
+							.append(CE.$deleteComment)
+					)
+					.append(
+						$("<div />")
+							.addClass("ecole-comment-sidebar-outer")
+							.append(
+								$("<div />")
+									.addClass("ecole-comment-sidebar-wrapper")
+									.append(CE.$sidebar)
+							)
+					);
+
+				CE.$item.mouseup(CE.onMouseUp);
+				CE.$item
+					.on("click", ".ecole-comment-item-highlighted", function (el) {
+						var uuid = $(el.currentTarget).attr("uuid");
+						if (uuid === CE.highlighted) {
+							CE.editComment(uuid);
+						} else {
+							CE.selectHighlight(uuid);
+						}
+					})
+					.on("mouseenter", ".ecole-comment-item-highlighted", function (el) {
+						var uuid = $(el.currentTarget).attr("uuid");
+						CE.$item
+							.find(".ecole-comment-item-highlighted[uuid='" + uuid + "']")
+							.addClass("hover");
+					})
+					.on("mouseleave", ".ecole-comment-item-highlighted", function (el) {
+						var uuid = $(el.currentTarget).attr("uuid");
+						setTimeout(function () {
+							if (
+								!CE.$item.find(
+									".ecole-comment-item-highlighted[uuid='" + uuid + "']:hover"
+								).length
+							) {
+								CE.$item
+									.find(".ecole-comment-item-highlighted[uuid='" + uuid + "']")
+									.removeClass("hover");
+							}
+						}, 10);
+					});
+				CE.$sidebar.click(function () {
+					CE.deactivateHighlights();
+				});
+				CE.$sidebar.on(
+					"click",
+					".ecole-comment-sidebar-comment-wrapper",
+					function (e) {
+						var uuid = $(e.currentTarget).parent().attr("uuid");
+						if (uuid === CE.highlighted) {
+							CE.editComment(uuid);
+						} else {
+							CE.selectHighlight(uuid);
+						}
+						e.stopPropagation();
+					}
+				);
+
+				CE.$addComment.click(CE.addHighlight);
+				CE.$deleteComment.click(CE.removeHighlight);
+				CE.comments.general.$inner.click(function () {
+					CE.editComment("general");
+				});
+
+				CE.deactivateHighlights();
+				$(window).on("resize", _.debounce(CE.placeComments, 100));
+
+				return CE;
+			},
+			cancelAllEdits: function () {
+				_.each(CE.comments, function (comment, uuid) {
+					comment.hasChanged = false;
+					if (comment.edit) {
+						comment.edit.$main.remove();
+						delete comment.edit;
+						comment.$inner.show();
+
+						if (uuid != "general" && comment.text.trim().length == 0) {
+							CE.removeSpecificComment(uuid, true);
+						}
+					}
+				});
+
+				CE.updateUnsavedStatus();
+				setTimeout(function () {
+					CE.deactivateHighlights();
+					CE.saveUpdates();
+				}, 25);
+			},
+			onMouseUp: function () {
+				if (CE.isEditable()) {
+					CE.checkHighlight();
+				}
+			},
+			addHighlight: function () {
+				if (CE.isEditable() && CE.validateHighlight()) {
+					var uuid = CE.createNewHighlight();
+					CE.selectHighlight(uuid);
+					CE.range = null;
+					CE.$addComment.hide();
+					setTimeout(function () {
+						CE.editComment(uuid);
+					}, 100);
+				}
+			},
+			resizeCommentEdit: function (comment) {
+				if (comment.edit) {
+					var maxHeight = 0.75 * $(window).height();
+					var clientHeight = comment.edit.$textarea.prop("clientHeight");
+					var scrollHeight = comment.edit.$textarea.prop("scrollHeight");
+					if (clientHeight < maxHeight && clientHeight < scrollHeight) {
+						comment.edit.$textarea.height(
+							Math.min(maxHeight, scrollHeight + 10) + "px"
+						);
+						if (comment.uuid != "general") {
+							setTimeout(CE.placeComments, 5);
+						}
+					}
+					comment.hasChanged = comment.text !== comment.edit.$textarea.val();
+					CE.updateUnsavedStatus();
+				}
+			},
+			editComment: function (uuid) {
+				var comment = CE.comments[uuid];
+				if (!comment || !CE.isEditable()) {
+					return;
+				}
+
+				if (!comment.edit) {
+					comment.$inner.hide();
+					comment.edit = {
+						$main: $("<div />"),
+						$textarea: $("<textarea />").val(comment.text),
+					};
+
+					comment.edit.$textarea
+						.on("input", function () {
+							CE.resizeCommentEdit(comment);
+						})
+						.on("keyup", function (e) {
+							if (e.keyCode === 27) {
+								CE.cancelCommentEdit(comment);
+							}
+						});
+
+					comment.edit.$main
+						.addClass(
+							uuid == "general"
+								? "ecole-comment-general-comment-edit"
+								: "ecole-comment-sidebar-comment-edit"
+						)
+						.append($("<div />").append(comment.edit.$textarea))
+						.append(
+							$("<div />")
+								.addClass("actions")
+								.append(
+									$("<button />")
+										.text("Save")
+										.click(function (e) {
+											CE.saveCommentEdit(comment);
+										})
+								)
+								.append(
+									$("<button />")
+										.text("Cancel")
+										.click(function (e) {
+											CE.cancelCommentEdit(comment);
+										})
+								)
+						)
+						.appendTo(comment.$wrapper);
+
+					setTimeout(function () {
+						comment.edit.$textarea.focus();
+					}, 250);
+
+					setTimeout(function () {
+						CE.resizeCommentEdit(comment);
+					}, 5);
+					if (uuid != "general") {
+						setTimeout(CE.placeComments, 25);
+					}
+				}
+			},
+			saveCommentEdit: function (comment) {
+				var uuid = comment.uuid;
+				var text = comment.edit.$textarea.val();
+				if (text.trim().length || uuid == "general") {
+					comment.hasChanged = false;
+					comment.text = text;
+					comment.edit.$main.remove();
+					comment.$inner.html("<i>Saving...</i>").show();
+					delete comment.edit;
+					CE.options.renderText(text, function (html) {
+						comment.html = html;
+						CE.renderComment(uuid);
+						CE.saveUpdates();
+						if (uuid != "general") {
+							setTimeout(CE.placeComments, 25);
+						}
+					});
+					CE.updateUnsavedStatus();
+				} else {
+					Utils.CreateModalAlert("Yuck! We cannot save an empty comment!");
+				}
+			},
+			cancelCommentEdit: function (comment) {
+				var uuid = comment.uuid;
+				var cancel = function () {
+					comment.hasChanged = false;
+					comment.edit.$main.remove();
+					delete comment.edit;
+					comment.$inner.show();
+					if (uuid != "general") {
+						if (comment.text.trim().length > 0) {
+							setTimeout(CE.placeComments, 25);
+						} else {
+							CE.removeSpecificComment(uuid);
+						}
+					}
+					CE.updateUnsavedStatus();
+				};
+
+				if (comment.hasChanged) {
+					Utils.CreateModalConfirm(
+						"Are you sure you want to discard changes?",
+						cancel,
+						function () {
+							comment.edit.$textarea.focus();
+						}
+					);
+				} else {
+					cancel();
+				}
+			},
+			updateUnsavedStatus: function () {
+				if (_.isFunction(CE.options.onUnsaved)) {
+					var current = _.reduce(
+						CE.comments,
+						function (carry, item) {
+							return carry || item.hasChanged;
+						},
+						false
+					)
+						? true
+						: false;
+
+					if (_.isUndefined(CE.unsavedStatus) || CE.unsavedStatus != current) {
+						CE.unsavedStatus = current;
+						CE.options.onUnsaved(current);
+					}
+				}
+			},
+			saveUpdates: function () {
+				if (_.isFunction(CE.options.onChange)) {
+					CE.options.onChange(CE.getState());
+				}
+			},
+			getState: function () {
+				var $output = $("<div />").append(CE.$item.clone());
+				var comments = {};
+
+				if (CE.comments.general.text.length) {
+					comments.general = {
+						text: CE.comments.general.text,
+						html: CE.comments.general.html,
+					};
+				}
+
+				_.each(
+					$output.find(".ecole-comment-item-highlighted"),
+					function (anchor) {
+						var $anchor = $(anchor);
+						var uuid = $anchor.attr("uuid");
+						var comment = CE.comments[uuid];
+
+						if (comment && comment.text.length) {
+							comments[uuid] = {
+								text: comment.text,
+								html: comment.html,
+							};
+						} else {
+							$anchor.after($anchor.html()).remove();
+						}
+					}
+				);
+
+				return JSON.stringify({comments: comments, html: $output.html()});
+			},
+			renderComment: function (uuid) {
+				var comment = CE.comments[uuid];
+				if (!comment) {
+					return;
+				}
+
+				if (comment.text.trim().length == 0) {
+					comment.$inner.html("<i>None entered...</i>");
+				} else {
+					comment.$inner.html(comment.html || "");
+				}
+			},
+			removeHighlight: function () {
+				if (CE.highlighted) {
+					Utils.CreateModalConfirm(
+						"Are you sure you want to delete this comment?",
+						function () {
+							CE.removeSpecificComment(CE.highlighted);
+							CE.updateUnsavedStatus();
+						}
+					);
+				}
+				CE.$deleteComment.hide();
+			},
+			removeSpecificComment: function (uuid, skip_processing) {
+				if (uuid) {
+					var $highlight = CE.$item.find(
+						".ecole-comment-item-highlighted[uuid='" + uuid + "']"
+					);
+
+					if (!_.isUndefined(CE.comments[uuid])) {
+						CE.comments[uuid].$outer.remove();
+						delete CE.comments[uuid];
+					}
+
+					if ($highlight.length) {
+						_.each($highlight, function (el) {
+							var $el = $(el).removeClass("ecole-comment-item-highlighted");
+							if ($el.hasClass("ecole-comment-item-tag-highlighted")) {
+								$el
+									.removeClass("ecole-comment-item-tag-highlighted")
+									.removeAttr("uuid");
+							} else {
+								$el.after($el.html()).remove();
+							}
+						});
+					}
+
+					if (!skip_processing) {
+						CE.deactivateHighlights();
+						CE.saveUpdates();
+					}
+				}
+			},
+			selectHighlight: function (uuid) {
+				var $highlight = CE.$item.find(
+					".ecole-comment-item-highlighted[uuid='" + uuid + "']"
+				);
+
+				CE.deactivateHighlights($highlight.length ? uuid : null);
+				if ($highlight.length) {
+					CE.highlighted = uuid;
+					$highlight.addClass("active");
+					if (CE.isEditable()) {
+						var highlightRect = $highlight.first()[0].getBoundingClientRect();
+						var quillRect = CE.$wrapper[0].getBoundingClientRect();
+						CE.$deleteComment
+							.css({
+								top:
+									highlightRect.top -
+									quillRect.top +
+									// Old version of position. This didn't work with superscript for an unknown reason
+									// $highlight.first().position().top +
+									// 	CE.options.deleteOffset +
+									"px",
+								"line-height": highlightRect.height + "px",
+							})
+							.show();
+					}
+				}
+			},
+			deactivateHighlights: function (highlighted) {
+				CE.highlighted = _.isUndefined(highlighted) ? null : highlighted;
+
+				CE.$item
+					.find(".ecole-comment-item-highlighted.active")
+					.removeClass("active");
+				CE.$addComment.hide();
+				CE.$deleteComment.hide();
+
+				setTimeout(CE.placeComments, 25);
+			},
+			placeComments: function () {
+				var comments = [],
+					highlighted = -1,
+					i,
+					hashed = {};
+
+				_.each(
+					CE.$item.find(".ecole-comment-item-highlighted"),
+					function (anchor) {
+						var $anchor = $(anchor);
+						var uuid = $anchor.attr("uuid");
+						var comment = CE.comments[uuid];
+
+						if (_.isUndefined(comment)) {
+							comment = {uuid: uuid, text: "", html: ""};
+							CE.comments[uuid] = comment;
+						}
+
+						if (hashed[uuid]) {
+							return;
+						} else {
+							hashed[uuid] = true;
+						}
+
+						if (_.isUndefined(comment.$outer)) {
+							comment.$outer = $("<div />")
+								.addClass("ecole-comment-sidebar-comment-outer")
+								.attr("uuid", uuid)
+								.appendTo(CE.$sidebar);
+							comment.$wrapper = $("<div />")
+								.addClass("ecole-comment-sidebar-comment-wrapper")
+								.appendTo(comment.$outer);
+							comment.$inner = $("<div />")
+								.addClass("ecole-comment-sidebar-comment-inner")
+								.appendTo(comment.$wrapper);
+							CE.renderComment(uuid);
+						}
+
+						if (comment.uuid === CE.highlighted) {
+							comment.$outer.addClass("active");
+							comment.highlighted = 1;
+
+							if (comment.edit) {
+								setTimeout(function () {
+									if (comment.edit && !comment.edit.$textarea.is(":focus")) {
+										comment.edit.$textarea.focus();
+									}
+								}, 250);
+							}
+						} else {
+							comment.$outer.removeClass("active");
+							comment.highlighted = 0;
+						}
+
+						comment.offset = 0;
+						comment.top = $anchor.position().top;
+						comment.top =
+							comment.top >= CE.options.commentOffset
+								? comment.top - CE.options.commentOffset
+								: 0;
+						comment.height = comment.$outer.height();
+
+						if (comment.text.length || CE.isEditable()) {
+							comment.$outer.show();
+							comments.push(comment);
+						} else {
+							comment.$outer.hide();
+						}
+					}
+				);
+
+				for (i = 0; i < comments.length; i++) {
+					if (
+						i > 0 &&
+						comments[i - 1].top + comments[i - 1].height > comments[i].top
+					) {
+						comments[i].offset =
+							comments[i - 1].top + comments[i - 1].height - comments[i].top;
+						comments[i].top += comments[i].offset;
+					}
+
+					if (comments[i].highlighted) {
+						highlighted = i;
+					}
+				}
+
+				if (highlighted >= 0 && comments[highlighted].offset > 0) {
+					var adjust = comments[highlighted].offset,
+						minimum = 0;
+
+					for (i = highlighted; i >= 0; i--) {
+						comments[i].top -= adjust;
+						comments[i].offset -= adjust;
+
+						if (comments[i].top < minimum) {
+							minimum = comments[i].top;
+						}
+
+						if (
+							i > 0 &&
+							comments[i - 1].top + comments[i - 1].height <= comments[i].top
+						) {
+							break;
+						}
+					}
+
+					if (minimum < 0) {
+						for (i = i > 0 ? i : 0; i <= highlighted; i++) {
+							comments[i].offset -= minimum;
+							comments[i].top -= minimum;
+						}
+						adjust += minimum;
+					}
+
+					if (adjust > 0) {
+						for (i = highlighted + 1; i < comments.length; i++) {
+							if (adjust > 0 && comments[i].offset > 0) {
+								adjust =
+									adjust < comments[i].offset ? adjust : comments[i].offset;
+								comments[i].offset -= adjust;
+								comments[i].top -= adjust;
+							} else {
+								break;
+							}
+						}
+					}
+				}
+
+				_.each(comments, function (comment, index) {
+					comment.$outer.animate(
+						{
+							top: comment.top + "px",
+							left: comment.$outer.hasClass("active") ? "0" : "15px",
+						},
+						200
+					);
+				});
+				if (comments.length) {
+					var last = _.last(comments);
+					if (CE.$item.height() >= last.top + last.height) {
+						CE.$item.parent().css("height", "auto");
+					} else {
+						CE.$item.parent().css("height", last.top + last.height + "px");
+					}
+				}
+
+				if (CE.comments.general.text.length || CE.isEditable()) {
+					CE.$general.show();
+				} else {
+					CE.$general.hide();
+				}
+			},
+			getNewHighlightUuid: function () {
+				var d = new Date().getTime();
+				var uuid;
+
+				do {
+					uuid = "xxxxxxxx".replace(/x/g, function (c) {
+						var r = (d + Math.random() * 16) % 16 | 0;
+						d = Math.floor(d / 16);
+						return r.toString(16);
+					});
+				} while (
+					CE.$item.find(".ecole-comment-item-highlighted[uuid='" + uuid + "']")
+						.length > 0
+				);
+
+				return uuid;
+			},
+			createNewHighlight: function () {
+				var uuid = CE.getNewHighlightUuid(),
+					reverseNodes = [];
+
+				// Padd with a bunch of extra invisible tags.
+				CE.addExtraTags(CE.$item);
+
+				// Recursively highlight all text nodes and empty tags
+				_.each(
+					CE.createNewHighlightHelper(
+						$("<div />").append(CE.range.extractContents()),
+						uuid
+					).contents(),
+					function (node) {
+						reverseNodes.unshift(node);
+					}
+				);
+
+				// Insert the nodes in reverse (or they don't go in correctly)
+				_.each(reverseNodes, function (node) {
+					CE.range.insertNode(node);
+				});
+
+				CE.removeExtraTags();
+
+				return uuid;
+			},
+			createNewHighlightHelper: function ($el, uuid) {
+				_.each($el.contents(), function (node) {
+					var $node = $(node);
+					if ($node.context.nodeType == Node.TEXT_NODE) {
+						$node.wrap(
+							$("<span />")
+								.addClass("ecole-comment-item-highlighted")
+								.attr("uuid", uuid)
+						);
+					} else if ($node.context.nodeType == Node.ELEMENT_NODE) {
+						if (
+							$node.context.tagName.toLowerCase() != "tag_begin" &&
+							$node.context.tagName.toLowerCase() != "tag_end"
+						) {
+							if ($node.html().length) {
+								CE.createNewHighlightHelper($node, uuid);
+							} else {
+								$node
+									.addClass(
+										"ecole-comment-item-highlighted ecole-comment-item-tag-highlighted"
+									)
+									.attr("uuid", uuid);
+							}
+						}
+					}
+				});
+				return $el;
+			},
+			addExtraTags: function ($div) {
+				_.each($div.children(), function (child) {
+					CE.addExtraTags($(child));
+				});
+				$div.prepend("<tag_begin />");
+				$div.append("<tag_end />");
+			},
+			removeExtraTags: function () {
+				CE.removeExtraTagsHelper(CE.$item, []);
+				CE.$item.find("tag_begin, tag_end").remove();
+			},
+			removeExtraTagsHelper: function ($el, stack) {
+				var children = [],
+					hasBegin = false,
+					hasEnd = false;
+				_.each($el.children(), function (child) {
+					if (child.tagName.toLowerCase() == "tag_begin") {
+						hasBegin = true;
+					} else if (child.tagName.toLowerCase() == "tag_end") {
+						hasEnd = true;
+					} else {
+						children.push(child);
+					}
+				});
+
+				_.each(children, function (child) {
+					CE.removeExtraTagsHelper($(child), stack);
+				});
+
+				if (hasBegin && !hasEnd) {
+					stack.push($el);
+				} else if (!hasBegin && hasEnd) {
+					if (stack.length > 0) {
+						stack.pop($el).append($el.html());
+						$el.remove();
+					}
+				}
+			},
+			checkHighlight: function () {
+				CE.range = window.getSelection().getRangeAt(0);
+				if (CE.validateHighlight()) {
+					setTimeout(function () {
+						if (!CE.highlighted) {
+							CE.$addComment
+								.css(
+									"top",
+									_.first(CE.range.getClientRects()).top +
+										$(window).scrollTop() -
+										CE.$item.offset().top +
+										CE.options.addOffset +
+										"px"
+								)
+								.show();
+						}
+					}, 100);
+				} else {
+					CE.highlighted = null;
+					setTimeout(function () {
+						if (!CE.highlighted) {
+							CE.deactivateHighlights();
+						}
+					}, 50);
+				}
+			},
+			validateHighlight: function () {
+				if (!CE.range) {
+					// Range not defined
+					return false;
+				} else if (CE.range.collapsed) {
+					// Nothing selected. Abort;
+					return false;
+				} else {
+					var $contents = $(CE.range.cloneContents());
+					if (
+						$contents.find(".ecole-comment-item-wrapper").length ||
+						$contents.find(".ecole-comment-item-highlighted").length
+					) {
+						return false;
+					}
+				}
+
+				return true;
+			},
+			isEditable: function () {
+				var value;
+				if (_.isFunction(CE.options.readOnly)) {
+					value = !CE.options.readOnly();
+				} else {
+					value = !CE.options.readOnly;
+				}
+				if (value) {
+					CE.$editor.addClass("editable");
+				} else {
+					CE.$editor.removeClass("editable");
+				}
+				return value;
+			},
+			options: _.extend(
+				{
+					readOnly: false,
+					addOffset: 5,
+					deleteOffset: 3,
+					commentOffset: 3,
+					renderText: function (text, onRender) {
+						var $div = $("<div />").append(
+							$("<div />").css("white-space", "break-spaces").text(text)
+						);
+						onRender($div.html());
+					},
+					onUnsaved: null,
+					onChange: null,
+				},
+				options
+			),
+		};
+
+		return CE.initialize();
+	};
+
+	return Utils;
+})(AoPS.Ecole.Utils);
+
+/* eslint-enable eqeqeq */
