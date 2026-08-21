@@ -9,7 +9,9 @@ const {
   requestUrl,
 } = require("obsidian");
 
-const QUEUE_SCHEMA_VERSION = 1;
+const QUEUE_SCHEMA_VERSION = 2;
+const STARTUP_ARM_DELAY_MS = 2000;
+
 const DEFAULT_SETTINGS = {
   owner: "AnishKumar-gesgts",
   repo: "Second-Brain",
@@ -42,11 +44,13 @@ module.exports = class VaultAutoPushPlugin extends Plugin {
     this.changedPaths = new Set(this.settings.pendingChanged || []);
     this.deletedPaths = new Set(this.settings.pendingDeleted || []);
     this.pushing = false;
+    this.trackingEnabled = false;
     this.lastPush = null;
     this.lastError = null;
     this.lastSkipped = [];
     this.timerId = null;
     this.persistTimer = null;
+    this.armTimer = null;
 
     this.addSettingTab(new VaultAutoPushSettingTab(this.app, this));
 
@@ -58,17 +62,19 @@ module.exports = class VaultAutoPushPlugin extends Plugin {
 
     this.addRibbonIcon("upload-cloud", "Push vault to GitHub", () => void this.pushNow(true));
 
+    // Obsidian can emit create/modify events for many existing files while the
+    // vault is starting. Ignore all file events until startup has settled.
     this.registerEvent(this.app.vault.on("create", (file) => {
-      if (file instanceof TFile) this.markChanged(file.path);
+      if (this.trackingEnabled && file instanceof TFile) this.markChanged(file.path);
     }));
     this.registerEvent(this.app.vault.on("modify", (file) => {
-      if (file instanceof TFile) this.markChanged(file.path);
+      if (this.trackingEnabled && file instanceof TFile) this.markChanged(file.path);
     }));
     this.registerEvent(this.app.vault.on("delete", (file) => {
-      if (file instanceof TFile) this.markDeleted(file.path);
+      if (this.trackingEnabled && file instanceof TFile) this.markDeleted(file.path);
     }));
     this.registerEvent(this.app.vault.on("rename", (file, oldPath) => {
-      if (file instanceof TFile) {
+      if (this.trackingEnabled && file instanceof TFile) {
         this.markDeleted(oldPath);
         this.markChanged(file.path);
       }
@@ -77,6 +83,7 @@ module.exports = class VaultAutoPushPlugin extends Plugin {
     this.registerDomEvent(document, "visibilitychange", () => {
       if (
         document.visibilityState === "visible" &&
+        this.trackingEnabled &&
         this.settings.autoPush &&
         this.settings.pushOnLoad &&
         (this.changedPaths.size || this.deletedPaths.size)
@@ -88,19 +95,27 @@ module.exports = class VaultAutoPushPlugin extends Plugin {
     this.configureTimer();
 
     this.app.workspace.onLayoutReady(() => {
-      if (
-        this.settings.pushOnLoad &&
-        this.settings.autoPush &&
-        (this.changedPaths.size || this.deletedPaths.size)
-      ) {
-        void this.pushNow(false);
-      }
+      // Give Obsidian a short grace period to finish its startup event burst.
+      this.armTimer = window.setTimeout(async () => {
+        this.armTimer = null;
+        this.trackingEnabled = true;
+        await this.persistQueue();
+
+        if (
+          this.settings.pushOnLoad &&
+          this.settings.autoPush &&
+          (this.changedPaths.size || this.deletedPaths.size)
+        ) {
+          void this.pushNow(false);
+        }
+      }, STARTUP_ARM_DELAY_MS);
     });
   }
 
   onunload() {
     if (this.timerId !== null) window.clearInterval(this.timerId);
     if (this.persistTimer !== null) window.clearTimeout(this.persistTimer);
+    if (this.armTimer !== null) window.clearTimeout(this.armTimer);
     void this.persistQueue();
   }
 
@@ -108,9 +123,9 @@ module.exports = class VaultAutoPushPlugin extends Plugin {
     const saved = await this.loadData();
     this.settings = Object.assign({}, DEFAULT_SETTINGS, saved || {});
 
-    // v0.2.x populated its state by scanning the whole vault. When moving to the
-    // event-driven queue, those entries are not trustworthy as "dirty" files.
-    // Clear them exactly once, then only persist real post-upgrade file events.
+    // Schema 2 intentionally clears queues created by the old startup scanner
+    // and by startup create-event storms. After this one-time reset, only real
+    // post-startup edits are queued and persisted.
     if ((Number(this.settings.queueSchemaVersion) || 0) < QUEUE_SCHEMA_VERSION) {
       this.settings.pendingChanged = [];
       this.settings.pendingDeleted = [];
@@ -135,7 +150,13 @@ module.exports = class VaultAutoPushPlugin extends Plugin {
 
     const minutes = Math.max(1, Number(this.settings.intervalMinutes) || 5);
     this.timerId = window.setInterval(() => {
-      if (this.changedPaths.size || this.deletedPaths.size) void this.pushNow(false);
+      if (
+        this.trackingEnabled &&
+        !this.pushing &&
+        (this.changedPaths.size || this.deletedPaths.size)
+      ) {
+        void this.pushNow(false);
+      }
     }, minutes * 60_000);
     this.registerInterval(this.timerId);
   }
@@ -147,14 +168,14 @@ module.exports = class VaultAutoPushPlugin extends Plugin {
   }
 
   markChanged(path) {
-    if (this.shouldIgnore(path)) return;
+    if (!this.trackingEnabled || this.shouldIgnore(path)) return;
     this.deletedPaths.delete(path);
     this.changedPaths.add(path);
     this.schedulePersist();
   }
 
   markDeleted(path) {
-    if (this.shouldIgnore(path)) return;
+    if (!this.trackingEnabled || this.shouldIgnore(path)) return;
     this.changedPaths.delete(path);
     this.deletedPaths.add(path);
     this.schedulePersist();
@@ -224,6 +245,11 @@ module.exports = class VaultAutoPushPlugin extends Plugin {
   }
 
   async pushNow(showNotice) {
+    if (!this.trackingEnabled) {
+      if (showNotice) new Notice("Vault Auto Push: finishing startup; try again in a moment.");
+      return;
+    }
+
     if (this.pushing) {
       if (showNotice) new Notice("Vault Auto Push: a push is already running.");
       return;
@@ -342,11 +368,13 @@ class VaultAutoPushSettingTab extends PluginSettingTab {
     status.createEl("div", { text: `Repository: ${this.plugin.settings.owner}/${this.plugin.settings.repo}` });
     status.createEl("div", { text: `Pending: ${this.plugin.changedPaths.size} changed, ${this.plugin.deletedPaths.size} deleted` });
     status.createEl("div", {
-      text: this.plugin.pushing
-        ? "Status: pushing…"
-        : this.plugin.lastPush
-          ? `Last push/check: ${this.plugin.lastPush.toLocaleString()}`
-          : "Last push/check: not yet",
+      text: !this.plugin.trackingEnabled
+        ? "Status: finishing startup…"
+        : this.plugin.pushing
+          ? "Status: pushing…"
+          : this.plugin.lastPush
+            ? `Last push/check: ${this.plugin.lastPush.toLocaleString()}`
+            : "Status: idle",
     });
     if (this.plugin.lastError) status.createEl("div", { cls: "vault-auto-push-error", text: this.plugin.lastError });
 
