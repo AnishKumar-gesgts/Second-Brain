@@ -18,7 +18,8 @@ const DEFAULT_SETTINGS = {
   autoPush: true,
   pushOnLoad: true,
   commitPrefix: "Obsidian auto-push",
-  fileIndex: {},
+  pendingChanged: [],
+  pendingDeleted: [],
 };
 
 const MAX_FILE_BYTES = 95 * 1024 * 1024;
@@ -30,20 +31,19 @@ const IGNORED_PATHS = new Set([
   "Coding Output/Latex/basic-miktex-25.12-x64.exe",
   "Coding Output/Latex/strawberry-perl-5.42.0.1-64bit.msi",
 ]);
-const IGNORED_PREFIXES = [".trash/", ".git/", "node_modules/"];
+const IGNORED_COMPONENTS = new Set([".git", ".git-backup", "node_modules", ".trash"]);
 
 module.exports = class VaultAutoPushPlugin extends Plugin {
   async onload() {
     await this.loadSettings();
-
-    this.changedPaths = new Set();
-    this.deletedPaths = new Set();
+    this.changedPaths = new Set(this.settings.pendingChanged || []);
+    this.deletedPaths = new Set(this.settings.pendingDeleted || []);
     this.pushing = false;
-    this.scanning = false;
     this.lastPush = null;
     this.lastError = null;
     this.lastSkipped = [];
     this.timerId = null;
+    this.persistTimer = null;
 
     this.addSettingTab(new VaultAutoPushSettingTab(this.app, this));
 
@@ -55,7 +55,6 @@ module.exports = class VaultAutoPushPlugin extends Plugin {
 
     this.addRibbonIcon("upload-cloud", "Push vault to GitHub", () => void this.pushNow(true));
 
-    // Vault events can include folders. Only queue real files for upload.
     this.registerEvent(this.app.vault.on("create", (file) => {
       if (file instanceof TFile) this.markChanged(file.path);
     }));
@@ -64,21 +63,20 @@ module.exports = class VaultAutoPushPlugin extends Plugin {
     }));
     this.registerEvent(this.app.vault.on("delete", (file) => {
       if (file instanceof TFile) this.markDeleted(file.path);
-      // Folder deletions are detected by the next metadata scan.
     }));
     this.registerEvent(this.app.vault.on("rename", (file, oldPath) => {
       if (file instanceof TFile) {
         this.markDeleted(oldPath);
         this.markChanged(file.path);
       }
-      // Folder renames are detected by the next metadata scan.
     }));
 
     this.registerDomEvent(document, "visibilitychange", () => {
       if (
         document.visibilityState === "visible" &&
         this.settings.autoPush &&
-        this.settings.pushOnLoad
+        this.settings.pushOnLoad &&
+        (this.changedPaths.size || this.deletedPaths.size)
       ) {
         void this.pushNow(false);
       }
@@ -86,38 +84,33 @@ module.exports = class VaultAutoPushPlugin extends Plugin {
 
     this.configureTimer();
 
-    this.app.workspace.onLayoutReady(async () => {
-      try {
-        // If upgrading from an older version, build a metadata baseline only.
-        await this.scanForChanges(true);
-        if (this.settings.pushOnLoad && this.settings.autoPush) {
-          void this.pushNow(false);
-        }
-      } catch (error) {
-        this.recordError(error);
+    this.app.workspace.onLayoutReady(() => {
+      if (
+        this.settings.pushOnLoad &&
+        this.settings.autoPush &&
+        (this.changedPaths.size || this.deletedPaths.size)
+      ) {
+        void this.pushNow(false);
       }
     });
   }
 
   onunload() {
     if (this.timerId !== null) window.clearInterval(this.timerId);
+    if (this.persistTimer !== null) window.clearTimeout(this.persistTimer);
+    void this.persistQueue();
   }
 
   async loadSettings() {
     const saved = await this.loadData();
     this.settings = Object.assign({}, DEFAULT_SETTINGS, saved || {});
-    if (!this.settings.fileIndex || typeof this.settings.fileIndex !== "object") {
-      this.settings.fileIndex = {};
-    }
+    if (!Array.isArray(this.settings.pendingChanged)) this.settings.pendingChanged = [];
+    if (!Array.isArray(this.settings.pendingDeleted)) this.settings.pendingDeleted = [];
   }
 
   async saveSettings() {
-    await this.saveData(this.settings);
+    await this.persistQueue();
     this.configureTimer();
-  }
-
-  async saveStateOnly() {
-    await this.saveData(this.settings);
   }
 
   configureTimer() {
@@ -126,27 +119,44 @@ module.exports = class VaultAutoPushPlugin extends Plugin {
     if (!this.settings.autoPush) return;
 
     const minutes = Math.max(1, Number(this.settings.intervalMinutes) || 5);
-    this.timerId = window.setInterval(() => void this.pushNow(false), minutes * 60_000);
+    this.timerId = window.setInterval(() => {
+      if (this.changedPaths.size || this.deletedPaths.size) void this.pushNow(false);
+    }, minutes * 60_000);
     this.registerInterval(this.timerId);
   }
 
   shouldIgnore(path) {
     if (!path) return true;
     if (IGNORED_PATHS.has(path)) return true;
-    if (path.split("/").includes(".git-backup")) return true;
-    return IGNORED_PREFIXES.some((prefix) => path.startsWith(prefix));
+    return path.split("/").some((part) => IGNORED_COMPONENTS.has(part));
   }
 
   markChanged(path) {
     if (this.shouldIgnore(path)) return;
     this.deletedPaths.delete(path);
     this.changedPaths.add(path);
+    this.schedulePersist();
   }
 
   markDeleted(path) {
     if (this.shouldIgnore(path)) return;
     this.changedPaths.delete(path);
     this.deletedPaths.add(path);
+    this.schedulePersist();
+  }
+
+  schedulePersist() {
+    if (this.persistTimer !== null) window.clearTimeout(this.persistTimer);
+    this.persistTimer = window.setTimeout(() => {
+      this.persistTimer = null;
+      void this.persistQueue();
+    }, 1000);
+  }
+
+  async persistQueue() {
+    this.settings.pendingChanged = [...this.changedPaths];
+    this.settings.pendingDeleted = [...this.deletedPaths];
+    await this.saveData(this.settings);
   }
 
   getToken() {
@@ -178,72 +188,12 @@ module.exports = class VaultAutoPushPlugin extends Plugin {
     return response.json;
   }
 
-  async collectLocalMetadata() {
-    const result = {};
-
-    const walk = async (folder) => {
-      const listing = await this.app.vault.adapter.list(folder);
-
-      for (const path of listing.files) {
-        if (this.shouldIgnore(path)) continue;
-        const stat = await this.app.vault.adapter.stat(path);
-        // Defensive check: some adapters can surface unusual entries.
-        if (!stat || stat.type === "folder") continue;
-        result[path] = {
-          mtime: Number(stat.mtime) || 0,
-          size: Number(stat.size) || 0,
-        };
-      }
-
-      for (const child of listing.folders) {
-        if (this.shouldIgnore(`${child}/placeholder`)) continue;
-        await walk(child);
-      }
-    };
-
-    await walk("");
-    return result;
-  }
-
-  async scanForChanges(baselineIfEmpty = false) {
-    if (this.scanning) return;
-    this.scanning = true;
-
-    try {
-      const current = await this.collectLocalMetadata();
-      const previous = this.settings.fileIndex || {};
-      const previousPaths = Object.keys(previous);
-
-      if (baselineIfEmpty && previousPaths.length === 0) {
-        this.settings.fileIndex = current;
-        await this.saveStateOnly();
-        return;
-      }
-
-      for (const [path, meta] of Object.entries(current)) {
-        const old = previous[path];
-        if (!old || old.mtime !== meta.mtime || old.size !== meta.size) {
-          this.markChanged(path);
-        }
-      }
-
-      for (const path of previousPaths) {
-        if (!(path in current)) this.markDeleted(path);
-      }
-    } finally {
-      this.scanning = false;
-    }
-  }
-
   async createBlob(path) {
     const stat = await this.app.vault.adapter.stat(path);
-
-    // Never attempt readBinary() on a directory.
     if (!stat || stat.type === "folder") {
       this.changedPaths.delete(path);
       return null;
     }
-
     if ((Number(stat.size) || 0) > MAX_FILE_BYTES) {
       this.lastSkipped.push(path);
       this.changedPaths.delete(path);
@@ -257,35 +207,6 @@ module.exports = class VaultAutoPushPlugin extends Plugin {
     });
   }
 
-  async updateIndex(uploaded, deleted, skipped) {
-    const index = this.settings.fileIndex || {};
-
-    for (const path of uploaded) {
-      const stat = await this.app.vault.adapter.stat(path);
-      if (stat && stat.type !== "folder") {
-        index[path] = {
-          mtime: Number(stat.mtime) || 0,
-          size: Number(stat.size) || 0,
-        };
-      }
-    }
-
-    // Record skipped large files too so they are not retried every five minutes.
-    for (const path of skipped) {
-      const stat = await this.app.vault.adapter.stat(path);
-      if (stat && stat.type !== "folder") {
-        index[path] = {
-          mtime: Number(stat.mtime) || 0,
-          size: Number(stat.size) || 0,
-        };
-      }
-    }
-
-    for (const path of deleted) delete index[path];
-    this.settings.fileIndex = index;
-    await this.saveStateOnly();
-  }
-
   async pushNow(showNotice) {
     if (this.pushing) {
       if (showNotice) new Notice("Vault Auto Push: a push is already running.");
@@ -297,22 +218,20 @@ module.exports = class VaultAutoPushPlugin extends Plugin {
       return;
     }
 
+    const pathsToUpload = [...this.changedPaths].filter((p) => !this.shouldIgnore(p));
+    const pathsToDelete = [...this.deletedPaths].filter((p) => !this.shouldIgnore(p));
+
+    if (pathsToUpload.length === 0 && pathsToDelete.length === 0) {
+      this.lastPush = new Date();
+      if (showNotice) new Notice("Vault Auto Push: nothing changed.");
+      return;
+    }
+
     this.pushing = true;
     this.lastError = null;
     this.lastSkipped = [];
 
     try {
-      await this.scanForChanges(false);
-
-      const pathsToUpload = [...this.changedPaths].filter((p) => !this.shouldIgnore(p));
-      const pathsToDelete = [...this.deletedPaths].filter((p) => !this.shouldIgnore(p));
-
-      if (pathsToUpload.length === 0 && pathsToDelete.length === 0) {
-        this.lastPush = new Date();
-        if (showNotice) new Notice("Vault Auto Push: nothing changed.");
-        return;
-      }
-
       const head = await this.github(`/git/ref/heads/${encodeURIComponent(this.settings.branch)}`);
       const headSha = head.object.sha;
       const baseCommit = await this.github(`/git/commits/${headSha}`);
@@ -320,9 +239,14 @@ module.exports = class VaultAutoPushPlugin extends Plugin {
 
       const tree = [];
       const uploaded = [];
+      const deleted = [];
 
       for (const path of pathsToUpload) {
-        if (!(await this.app.vault.adapter.exists(path))) continue;
+        if (!(await this.app.vault.adapter.exists(path))) {
+          this.changedPaths.delete(path);
+          this.deletedPaths.add(path);
+          continue;
+        }
         const blob = await this.createBlob(path);
         if (!blob) continue;
         tree.push({ path, mode: "100644", type: "blob", sha: blob.sha });
@@ -331,6 +255,7 @@ module.exports = class VaultAutoPushPlugin extends Plugin {
 
       for (const path of pathsToDelete) {
         tree.push({ path, mode: "100644", type: "blob", sha: null });
+        deleted.push(path);
       }
 
       if (tree.length > 0) {
@@ -340,14 +265,12 @@ module.exports = class VaultAutoPushPlugin extends Plugin {
         });
 
         if (newTree.sha !== baseTreeSha) {
-          const stamp = new Date().toISOString();
           const commit = await this.github("/git/commits", "POST", {
-            message: `${this.settings.commitPrefix} ${stamp}`,
+            message: `${this.settings.commitPrefix} ${new Date().toISOString()}`,
             tree: newTree.sha,
             parents: [headSha],
           });
 
-          // Never force; fail rather than overwrite another device's newer commit.
           await this.github(`/git/refs/heads/${encodeURIComponent(this.settings.branch)}`, "PATCH", {
             sha: commit.sha,
             force: false,
@@ -356,31 +279,26 @@ module.exports = class VaultAutoPushPlugin extends Plugin {
       }
 
       for (const path of uploaded) this.changedPaths.delete(path);
-      for (const path of pathsToDelete) this.deletedPaths.delete(path);
-      await this.updateIndex(uploaded, pathsToDelete, this.lastSkipped);
+      for (const path of deleted) this.deletedPaths.delete(path);
+      await this.persistQueue();
 
       this.lastPush = new Date();
       if (showNotice) {
         if (tree.length === 0 && this.lastSkipped.length) {
-          new Notice(`Vault Auto Push: no upload needed; skipped ${this.lastSkipped.length} oversized file(s).`);
+          new Notice(`Vault Auto Push: skipped ${this.lastSkipped.length} oversized file(s).`);
         } else {
-          const suffix = this.lastSkipped.length
-            ? ` Skipped ${this.lastSkipped.length} oversized file(s).`
-            : "";
+          const suffix = this.lastSkipped.length ? ` Skipped ${this.lastSkipped.length} oversized file(s).` : "";
           new Notice(`Vault Auto Push: pushed successfully.${suffix}`);
         }
       }
     } catch (error) {
-      this.recordError(error);
+      this.lastError = error instanceof Error ? error.message : String(error);
+      console.error("Vault Auto Push", error);
+      await this.persistQueue();
       if (showNotice) new Notice(`Vault Auto Push failed: ${this.lastError}`);
     } finally {
       this.pushing = false;
     }
-  }
-
-  recordError(error) {
-    this.lastError = error instanceof Error ? error.message : String(error);
-    console.error("Vault Auto Push", error);
   }
 };
 
@@ -394,36 +312,31 @@ class VaultAutoPushSettingTab extends PluginSettingTab {
     const { containerEl } = this;
     containerEl.empty();
     containerEl.toggleClass("vault-auto-push-mobile", Platform.isMobile);
-
     containerEl.createEl("h2", { text: "Vault Auto Push" });
 
     const status = containerEl.createDiv({ cls: "vault-auto-push-status" });
     status.createEl("strong", { text: Platform.isMobile ? "Mobile mode" : "Desktop mode" });
     status.createEl("div", {
       text: Platform.isIosApp
-        ? "iOS detected. Scheduled pushes run while Obsidian is active; iOS may suspend background timers."
+        ? "iOS detected. Scheduled pushes run while Obsidian is active; pending changes persist across restarts."
         : Platform.isMobile
           ? "Mobile Obsidian detected."
           : "Desktop Obsidian detected.",
     });
     status.createEl("div", { text: `Repository: ${this.plugin.settings.owner}/${this.plugin.settings.repo}` });
+    status.createEl("div", { text: `Pending: ${this.plugin.changedPaths.size} changed, ${this.plugin.deletedPaths.size} deleted` });
     status.createEl("div", {
       text: this.plugin.pushing
         ? "Status: pushing…"
         : this.plugin.lastPush
-          ? `Last check: ${this.plugin.lastPush.toLocaleString()}`
-          : "Last check: not yet",
+          ? `Last push/check: ${this.plugin.lastPush.toLocaleString()}`
+          : "Last push/check: not yet",
     });
-    if (this.plugin.lastSkipped.length) {
-      status.createEl("div", { text: `Skipped oversized files: ${this.plugin.lastSkipped.length}` });
-    }
-    if (this.plugin.lastError) {
-      status.createEl("div", { cls: "vault-auto-push-error", text: this.plugin.lastError });
-    }
+    if (this.plugin.lastError) status.createEl("div", { cls: "vault-auto-push-error", text: this.plugin.lastError });
 
     new Setting(containerEl)
       .setName("Push now")
-      .setDesc("Scan metadata and push only files that changed.")
+      .setDesc("Push only files currently queued as changed or deleted.")
       .addButton((button) => button.setButtonText("Push now").setCta().onClick(async () => {
         await this.plugin.pushNow(true);
         this.display();
@@ -462,7 +375,7 @@ class VaultAutoPushSettingTab extends PluginSettingTab {
 
     new Setting(containerEl)
       .setName("Automatic push")
-      .setDesc("Push changed files on a repeating timer while Obsidian is running.")
+      .setDesc("Push queued changes on the repeating timer while Obsidian is running.")
       .addToggle((toggle) => toggle.setValue(this.plugin.settings.autoPush).onChange(async (value) => {
         this.plugin.settings.autoPush = value;
         await this.plugin.saveSettings();
@@ -484,7 +397,7 @@ class VaultAutoPushSettingTab extends PluginSettingTab {
 
     new Setting(containerEl)
       .setName("Push on app load/resume")
-      .setDesc("Runs a metadata scan on startup/resume; file bodies are read only when changed.")
+      .setDesc("If pending changes exist, push them when Obsidian starts or returns to the foreground.")
       .addToggle((toggle) => toggle.setValue(this.plugin.settings.pushOnLoad).onChange(async (value) => {
         this.plugin.settings.pushOnLoad = value;
         await this.plugin.saveSettings();
