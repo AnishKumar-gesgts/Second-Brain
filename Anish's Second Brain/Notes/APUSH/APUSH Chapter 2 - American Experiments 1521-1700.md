@@ -1,5 +1,3 @@
-# APUSH Chapter 2: American Experiments, 1521–1700
-
 > Condensed notes for the assigned black-text-on-white narrative only. Colored feature sections and their source-analysis/comparison material are excluded.
 
 ## Big picture
