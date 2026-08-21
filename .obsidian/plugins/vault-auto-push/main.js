@@ -17,13 +17,18 @@ const DEFAULT_SETTINGS = {
   autoPush: true,
   pushOnLoad: true,
   commitPrefix: "Obsidian auto-push",
+  fileIndex: {},
 };
+
+const MAX_FILE_BYTES = 95 * 1024 * 1024;
 
 const IGNORED_PATHS = new Set([
   ".DS_Store",
   ".obsidian/workspace.json",
   ".obsidian/workspace-mobile.json",
   ".obsidian/plugins/vault-auto-push/data.json",
+  "Coding Output/Latex/basic-miktex-25.12-x64.exe",
+  "Coding Output/Latex/strawberry-perl-5.42.0.1-64bit.msi",
 ]);
 
 const IGNORED_PREFIXES = [".trash/", ".git/", "node_modules/"];
@@ -33,10 +38,11 @@ module.exports = class VaultAutoPushPlugin extends Plugin {
     await this.loadSettings();
     this.changedPaths = new Set();
     this.deletedPaths = new Set();
-    this.fullSnapshotNeeded = true;
     this.pushing = false;
+    this.scanning = false;
     this.lastPush = null;
     this.lastError = null;
+    this.lastSkipped = [];
     this.timerId = null;
 
     this.addSettingTab(new VaultAutoPushSettingTab(this.app, this));
@@ -58,17 +64,18 @@ module.exports = class VaultAutoPushPlugin extends Plugin {
     }));
 
     this.registerDomEvent(document, "visibilitychange", () => {
-      if (document.visibilityState === "visible") {
-        this.fullSnapshotNeeded = true;
-        if (this.settings.autoPush) void this.pushNow(false);
+      if (document.visibilityState === "visible" && this.settings.autoPush) {
+        void this.pushNow(false);
       }
     });
 
     this.configureTimer();
 
-    if (this.settings.pushOnLoad && this.settings.autoPush) {
-      this.app.workspace.onLayoutReady(() => void this.pushNow(false));
-    }
+    this.app.workspace.onLayoutReady(async () => {
+      // First run after upgrading: establish a metadata baseline without uploading the vault.
+      await this.scanForChanges(true);
+      if (this.settings.pushOnLoad && this.settings.autoPush) void this.pushNow(false);
+    });
   }
 
   onunload() {
@@ -76,12 +83,20 @@ module.exports = class VaultAutoPushPlugin extends Plugin {
   }
 
   async loadSettings() {
-    this.settings = Object.assign({}, DEFAULT_SETTINGS, await this.loadData());
+    const data = await this.loadData();
+    this.settings = Object.assign({}, DEFAULT_SETTINGS, data || {});
+    if (!this.settings.fileIndex || typeof this.settings.fileIndex !== "object") {
+      this.settings.fileIndex = {};
+    }
   }
 
   async saveSettings() {
     await this.saveData(this.settings);
     this.configureTimer();
+  }
+
+  async saveStateOnly() {
+    await this.saveData(this.settings);
   }
 
   configureTimer() {
@@ -109,6 +124,7 @@ module.exports = class VaultAutoPushPlugin extends Plugin {
   shouldIgnore(path) {
     if (!path) return true;
     if (IGNORED_PATHS.has(path)) return true;
+    if (path.split("/").includes(".git-backup")) return true;
     return IGNORED_PREFIXES.some((prefix) => path.startsWith(prefix));
   }
 
@@ -149,15 +165,13 @@ module.exports = class VaultAutoPushPlugin extends Plugin {
     return await this.github(`/git/commits/${sha}`);
   }
 
-  async getRemoteTree(treeSha) {
-    const tree = await this.github(`/git/trees/${treeSha}?recursive=1`);
-    if (tree.truncated) {
-      throw new Error("GitHub returned a truncated repository tree. The vault is too large for this plugin version.");
-    }
-    return tree.tree || [];
-  }
-
   async createBlob(path) {
+    const stat = await this.app.vault.adapter.stat(path);
+    if (stat && stat.size > MAX_FILE_BYTES) {
+      this.lastSkipped.push(path);
+      return null;
+    }
+
     const data = await this.app.vault.adapter.readBinary(path);
     return await this.github("/git/blobs", "POST", {
       content: arrayBufferToBase64(data),
@@ -165,12 +179,15 @@ module.exports = class VaultAutoPushPlugin extends Plugin {
     });
   }
 
-  async collectLocalFiles() {
-    const result = [];
+  async collectLocalMetadata() {
+    const result = {};
     const walk = async (folder) => {
       const listing = await this.app.vault.adapter.list(folder);
       for (const file of listing.files) {
-        if (!this.shouldIgnore(file)) result.push(file);
+        if (this.shouldIgnore(file)) continue;
+        const stat = await this.app.vault.adapter.stat(file);
+        if (!stat) continue;
+        result[file] = { mtime: stat.mtime || 0, size: stat.size || 0 };
       }
       for (const child of listing.folders) {
         if (!this.shouldIgnore(`${child}/placeholder`)) await walk(child);
@@ -178,6 +195,47 @@ module.exports = class VaultAutoPushPlugin extends Plugin {
     };
     await walk("");
     return result;
+  }
+
+  async scanForChanges(baselineIfEmpty = false) {
+    if (this.scanning) return;
+    this.scanning = true;
+    try {
+      const current = await this.collectLocalMetadata();
+      const previous = this.settings.fileIndex || {};
+      const previousPaths = Object.keys(previous);
+
+      if (baselineIfEmpty && previousPaths.length === 0) {
+        this.settings.fileIndex = current;
+        await this.saveStateOnly();
+        return;
+      }
+
+      for (const [path, meta] of Object.entries(current)) {
+        const old = previous[path];
+        if (!old || old.mtime !== meta.mtime || old.size !== meta.size) {
+          this.markChanged(path);
+        }
+      }
+
+      for (const path of previousPaths) {
+        if (!(path in current)) this.markDeleted(path);
+      }
+    } finally {
+      this.scanning = false;
+    }
+  }
+
+  async refreshIndexFor(pathsUploaded, pathsDeleted) {
+    const index = this.settings.fileIndex || {};
+    for (const path of pathsUploaded) {
+      if (this.shouldIgnore(path)) continue;
+      const stat = await this.app.vault.adapter.stat(path);
+      if (stat) index[path] = { mtime: stat.mtime || 0, size: stat.size || 0 };
+    }
+    for (const path of pathsDeleted) delete index[path];
+    this.settings.fileIndex = index;
+    await this.saveStateOnly();
   }
 
   async pushNow(showNotice) {
@@ -193,30 +251,14 @@ module.exports = class VaultAutoPushPlugin extends Plugin {
 
     this.pushing = true;
     this.lastError = null;
+    this.lastSkipped = [];
 
     try {
-      const head = await this.getHead();
-      const headSha = head.object.sha;
-      const baseCommit = await this.getCommit(headSha);
-      const baseTreeSha = baseCommit.tree.sha;
+      // Metadata-only scan: no file bodies are read unless they actually changed.
+      await this.scanForChanges(false);
 
-      let pathsToUpload;
-      let pathsToDelete;
-
-      if (this.fullSnapshotNeeded) {
-        const localFiles = await this.collectLocalFiles();
-        const localSet = new Set(localFiles);
-        const remoteTree = await this.getRemoteTree(baseTreeSha);
-        const remoteFiles = remoteTree
-          .filter((entry) => entry.type === "blob" && !this.shouldIgnore(entry.path))
-          .map((entry) => entry.path);
-
-        pathsToUpload = localFiles;
-        pathsToDelete = remoteFiles.filter((path) => !localSet.has(path));
-      } else {
-        pathsToUpload = [...this.changedPaths].filter((path) => !this.shouldIgnore(path));
-        pathsToDelete = [...this.deletedPaths].filter((path) => !this.shouldIgnore(path));
-      }
+      const pathsToUpload = [...this.changedPaths].filter((path) => !this.shouldIgnore(path));
+      const pathsToDelete = [...this.deletedPaths].filter((path) => !this.shouldIgnore(path));
 
       if (pathsToUpload.length === 0 && pathsToDelete.length === 0) {
         this.lastPush = new Date();
@@ -224,11 +266,20 @@ module.exports = class VaultAutoPushPlugin extends Plugin {
         return;
       }
 
+      const head = await this.getHead();
+      const headSha = head.object.sha;
+      const baseCommit = await this.getCommit(headSha);
+      const baseTreeSha = baseCommit.tree.sha;
+
       const tree = [];
+      const uploaded = [];
+
       for (const path of pathsToUpload) {
         if (!(await this.app.vault.adapter.exists(path))) continue;
         const blob = await this.createBlob(path);
+        if (!blob) continue;
         tree.push({ path, mode: "100644", type: "blob", sha: blob.sha });
+        uploaded.push(path);
       }
 
       for (const path of pathsToDelete) {
@@ -237,6 +288,9 @@ module.exports = class VaultAutoPushPlugin extends Plugin {
 
       if (tree.length === 0) {
         this.lastPush = new Date();
+        if (showNotice && this.lastSkipped.length) {
+          new Notice(`Vault Auto Push: skipped ${this.lastSkipped.length} oversized file(s).`);
+        }
         return;
       }
 
@@ -245,33 +299,30 @@ module.exports = class VaultAutoPushPlugin extends Plugin {
         tree,
       });
 
-      if (newTree.sha === baseTreeSha) {
-        this.changedPaths.clear();
-        this.deletedPaths.clear();
-        this.fullSnapshotNeeded = false;
-        this.lastPush = new Date();
-        if (showNotice) new Notice("Vault Auto Push: already up to date.");
-        return;
+      if (newTree.sha !== baseTreeSha) {
+        const stamp = new Date().toISOString();
+        const commit = await this.github("/git/commits", "POST", {
+          message: `${this.settings.commitPrefix} ${stamp}`,
+          tree: newTree.sha,
+          parents: [headSha],
+        });
+
+        // Never force. If another device advanced main, GitHub rejects this rather than overwriting it.
+        await this.github(`/git/refs/heads/${encodeURIComponent(this.settings.branch)}`, "PATCH", {
+          sha: commit.sha,
+          force: false,
+        });
       }
 
-      const stamp = new Date().toISOString();
-      const commit = await this.github("/git/commits", "POST", {
-        message: `${this.settings.commitPrefix} ${stamp}`,
-        tree: newTree.sha,
-        parents: [headSha],
-      });
+      for (const path of uploaded) this.changedPaths.delete(path);
+      for (const path of pathsToDelete) this.deletedPaths.delete(path);
+      await this.refreshIndexFor(uploaded, pathsToDelete);
 
-      // Do not force: if the remote branch moved since getHead(), fail instead of overwriting it.
-      await this.github(`/git/refs/heads/${encodeURIComponent(this.settings.branch)}`, "PATCH", {
-        sha: commit.sha,
-        force: false,
-      });
-
-      this.changedPaths.clear();
-      this.deletedPaths.clear();
-      this.fullSnapshotNeeded = false;
       this.lastPush = new Date();
-      if (showNotice) new Notice("Vault Auto Push: pushed successfully.");
+      if (showNotice) {
+        const suffix = this.lastSkipped.length ? ` Skipped ${this.lastSkipped.length} oversized file(s).` : "";
+        new Notice(`Vault Auto Push: pushed successfully.${suffix}`);
+      }
     } catch (error) {
       this.lastError = error instanceof Error ? error.message : String(error);
       console.error("Vault Auto Push", error);
@@ -306,13 +357,20 @@ class VaultAutoPushSettingTab extends PluginSettingTab {
     });
     status.createEl("div", { text: `Repository: ${this.plugin.settings.owner}/${this.plugin.settings.repo}` });
     status.createEl("div", {
-      text: this.plugin.lastPush ? `Last check: ${this.plugin.lastPush.toLocaleString()}` : "Last check: not yet",
+      text: this.plugin.pushing
+        ? "Status: pushing…"
+        : this.plugin.lastPush
+          ? `Last check: ${this.plugin.lastPush.toLocaleString()}`
+          : "Last check: not yet",
     });
+    if (this.plugin.lastSkipped.length) {
+      status.createEl("div", { text: `Skipped oversized files: ${this.plugin.lastSkipped.length}` });
+    }
     if (this.plugin.lastError) status.createEl("div", { cls: "vault-auto-push-error", text: this.plugin.lastError });
 
     new Setting(containerEl)
       .setName("Push now")
-      .setDesc("Create one GitHub commit containing all current vault changes.")
+      .setDesc("Scan file metadata and push only files that changed.")
       .addButton((button) => button.setButtonText("Push now").setCta().onClick(async () => {
         await this.plugin.pushNow(true);
         this.display();
@@ -341,7 +399,7 @@ class VaultAutoPushSettingTab extends PluginSettingTab {
 
     new Setting(containerEl)
       .setName("GitHub token")
-      .setDesc("Choose or create a SecretStorage entry containing a fine-grained GitHub PAT with Contents: Read and write for this private repository.")
+      .setDesc("Choose a SecretStorage entry containing a fine-grained GitHub PAT with Contents: Read and write for this repository.")
       .addComponent((el) => new SecretComponent(this.app, el)
         .setValue(this.plugin.settings.secretName)
         .onChange(async (value) => {
@@ -351,7 +409,7 @@ class VaultAutoPushSettingTab extends PluginSettingTab {
 
     new Setting(containerEl)
       .setName("Automatic push")
-      .setDesc("Push changes on a repeating timer while Obsidian is running.")
+      .setDesc("Push changed files on a repeating timer while Obsidian is running.")
       .addToggle((toggle) => toggle.setValue(this.plugin.settings.autoPush).onChange(async (value) => {
         this.plugin.settings.autoPush = value;
         await this.plugin.saveSettings();
@@ -373,7 +431,7 @@ class VaultAutoPushSettingTab extends PluginSettingTab {
 
     new Setting(containerEl)
       .setName("Push on app load/resume")
-      .setDesc("Useful on mobile because the OS can suspend background timers.")
+      .setDesc("Runs a fast metadata scan on startup/resume; file contents are read only when changed.")
       .addToggle((toggle) => toggle.setValue(this.plugin.settings.pushOnLoad).onChange(async (value) => {
         this.plugin.settings.pushOnLoad = value;
         await this.plugin.saveSettings();
