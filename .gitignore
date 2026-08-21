@@ -1,0 +1,11 @@
+# Device-specific Obsidian state
+.obsidian/workspace.json
+.obsidian/workspace-mobile.json
+
+# Vault Auto Push local settings/status
+.obsidian/plugins/vault-auto-push/data.json
+
+# Local/system files
+.DS_Store
+.trash/
+node_modules/
