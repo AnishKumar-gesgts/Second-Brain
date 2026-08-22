@@ -1,6 +1,21 @@
 {
-  "updatedAt": "2026-08-22T03:22:05.872Z",
+  "updatedAt": "2026-08-22T05:38:27.902Z",
   "assignments": [
+    {
+      "id": "2184319",
+      "courseId": "153566",
+      "name": "1.1 Intro to Algorithms, Programming, and Compilers",
+      "course": "Computer Science A (AP) - Sakallah, F",
+      "dueAt": "2025-08-25T06:00:00Z",
+      "points": 28,
+      "bucket": "pending",
+      "status": "Past due",
+      "submittedAt": null,
+      "gradedAt": null,
+      "directions": "",
+      "url": "https://iusd.instructure.com/courses/153566/assignments/2184319",
+      "updatedAt": "2026-08-21T17:52:40Z"
+    },
     {
       "id": "2157529",
       "courseId": "153470",
@@ -9,27 +24,12 @@
       "dueAt": "2026-08-21T06:59:59Z",
       "points": 3,
       "bucket": "pending",
-      "status": "Not submitted",
+      "status": "Past due",
       "submittedAt": null,
       "gradedAt": null,
       "directions": "Sophomore Year Reflection",
       "url": "https://iusd.instructure.com/courses/153470/assignments/2157529",
       "updatedAt": "2026-08-19T17:10:09Z"
-    },
-    {
-      "id": "2186802",
-      "courseId": "153566",
-      "name": "Course Syllabus Signature Page",
-      "course": "Computer Science A (AP) - Sakallah, F",
-      "dueAt": "2026-08-23T06:59:59Z",
-      "points": 0,
-      "bucket": "pending",
-      "status": "Not submitted",
-      "submittedAt": null,
-      "gradedAt": null,
-      "directions": "Read the course Syllabus and make sure you understand the HW policy. Then, please upload a pdf scan of the signature section to this assignment",
-      "url": "https://iusd.instructure.com/courses/153566/assignments/2186802",
-      "updatedAt": "2026-08-19T18:07:31Z"
     },
     {
       "id": "2184646",
@@ -57,9 +57,9 @@
       "status": "Not submitted",
       "submittedAt": null,
       "gradedAt": null,
-      "directions": "",
+      "directions": "Living Like Weasels Questions",
       "url": "https://iusd.instructure.com/courses/153470/assignments/2193258",
-      "updatedAt": "2026-08-20T15:06:58Z"
+      "updatedAt": "2026-08-21T17:10:03Z"
     },
     {
       "id": "2187907",
@@ -90,6 +90,21 @@
       "directions": "",
       "url": "https://iusd.instructure.com/courses/153566/assignments/2184307",
       "updatedAt": "2026-08-17T22:22:35Z"
+    },
+    {
+      "id": "2186802",
+      "courseId": "153566",
+      "name": "Course Syllabus Signature Page",
+      "course": "Computer Science A (AP) - Sakallah, F",
+      "dueAt": "2026-08-23T06:59:59Z",
+      "points": 0,
+      "bucket": "submitted",
+      "status": "Submitted; awaiting grade",
+      "submittedAt": "2026-08-22T03:31:53Z",
+      "gradedAt": null,
+      "directions": "Read the course Syllabus and make sure you understand the HW policy. Then, please upload a pdf scan of the signature section to this assignment",
+      "url": "https://iusd.instructure.com/courses/153566/assignments/2186802",
+      "updatedAt": "2026-08-19T18:07:31Z"
     },
     {
       "id": "2187904",
@@ -197,7 +212,32 @@
       "updatedAt": "2026-08-18T21:25:20Z"
     }
   ],
-  "changes": [],
-  "summary": "Next due: Sophomore Year Reflection for English Language A (AP) - Kane, K on Thu, Aug 20, 11:59 PM.",
-  "error": "leaf.view.render is not a function"
+  "changes": [
+    {
+      "type": "new",
+      "id": "2184319",
+      "name": "1.1 Intro to Algorithms, Programming, and Compilers",
+      "course": "Computer Science A (AP) - Sakallah, F"
+    },
+    {
+      "type": "changed",
+      "id": "2157529",
+      "name": "Sophomore Year Reflection",
+      "course": "English Language A (AP) - Kane, K"
+    },
+    {
+      "type": "changed",
+      "id": "2193258",
+      "name": "Living Like Weasels Questions ",
+      "course": "English Language A (AP) - Kane, K"
+    },
+    {
+      "type": "changed",
+      "id": "2186802",
+      "name": "Course Syllabus Signature Page",
+      "course": "Computer Science A (AP) - Sakallah, F"
+    }
+  ],
+  "summary": "2 assignments are past due. Next due: Read p. 42-72  for U.S. History A (AP) - Harrington, J on Mon, Aug 24, 8:30 AM. 4 new or changed assignments in this check.",
+  "error": ""
 }

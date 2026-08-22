@@ -5,11 +5,11 @@ cssclasses:
 
 # Canvas Checkup
 
-> [!info] Last checked Fri, Aug 21, 8:22 PM. Obsidian checks Canvas hourly from 8 AM through 11 PM and resets its change tracker at 6 AM.
+> [!info] Last checked Fri, Aug 21, 10:38 PM. Obsidian checks Canvas hourly from 8 AM through 11 PM and resets its change tracker at 6 AM.
 
 ## Check status
 
-2 assignments are past due. Next due: Course Syllabus Signature Page for Computer Science A (AP) - Sakallah, F on Sat, Aug 22, 11:59 PM. 3 new or changed assignments in this check.
+2 assignments are past due. Next due: Read p. 42-72  for U.S. History A (AP) - Harrington, J on Mon, Aug 24, 8:30 AM. 4 new or changed assignments in this check.
 
 ## Pending assignments
 
@@ -36,18 +36,6 @@ No written directions were included on Canvas.
 **Directions**
 
 Sophomore Year Reflection
-
-### Course Syllabus Signature Page
-
-- **Class:** Computer Science A (AP) - Sakallah, F
-- **Due:** Sat, Aug 22, 11:59 PM
-- **Points:** 0
-- **Status:** Not submitted
-- **Canvas:** https://iusd.instructure.com/courses/153566/assignments/2186802
-
-**Directions**
-
-Read the course Syllabus and make sure you understand the HW policy. Then, please upload a pdf scan of the signature section to this assignment
 
 ### Read p. 42-72 
 
@@ -98,6 +86,18 @@ https://docs.google.com/document/d/1MXek0Wo_6dgv-ysTjGIhEC1KrsYFwy9M0VDAnwVxkJk/
 No written directions were included on Canvas.
 
 ## Submitted assignments
+
+### Course Syllabus Signature Page
+
+- **Class:** Computer Science A (AP) - Sakallah, F
+- **Due:** Sat, Aug 22, 11:59 PM
+- **Points:** 0
+- **Status:** Submitted; awaiting grade
+- **Canvas:** https://iusd.instructure.com/courses/153566/assignments/2186802
+
+**Directions**
+
+Read the course Syllabus and make sure you understand the HW policy. Then, please upload a pdf scan of the signature section to this assignment
 
 ### Health Triangle Reflection
 
