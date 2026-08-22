@@ -1,5 +1,5 @@
 {
-  "updatedAt": "2026-08-21T05:00:00.476Z",
+  "updatedAt": "2026-08-22T03:22:05.872Z",
   "assignments": [
     {
       "id": "2157529",
@@ -199,5 +199,5 @@
   ],
   "changes": [],
   "summary": "Next due: Sophomore Year Reflection for English Language A (AP) - Kane, K on Thu, Aug 20, 11:59 PM.",
-  "error": ""
+  "error": "leaf.view.render is not a function"
 }

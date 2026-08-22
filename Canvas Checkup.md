@@ -5,20 +5,32 @@ cssclasses:
 
 # Canvas Checkup
 
-> [!info] Last checked Thu, Aug 20, 10:00 PM. Obsidian checks Canvas hourly from 8 AM through 11 PM and resets its change tracker at 6 AM.
+> [!info] Last checked Fri, Aug 21, 8:22 PM. Obsidian checks Canvas hourly from 8 AM through 11 PM and resets its change tracker at 6 AM.
 
 ## Check status
 
-Next due: Sophomore Year Reflection for English Language A (AP) - Kane, K on Thu, Aug 20, 11:59 PM.
+2 assignments are past due. Next due: Course Syllabus Signature Page for Computer Science A (AP) - Sakallah, F on Sat, Aug 22, 11:59 PM. 3 new or changed assignments in this check.
 
 ## Pending assignments
+
+### 1.1 Intro to Algorithms, Programming, and Compilers
+
+- **Class:** Computer Science A (AP) - Sakallah, F
+- **Due:** Sun, Aug 24, 11:00 PM
+- **Points:** 28
+- **Status:** Past due
+- **Canvas:** https://iusd.instructure.com/courses/153566/assignments/2184319
+
+**Directions**
+
+No written directions were included on Canvas.
 
 ### Sophomore Year Reflection
 
 - **Class:** English Language A (AP) - Kane, K
 - **Due:** Thu, Aug 20, 11:59 PM
 - **Points:** 3
-- **Status:** Not submitted
+- **Status:** Past due
 - **Canvas:** https://iusd.instructure.com/courses/153470/assignments/2157529
 
 **Directions**
@@ -59,7 +71,7 @@ Read Ch. 2 p. 42-72 for the quiz on Monday. This is your link to the online text
 
 **Directions**
 
-No written directions were included on Canvas.
+Living Like Weasels Questions
 
 ### Nutrition Notes
 
