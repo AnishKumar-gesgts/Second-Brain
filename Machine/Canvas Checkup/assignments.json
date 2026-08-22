@@ -1,5 +1,5 @@
 {
-  "updatedAt": "2026-08-22T05:38:27.902Z",
+  "updatedAt": "2026-08-22T17:30:14.784Z",
   "assignments": [
     {
       "id": "2184319",
@@ -212,32 +212,7 @@
       "updatedAt": "2026-08-18T21:25:20Z"
     }
   ],
-  "changes": [
-    {
-      "type": "new",
-      "id": "2184319",
-      "name": "1.1 Intro to Algorithms, Programming, and Compilers",
-      "course": "Computer Science A (AP) - Sakallah, F"
-    },
-    {
-      "type": "changed",
-      "id": "2157529",
-      "name": "Sophomore Year Reflection",
-      "course": "English Language A (AP) - Kane, K"
-    },
-    {
-      "type": "changed",
-      "id": "2193258",
-      "name": "Living Like Weasels Questions ",
-      "course": "English Language A (AP) - Kane, K"
-    },
-    {
-      "type": "changed",
-      "id": "2186802",
-      "name": "Course Syllabus Signature Page",
-      "course": "Computer Science A (AP) - Sakallah, F"
-    }
-  ],
-  "summary": "2 assignments are past due. Next due: Read p. 42-72  for U.S. History A (AP) - Harrington, J on Mon, Aug 24, 8:30 AM. 4 new or changed assignments in this check.",
+  "changes": [],
+  "summary": "2 assignments are past due. Next due: Read p. 42-72  for U.S. History A (AP) - Harrington, J on Mon, Aug 24, 8:30 AM.",
   "error": ""
 }
