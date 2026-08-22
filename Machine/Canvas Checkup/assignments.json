@@ -1,5 +1,5 @@
 {
-  "updatedAt": "2026-08-22T17:30:14.784Z",
+  "updatedAt": "2026-08-22T23:19:39.233Z",
   "assignments": [
     {
       "id": "2184319",
@@ -47,21 +47,6 @@
       "updatedAt": "2026-08-18T16:13:56Z"
     },
     {
-      "id": "2193258",
-      "courseId": "153470",
-      "name": "Living Like Weasels Questions ",
-      "course": "English Language A (AP) - Kane, K",
-      "dueAt": "2026-08-26T06:59:59Z",
-      "points": 4,
-      "bucket": "pending",
-      "status": "Not submitted",
-      "submittedAt": null,
-      "gradedAt": null,
-      "directions": "Living Like Weasels Questions",
-      "url": "https://iusd.instructure.com/courses/153470/assignments/2193258",
-      "updatedAt": "2026-08-21T17:10:03Z"
-    },
-    {
       "id": "2187907",
       "courseId": "153422",
       "name": "Nutrition Notes",
@@ -90,6 +75,21 @@
       "directions": "",
       "url": "https://iusd.instructure.com/courses/153566/assignments/2184307",
       "updatedAt": "2026-08-17T22:22:35Z"
+    },
+    {
+      "id": "2193258",
+      "courseId": "153470",
+      "name": "Living Like Weasels Questions ",
+      "course": "English Language A (AP) - Kane, K",
+      "dueAt": "2026-08-26T06:59:59Z",
+      "points": 4,
+      "bucket": "submitted",
+      "status": "Submitted; awaiting grade",
+      "submittedAt": "2026-08-22T23:19:20Z",
+      "gradedAt": null,
+      "directions": "Living Like Weasels Questions",
+      "url": "https://iusd.instructure.com/courses/153470/assignments/2193258",
+      "updatedAt": "2026-08-21T17:10:03Z"
     },
     {
       "id": "2186802",
@@ -212,7 +212,14 @@
       "updatedAt": "2026-08-18T21:25:20Z"
     }
   ],
-  "changes": [],
-  "summary": "2 assignments are past due. Next due: Read p. 42-72  for U.S. History A (AP) - Harrington, J on Mon, Aug 24, 8:30 AM.",
+  "changes": [
+    {
+      "type": "changed",
+      "id": "2193258",
+      "name": "Living Like Weasels Questions ",
+      "course": "English Language A (AP) - Kane, K"
+    }
+  ],
+  "summary": "2 assignments are past due. Next due: Read p. 42-72  for U.S. History A (AP) - Harrington, J on Mon, Aug 24, 8:30 AM. 1 new or changed assignment in this check.",
   "error": ""
 }

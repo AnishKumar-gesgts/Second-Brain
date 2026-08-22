@@ -5,11 +5,11 @@ cssclasses:
 
 # Canvas Checkup
 
-> [!info] Last checked Sat, Aug 22, 10:30 AM. Obsidian checks Canvas hourly from 8 AM through 11 PM and resets its change tracker at 6 AM.
+> [!info] Last checked Sat, Aug 22, 4:19 PM. Obsidian checks Canvas hourly from 8 AM through 11 PM and resets its change tracker at 6 AM.
 
 ## Check status
 
-2 assignments are past due. Next due: Read p. 42-72  for U.S. History A (AP) - Harrington, J on Mon, Aug 24, 8:30 AM.
+2 assignments are past due. Next due: Read p. 42-72  for U.S. History A (AP) - Harrington, J on Mon, Aug 24, 8:30 AM. 1 new or changed assignment in this check.
 
 ## Pending assignments
 
@@ -49,18 +49,6 @@ Sophomore Year Reflection
 
 Read Ch. 2 p. 42-72 for the quiz on Monday. This is your link to the online textbook for now. https://ia600601.us.archive.org/32/items/AmericasHistory/America%27s%20History%2C%20For%20the%20AP_%20-%20James%20A.%20Henretta.pdf OR https://www.biknotes.com/_files/ugd/b8b6dc_27e025940d2b45f7a87d0bc336e231c6.pdf For my class, you do not have to take notes, and you cannot use any study materials for the weekly quiz. You also do not have to read the purple, yellow, or brown pages, just the black and white pages. It is most important that you know the key terms/vocabulary, the specific people, places, things, events, etc. But, I may quiz you on something that is not bold or in italics. So, read carefully. It should take about 2 hours for the 20-30 pages, but it will become easier and faster as you go through the school year. If you put it off until Sunday night, it may be frustrating for you. Perhaps, start early, and pace it out. You have the 40-minute period on 'anchor day' to respond in handwritten short paragraphs to the nine reading comprehension questions (3 sets of 3 SAQs, 1,2,3 ABC). Each period will have a different version of the quiz, but I strive to make them fair and equal in difficulty and content coverage. Each quiz is worth 9 points. You cannot take it another day. This is your first required formative assessment.
 
-### Living Like Weasels Questions 
-
-- **Class:** English Language A (AP) - Kane, K
-- **Due:** Tue, Aug 25, 11:59 PM
-- **Points:** 4
-- **Status:** Not submitted
-- **Canvas:** https://iusd.instructure.com/courses/153470/assignments/2193258
-
-**Directions**
-
-Living Like Weasels Questions
-
 ### Nutrition Notes
 
 - **Class:** Health - semester course - Klamberg, K
@@ -86,6 +74,18 @@ https://docs.google.com/document/d/1MXek0Wo_6dgv-ysTjGIhEC1KrsYFwy9M0VDAnwVxkJk/
 No written directions were included on Canvas.
 
 ## Submitted assignments
+
+### Living Like Weasels Questions 
+
+- **Class:** English Language A (AP) - Kane, K
+- **Due:** Tue, Aug 25, 11:59 PM
+- **Points:** 4
+- **Status:** Submitted; awaiting grade
+- **Canvas:** https://iusd.instructure.com/courses/153470/assignments/2193258
+
+**Directions**
+
+Living Like Weasels Questions
 
 ### Course Syllabus Signature Page
 
