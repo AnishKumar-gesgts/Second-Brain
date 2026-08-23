@@ -1,5 +1,5 @@
 {
-  "updatedAt": "2026-08-22T23:19:39.233Z",
+  "updatedAt": "2026-08-23T18:28:27.123Z",
   "assignments": [
     {
       "id": "2184319",
@@ -15,6 +15,21 @@
       "directions": "",
       "url": "https://iusd.instructure.com/courses/153566/assignments/2184319",
       "updatedAt": "2026-08-21T17:52:40Z"
+    },
+    {
+      "id": "2184298",
+      "courseId": "153566",
+      "name": "Unit 1 LT2 Quiz 2",
+      "course": "Computer Science A (AP) - Sakallah, F",
+      "dueAt": "2025-09-01T06:00:00Z",
+      "points": 5,
+      "bucket": "pending",
+      "status": "Past due",
+      "submittedAt": null,
+      "gradedAt": null,
+      "directions": "",
+      "url": "https://iusd.instructure.com/courses/153566/assignments/2184298",
+      "updatedAt": "2026-08-23T16:06:47Z"
     },
     {
       "id": "2157529",
@@ -212,14 +227,7 @@
       "updatedAt": "2026-08-18T21:25:20Z"
     }
   ],
-  "changes": [
-    {
-      "type": "changed",
-      "id": "2193258",
-      "name": "Living Like Weasels Questions ",
-      "course": "English Language A (AP) - Kane, K"
-    }
-  ],
-  "summary": "2 assignments are past due. Next due: Read p. 42-72  for U.S. History A (AP) - Harrington, J on Mon, Aug 24, 8:30 AM. 1 new or changed assignment in this check.",
+  "changes": [],
+  "summary": "3 assignments are past due. Next due: Read p. 42-72  for U.S. History A (AP) - Harrington, J on Mon, Aug 24, 8:30 AM.",
   "error": ""
 }

@@ -5,11 +5,11 @@ cssclasses:
 
 # Canvas Checkup
 
-> [!info] Last checked Sat, Aug 22, 4:19 PM. Obsidian checks Canvas hourly from 8 AM through 11 PM and resets its change tracker at 6 AM.
+> [!info] Last checked Sun, Aug 23, 11:28 AM. Obsidian checks Canvas hourly from 8 AM through 11 PM and resets its change tracker at 6 AM.
 
 ## Check status
 
-2 assignments are past due. Next due: Read p. 42-72  for U.S. History A (AP) - Harrington, J on Mon, Aug 24, 8:30 AM. 1 new or changed assignment in this check.
+3 assignments are past due. Next due: Read p. 42-72  for U.S. History A (AP) - Harrington, J on Mon, Aug 24, 8:30 AM.
 
 ## Pending assignments
 
@@ -20,6 +20,18 @@ cssclasses:
 - **Points:** 28
 - **Status:** Past due
 - **Canvas:** https://iusd.instructure.com/courses/153566/assignments/2184319
+
+**Directions**
+
+No written directions were included on Canvas.
+
+### Unit 1 LT2 Quiz 2
+
+- **Class:** Computer Science A (AP) - Sakallah, F
+- **Due:** Sun, Aug 31, 11:00 PM
+- **Points:** 5
+- **Status:** Past due
+- **Canvas:** https://iusd.instructure.com/courses/153566/assignments/2184298
 
 **Directions**
 
