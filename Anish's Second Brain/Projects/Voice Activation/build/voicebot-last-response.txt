@@ -1,3 +1,11 @@
-I’m not sure what action you want taken—the transcription appears incomplete: “And soon as it has a home base, some of whom have E…”
+I can’t safely act on this transcription yet. It seems to mention configuring the VoiceBot/Codex setup with a global hotkey or push-to-talk behavior, possibly starting automatically and working regardless of which app is active.
 
-Please resend or clarify the intended request.
+Please restate the request in one short sentence, such as:
+
+“Make VoiceBot start with Windows and use [key] as a global push-to-talk hotkey.”
+
+Also clarify whether you want it to:
+
+- listen continuously or only while holding a key;
+- launch automatically at sign-in;
+- send speech to Codex, Spotify, or another app.
