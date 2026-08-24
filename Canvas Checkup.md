@@ -5,11 +5,11 @@ cssclasses:
 
 # Canvas Checkup
 
-> [!info] Last checked Mon, Aug 24, 4:15 PM. Obsidian checks Canvas hourly from 8 AM through 11 PM and resets its change tracker at 6 AM.
+> [!info] Last checked Mon, Aug 24, 4:24 PM. Obsidian checks Canvas hourly from 8 AM through 11 PM and resets its change tracker at 6 AM.
 
 ## Check status
 
-4 assignments are past due. Next due: Nutrition Notes for Health - semester course - Klamberg, K on Tue, Aug 25, 11:59 PM. 6 new or changed assignments in this check.
+4 assignments are past due. Next due: Nutrition Notes for Health - semester course - Klamberg, K on Tue, Aug 25, 11:59 PM.
 
 ## Pending assignments
 
