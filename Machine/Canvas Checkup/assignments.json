@@ -1,5 +1,5 @@
 {
-  "updatedAt": "2026-08-24T05:00:03.991Z",
+  "updatedAt": "2026-08-24T22:55:30.675Z",
   "assignments": [
     {
       "id": "2184319",
@@ -229,5 +229,5 @@
   ],
   "changes": [],
   "summary": "3 assignments are past due. Next due: Read p. 42-72  for U.S. History A (AP) - Harrington, J on Mon, Aug 24, 8:30 AM.",
-  "error": ""
+  "error": "leaf.view.render is not a function"
 }

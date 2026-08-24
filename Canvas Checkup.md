@@ -5,11 +5,11 @@ cssclasses:
 
 # Canvas Checkup
 
-> [!info] Last checked Sun, Aug 23, 10:00 PM. Obsidian checks Canvas hourly from 8 AM through 11 PM and resets its change tracker at 6 AM.
+> [!info] Last checked Mon, Aug 24, 3:55 PM. Obsidian checks Canvas hourly from 8 AM through 11 PM and resets its change tracker at 6 AM.
 
 ## Check status
 
-3 assignments are past due. Next due: Read p. 42-72  for U.S. History A (AP) - Harrington, J on Mon, Aug 24, 8:30 AM.
+4 assignments are past due. Next due: Nutrition Notes for Health - semester course - Klamberg, K on Tue, Aug 25, 11:59 PM. 6 new or changed assignments in this check.
 
 ## Pending assignments
 
@@ -54,7 +54,7 @@ Sophomore Year Reflection
 - **Class:** U.S. History A (AP) - Harrington, J
 - **Due:** Mon, Aug 24, 8:30 AM
 - **Points:** 9
-- **Status:** Not submitted
+- **Status:** Past due
 - **Canvas:** https://iusd.instructure.com/courses/153647/assignments/2184646
 
 **Directions**
@@ -73,6 +73,30 @@ Read Ch. 2 p. 42-72 for the quiz on Monday. This is your link to the online text
 
 https://docs.google.com/document/d/1MXek0Wo_6dgv-ysTjGIhEC1KrsYFwy9M0VDAnwVxkJk/edit?usp=sharing
 
+### 1.2 Variables and Data Types
+
+- **Class:** Computer Science A (AP) - Sakallah, F
+- **Due:** Sat, Aug 29, 11:59 PM
+- **Points:** 32
+- **Status:** Not submitted
+- **Canvas:** https://iusd.instructure.com/courses/153566/assignments/2184329
+
+**Directions**
+
+No written directions were included on Canvas.
+
+### For the quiz on Monday 8/31, read p. 82-111 (chapter 3).
+
+- **Class:** U.S. History A (AP) - Harrington, J
+- **Due:** Mon, Aug 31, 11:59 PM
+- **Points:** 9
+- **Status:** Not submitted
+- **Canvas:** https://iusd.instructure.com/courses/153647/assignments/2198526
+
+**Directions**
+
+https://www.biknotes.com/_files/ugd/b8b6dc_3a883217a41448b89d2ea2737337eccd.pdf
+
 ### U3 if Statements Exam
 
 - **Class:** Computer Science A (AP) - Sakallah, F
@@ -86,6 +110,18 @@ https://docs.google.com/document/d/1MXek0Wo_6dgv-ysTjGIhEC1KrsYFwy9M0VDAnwVxkJk/
 No written directions were included on Canvas.
 
 ## Submitted assignments
+
+### Popcorn Lab Submission
+
+- **Class:** Physics 2A (AP) - Elmasri, J
+- **Due:** Sun, Aug 23, 11:59 PM
+- **Points:** 0
+- **Status:** Submitted; awaiting grade
+- **Canvas:** https://iusd.instructure.com/courses/153624/assignments/2195488
+
+**Directions**
+
+No written directions were included on Canvas.
 
 ### Living Like Weasels Questions 
 
@@ -110,30 +146,6 @@ Living Like Weasels Questions
 **Directions**
 
 Read the course Syllabus and make sure you understand the HW policy. Then, please upload a pdf scan of the signature section to this assignment
-
-### Health Triangle Reflection
-
-- **Class:** Health - semester course - Klamberg, K
-- **Due:** Fri, Aug 21, 11:59 PM
-- **Points:** 4
-- **Status:** Submitted; awaiting grade
-- **Canvas:** https://iusd.instructure.com/courses/153422/assignments/2187904
-
-**Directions**
-
-Health Triangle Reflection Activity - students write: Pick 2 statements from the assessment where you rated a 0 or 1. What makes those habits difficult for you? Pick 2 statements from the assessment where you gave a confident “3” - why do you think those are “easy” habits for you?
-
-### Health Triangle
-
-- **Class:** Health - semester course - Klamberg, K
-- **Due:** Thu, Aug 20, 11:59 PM
-- **Points:** 4
-- **Status:** Submitted; awaiting grade
-- **Canvas:** https://iusd.instructure.com/courses/153422/assignments/2187903
-
-**Directions**
-
-https://docs.google.com/document/d/1Ijv4RBglMTzAoOK2l3Rxkbn3ad4bGHJIws3UOk_PbTA/edit?usp=sharing
 
 ### Introduction Poster
 
@@ -184,6 +196,30 @@ After reviewing the syllabus with your parent / guardian, please complete the si
 After reviewing the Non-District Adopted Software with your parent / guardian, please sign it, scan as a pdf and upload to this assignment.
 
 ## Graded assignments
+
+### Health Triangle Reflection
+
+- **Class:** Health - semester course - Klamberg, K
+- **Due:** Fri, Aug 21, 11:59 PM
+- **Points:** 4
+- **Status:** Graded
+- **Canvas:** https://iusd.instructure.com/courses/153422/assignments/2187904
+
+**Directions**
+
+Health Triangle Reflection Activity - students write: Pick 2 statements from the assessment where you rated a 0 or 1. What makes those habits difficult for you? Pick 2 statements from the assessment where you gave a confident “3” - why do you think those are “easy” habits for you?
+
+### Health Triangle
+
+- **Class:** Health - semester course - Klamberg, K
+- **Due:** Thu, Aug 20, 11:59 PM
+- **Points:** 4
+- **Status:** Graded
+- **Canvas:** https://iusd.instructure.com/courses/153422/assignments/2187903
+
+**Directions**
+
+https://docs.google.com/document/d/1Ijv4RBglMTzAoOK2l3Rxkbn3ad4bGHJIws3UOk_PbTA/edit?usp=sharing
 
 ### Day 1
 
