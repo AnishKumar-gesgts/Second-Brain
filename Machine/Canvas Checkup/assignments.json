@@ -1,5 +1,5 @@
 {
-  "updatedAt": "2026-08-24T22:55:30.675Z",
+  "updatedAt": "2026-08-24T23:15:03.711Z",
   "assignments": [
     {
       "id": "2184319",
@@ -54,7 +54,7 @@
       "dueAt": "2026-08-24T15:30:00Z",
       "points": 9,
       "bucket": "pending",
-      "status": "Not submitted",
+      "status": "Past due",
       "submittedAt": null,
       "gradedAt": null,
       "directions": "Read Ch. 2 p. 42-72 for the quiz on Monday. This is your link to the online textbook for now. https://ia600601.us.archive.org/32/items/AmericasHistory/America%27s%20History%2C%20For%20the%20AP_%20-%20James%20A.%20Henretta.pdf OR https://www.biknotes.com/_files/ugd/b8b6dc_27e025940d2b45f7a87d0bc336e231c6.pdf For my class, you do not have to take notes, and you cannot use any study materials for the weekly quiz. You also do not have to read the purple, yellow, or brown pages, just the black and white pages. It is most important that you know the key terms/vocabulary, the specific people, places, things, events, etc. But, I may quiz you on something that is not bold or in italics. So, read carefully. It should take about 2 hours for the 20-30 pages, but it will become easier and faster as you go through the school year. If you put it off until Sunday night, it may be frustrating for you. Perhaps, start early, and pace it out. You have the 40-minute period on 'anchor day' to respond in handwritten short paragraphs to the nine reading comprehension questions (3 sets of 3 SAQs, 1,2,3 ABC). Each period will have a different version of the quiz, but I strive to make them fair and equal in difficulty and content coverage. Each quiz is worth 9 points. You cannot take it another day. This is your first required formative assessment.",
@@ -77,6 +77,36 @@
       "updatedAt": "2026-08-20T21:35:10Z"
     },
     {
+      "id": "2184329",
+      "courseId": "153566",
+      "name": "1.2 Variables and Data Types",
+      "course": "Computer Science A (AP) - Sakallah, F",
+      "dueAt": "2026-08-30T06:59:59Z",
+      "points": 32,
+      "bucket": "pending",
+      "status": "Not submitted",
+      "submittedAt": null,
+      "gradedAt": null,
+      "directions": "",
+      "url": "https://iusd.instructure.com/courses/153566/assignments/2184329",
+      "updatedAt": "2026-08-24T15:20:03Z"
+    },
+    {
+      "id": "2198526",
+      "courseId": "153647",
+      "name": "For the quiz on Monday 8/31, read p. 82-111 (chapter 3).",
+      "course": "U.S. History A (AP) - Harrington, J",
+      "dueAt": "2026-09-01T06:59:59Z",
+      "points": 9,
+      "bucket": "pending",
+      "status": "Not submitted",
+      "submittedAt": null,
+      "gradedAt": null,
+      "directions": "https://www.biknotes.com/_files/ugd/b8b6dc_3a883217a41448b89d2ea2737337eccd.pdf",
+      "url": "https://iusd.instructure.com/courses/153647/assignments/2198526",
+      "updatedAt": "2026-08-24T17:47:16Z"
+    },
+    {
       "id": "2184307",
       "courseId": "153566",
       "name": "U3 if Statements Exam",
@@ -90,6 +120,21 @@
       "directions": "",
       "url": "https://iusd.instructure.com/courses/153566/assignments/2184307",
       "updatedAt": "2026-08-17T22:22:35Z"
+    },
+    {
+      "id": "2195488",
+      "courseId": "153624",
+      "name": "Popcorn Lab Submission",
+      "course": "Physics 2A (AP) - Elmasri, J",
+      "dueAt": "2026-08-24T06:59:59Z",
+      "points": 0,
+      "bucket": "submitted",
+      "status": "Submitted; awaiting grade",
+      "submittedAt": "2026-08-24T17:08:45Z",
+      "gradedAt": null,
+      "directions": "",
+      "url": "https://iusd.instructure.com/courses/153624/assignments/2195488",
+      "updatedAt": "2026-08-21T17:35:10Z"
     },
     {
       "id": "2193258",
@@ -120,36 +165,6 @@
       "directions": "Read the course Syllabus and make sure you understand the HW policy. Then, please upload a pdf scan of the signature section to this assignment",
       "url": "https://iusd.instructure.com/courses/153566/assignments/2186802",
       "updatedAt": "2026-08-19T18:07:31Z"
-    },
-    {
-      "id": "2187904",
-      "courseId": "153422",
-      "name": "Health Triangle Reflection",
-      "course": "Health - semester course - Klamberg, K",
-      "dueAt": "2026-08-22T06:59:59Z",
-      "points": 4,
-      "bucket": "submitted",
-      "status": "Submitted; awaiting grade",
-      "submittedAt": "2026-08-20T22:00:47Z",
-      "gradedAt": null,
-      "directions": "Health Triangle Reflection Activity - students write: Pick 2 statements from the assessment where you rated a 0 or 1. What makes those habits difficult for you? Pick 2 statements from the assessment where you gave a confident “3” - why do you think those are “easy” habits for you?",
-      "url": "https://iusd.instructure.com/courses/153422/assignments/2187904",
-      "updatedAt": "2026-08-20T21:27:14Z"
-    },
-    {
-      "id": "2187903",
-      "courseId": "153422",
-      "name": "Health Triangle",
-      "course": "Health - semester course - Klamberg, K",
-      "dueAt": "2026-08-21T06:59:59Z",
-      "points": 4,
-      "bucket": "submitted",
-      "status": "Submitted; awaiting grade",
-      "submittedAt": "2026-08-20T21:55:32Z",
-      "gradedAt": null,
-      "directions": "https://docs.google.com/document/d/1Ijv4RBglMTzAoOK2l3Rxkbn3ad4bGHJIws3UOk_PbTA/edit?usp=sharing",
-      "url": "https://iusd.instructure.com/courses/153422/assignments/2187903",
-      "updatedAt": "2026-08-20T21:26:51Z"
     },
     {
       "id": "2187905",
@@ -212,6 +227,36 @@
       "updatedAt": "2026-08-18T14:30:20Z"
     },
     {
+      "id": "2187904",
+      "courseId": "153422",
+      "name": "Health Triangle Reflection",
+      "course": "Health - semester course - Klamberg, K",
+      "dueAt": "2026-08-22T06:59:59Z",
+      "points": 4,
+      "bucket": "graded",
+      "status": "Graded",
+      "submittedAt": "2026-08-20T22:00:47Z",
+      "gradedAt": "2026-08-24T21:45:53Z",
+      "directions": "Health Triangle Reflection Activity - students write: Pick 2 statements from the assessment where you rated a 0 or 1. What makes those habits difficult for you? Pick 2 statements from the assessment where you gave a confident “3” - why do you think those are “easy” habits for you?",
+      "url": "https://iusd.instructure.com/courses/153422/assignments/2187904",
+      "updatedAt": "2026-08-20T21:27:14Z"
+    },
+    {
+      "id": "2187903",
+      "courseId": "153422",
+      "name": "Health Triangle",
+      "course": "Health - semester course - Klamberg, K",
+      "dueAt": "2026-08-21T06:59:59Z",
+      "points": 4,
+      "bucket": "graded",
+      "status": "Graded",
+      "submittedAt": "2026-08-20T21:55:32Z",
+      "gradedAt": "2026-08-24T21:39:44Z",
+      "directions": "https://docs.google.com/document/d/1Ijv4RBglMTzAoOK2l3Rxkbn3ad4bGHJIws3UOk_PbTA/edit?usp=sharing",
+      "url": "https://iusd.instructure.com/courses/153422/assignments/2187903",
+      "updatedAt": "2026-08-20T21:26:51Z"
+    },
+    {
       "id": "2187921",
       "courseId": "153422",
       "name": "Day 1",
@@ -227,7 +272,44 @@
       "updatedAt": "2026-08-18T21:25:20Z"
     }
   ],
-  "changes": [],
-  "summary": "3 assignments are past due. Next due: Read p. 42-72  for U.S. History A (AP) - Harrington, J on Mon, Aug 24, 8:30 AM.",
-  "error": "leaf.view.render is not a function"
+  "changes": [
+    {
+      "type": "changed",
+      "id": "2184646",
+      "name": "Read p. 42-72 ",
+      "course": "U.S. History A (AP) - Harrington, J"
+    },
+    {
+      "type": "new",
+      "id": "2184329",
+      "name": "1.2 Variables and Data Types",
+      "course": "Computer Science A (AP) - Sakallah, F"
+    },
+    {
+      "type": "new",
+      "id": "2198526",
+      "name": "For the quiz on Monday 8/31, read p. 82-111 (chapter 3).",
+      "course": "U.S. History A (AP) - Harrington, J"
+    },
+    {
+      "type": "new",
+      "id": "2195488",
+      "name": "Popcorn Lab Submission",
+      "course": "Physics 2A (AP) - Elmasri, J"
+    },
+    {
+      "type": "changed",
+      "id": "2187904",
+      "name": "Health Triangle Reflection",
+      "course": "Health - semester course - Klamberg, K"
+    },
+    {
+      "type": "changed",
+      "id": "2187903",
+      "name": "Health Triangle",
+      "course": "Health - semester course - Klamberg, K"
+    }
+  ],
+  "summary": "4 assignments are past due. Next due: Nutrition Notes for Health - semester course - Klamberg, K on Tue, Aug 25, 11:59 PM. 6 new or changed assignments in this check.",
+  "error": ""
 }
