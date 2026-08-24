@@ -1,0 +1,9 @@
+{
+  "id": "apush-reading-notes",
+  "name": "APUSH Reading Notes",
+  "version": "1.0.0",
+  "minAppVersion": "1.5.0",
+  "description": "Checks once at Obsidian startup for a new APUSH Canvas reading and runs the APUSH reading-notes skill only when notes are missing.",
+  "author": "Anish's Second Brain",
+  "isDesktopOnly": true
+}
