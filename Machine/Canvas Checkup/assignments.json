@@ -1,5 +1,5 @@
 {
-  "updatedAt": "2026-08-24T23:24:45.014Z",
+  "updatedAt": "2026-08-25T00:13:01.805Z",
   "assignments": [
     {
       "id": "2184319",
@@ -274,5 +274,5 @@
   ],
   "changes": [],
   "summary": "4 assignments are past due. Next due: Nutrition Notes for Health - semester course - Klamberg, K on Tue, Aug 25, 11:59 PM.",
-  "error": ""
+  "error": "leaf.view.render is not a function"
 }
