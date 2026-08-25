@@ -5,7 +5,7 @@ cssclasses:
 
 # Canvas Checkup
 
-> [!info] Last checked Mon, Aug 24, 9:53 PM. Obsidian checks Canvas hourly from 8 AM through 11 PM and resets its change tracker at 6 AM.
+> [!info] Last checked Mon, Aug 24, 10:02 PM. Obsidian checks Canvas hourly from 8 AM through 11 PM and resets its change tracker at 6 AM.
 
 ## Check status
 
