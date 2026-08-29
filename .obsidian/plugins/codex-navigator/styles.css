@@ -755,3 +755,60 @@
   .cw-message { grid-template-columns: 34px minmax(0, 1fr); gap: 10px; }
   .cw-message-avatar { width: 32px; height: 32px; }
 }
+
+
+/* Obsidian Mobile: thumb-friendly, single-column workspace with safe-area spacing. */
+.cw-mobile-notice {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  max-width: 720px;
+  margin: 0 auto 18px;
+  padding: 14px;
+  border: 1px solid color-mix(in srgb, var(--interactive-accent) 45%, var(--background-modifier-border));
+  border-radius: 14px;
+  background: color-mix(in srgb, var(--interactive-accent) 8%, var(--background-secondary));
+}
+.cw-mobile-notice-icon { display: grid; flex: 0 0 auto; place-items: center; width: 34px; height: 34px; color: var(--text-accent); }
+.cw-mobile-notice-icon svg { width: 22px; height: 22px; }
+.cw-mobile-notice strong { font-size: var(--font-ui-medium); }
+.cw-mobile-notice p { margin: 4px 0 0; color: var(--text-muted); line-height: 1.45; }
+.cw-composer.is-mobile-disabled { opacity: 0.72; }
+
+@media (max-width: 620px) {
+  .cw-home { padding: 16px 12px calc(22px + env(safe-area-inset-bottom)); }
+  .cw-home-hero { gap: 12px; margin-bottom: 14px; }
+  .cw-home-hero h1 { font-size: 30px; }
+  .cw-home-hero p { font-size: 15px; }
+  .cw-hero-actions { width: 100%; flex-wrap: wrap; }
+  .cw-hero-actions button { min-height: 44px; flex: 1 1 132px; }
+  .cw-bookmarks-bar { overflow-x: auto; flex-wrap: nowrap; padding-bottom: 5px; scrollbar-width: none; }
+  .cw-bookmarks-bar::-webkit-scrollbar { display: none; }
+  .cw-bookmark { min-height: 44px; flex: 0 0 auto; }
+  .cw-search-card { grid-template-columns: auto minmax(0, 1fr); gap: 8px; }
+  .cw-search-card button { grid-column: 1 / -1; min-height: 44px; }
+  .cw-quick-grid { grid-template-columns: 1fr; }
+  .cw-quick-action { min-height: 64px; }
+  .cw-home-columns { display: flex; flex-direction: column; gap: 12px; }
+  .cw-recent-panel, .cw-notion-panel, .cw-today-panel { width: 100%; }
+  .cw-notion-embed { height: 68vh; min-height: 480px; }
+  .cw-codex-schedule-bar { flex-wrap: wrap; }
+  .cw-codex-schedule-bar input { flex-basis: 100%; min-height: 44px; }
+  .cw-codex-schedule-bar button { flex: 1 1 120px; min-height: 44px; }
+  .cw-timer-widget { padding: 13px; }
+  .cw-timer-actions .cw-timer-secondary { min-height: 40px; }
+  .cw-timer-tabs button, .cw-timer-controls button { min-height: 44px; flex: 1; }
+  .cw-timer-tabs, .cw-timer-controls { width: 100%; }
+  .cw-timer-inputs input { width: 31%; min-height: 44px; }
+  .cw-chat { padding-bottom: env(safe-area-inset-bottom); }
+  .cw-chat-actions { overflow-x: auto; flex-wrap: nowrap; }
+  .cw-chat-actions select { flex: 0 0 auto; min-height: 42px; }
+  .cw-chat-messages { padding: 14px 10px; }
+  .cw-message-text { font-size: 16px; }
+  .cw-suggestions { grid-template-columns: 1fr; }
+  .cw-composer-wrap { width: calc(100% - 16px); padding-bottom: calc(8px + env(safe-area-inset-bottom)); }
+  .cw-icon-button, .cw-send-button, .cw-stop-button { min-width: 44px; min-height: 44px; }
+}
+
+.is-mobile .cw-panel-resizer { display: none; }
+.is-mobile .cw-home-columns { grid-template-columns: 1fr; }
