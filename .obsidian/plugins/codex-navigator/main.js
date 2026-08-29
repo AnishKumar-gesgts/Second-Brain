@@ -1,6 +1,13 @@
-const { Plugin, ItemView, PluginSettingTab, Setting, Notice, setIcon, FuzzySuggestModal, MarkdownRenderer, requestUrl } = require("obsidian");
-const { spawn } = require("child_process");
-const path = require("path");
+const { Plugin, ItemView, PluginSettingTab, Setting, Notice, setIcon, FuzzySuggestModal, MarkdownRenderer, requestUrl, Platform } = require("obsidian");
+
+// Node and Electron APIs do not exist in Obsidian Mobile. Load them lazily only
+// on desktop so the rest of the workspace can run on iOS and Android.
+let spawn = null;
+if (!Platform.isMobile) ({ spawn } = require("child_process"));
+
+function baseName(filePath) {
+  return String(filePath || "").split(/[\\/]/).pop() || "attachment";
+}
 
 const HOME_VIEW = "codex-workspace-home";
 const CHAT_VIEW = "codex-workspace-chat";
@@ -535,7 +542,7 @@ class CodexChatView extends ItemView {
     setIcon(mark, "sparkles");
     const heading = identity.createDiv();
     heading.createEl("strong", { text: this.chat.title });
-    heading.createEl("span", { text: this.chat.threadId ? "Persistent Codex CLI conversation" : "New Codex CLI conversation" });
+    heading.createEl("span", { text: Platform.isMobile ? "Vault workspace · Codex chat requires desktop" : (this.chat.threadId ? "Persistent Codex CLI conversation" : "New Codex CLI conversation") });
 
     const actions = header.createDiv({ cls: "cw-chat-actions" });
     const modelSelect = actions.createEl("select", { cls: "dropdown cw-model-select", attr: { autocomplete: "off", "aria-label": "Codex model", title: "Choose model" } });
@@ -589,6 +596,13 @@ class CodexChatView extends ItemView {
     googleInput.addEventListener("keydown", (event) => { if (event.key === "Enter") doGoogle(); });
 
     this.messages = root.createDiv({ cls: "cw-chat-messages" });
+    if (Platform.isMobile) {
+      const mobileNotice = this.messages.createDiv({ cls: "cw-mobile-notice" });
+      setIcon(mobileNotice.createSpan({ cls: "cw-mobile-notice-icon" }), "smartphone");
+      const mobileCopy = mobileNotice.createDiv();
+      mobileCopy.createEl("strong", { text: "Codex chat needs the desktop app" });
+      mobileCopy.createEl("p", { text: "Obsidian Mobile cannot run the local Codex CLI. Home, notes, tasks, Canvas Checkup, Notion sync, Google search, and focus tools remain available on this phone." });
+    }
     if (!this.chat.messages.length) {
       const welcome = this.messages.createDiv({ cls: "cw-chat-welcome" });
       const welcomeIcon = welcome.createDiv({ cls: "cw-welcome-icon" });
@@ -627,7 +641,7 @@ class CodexChatView extends ItemView {
     iconButton(composerTools, "paperclip", "Attach a vault file", () => this.openVaultFilePicker());
     iconButton(composerTools, "folder-open", "Attach a file from your computer", () => this.fileInput.click());
     const activeModel = MODEL_OPTIONS.find((item) => item.value === (this.chat.model || this.plugin.settings.model));
-    this.composerModel = composerTools.createSpan({ cls: "cw-composer-model", text: activeModel?.label || this.chat.model || this.plugin.settings.model });
+    this.composerModel = composerTools.createSpan({ cls: "cw-composer-model", text: Platform.isMobile ? "Desktop Codex CLI required" : (activeModel?.label || this.chat.model || this.plugin.settings.model) });
 
     this.fileInput = composer.createEl("input", { attr: { type: "file", multiple: "true", "aria-label": "Attach files" } });
     this.fileInput.addClass("cw-hidden-file-input");
@@ -651,7 +665,17 @@ class CodexChatView extends ItemView {
     this.stopButton = iconButton(composerFooter, "square", "Stop", () => this.stopRun());
     this.stopButton.addClass("cw-stop-button");
     this.stopButton.hide();
-    this.statusEl = composerWrap.createDiv({ cls: "cw-chat-status", text: this.chat.threadId ? "Conversation ready" : "Ready to start a new conversation" });
+    this.statusEl = composerWrap.createDiv({ cls: "cw-chat-status", text: Platform.isMobile ? "Browse and manage your vault from Home; continue Codex chats on desktop." : (this.chat.threadId ? "Conversation ready" : "Ready to start a new conversation") });
+    if (Platform.isMobile) {
+      modelSelect.disabled = true;
+      effortSelect.disabled = true;
+      permission.disabled = true;
+      this.promptInput.disabled = true;
+      this.promptInput.placeholder = "Codex CLI conversations are available on desktop";
+      this.sendButton.disabled = true;
+      this.fileInput.disabled = true;
+      composer.addClass("is-mobile-disabled");
+    }
   }
 
   showGoogleSearch() {
@@ -678,7 +702,7 @@ class CodexChatView extends ItemView {
         new Notice(`Could not access ${file.name}. Try attaching it from the vault picker.`);
         continue;
       }
-      this.addAttachment({ name: file.name || path.basename(fullPath), path: fullPath, vaultPath: null });
+      this.addAttachment({ name: file.name || baseName(fullPath), path: fullPath, vaultPath: null });
     }
   }
 
@@ -752,6 +776,10 @@ class CodexChatView extends ItemView {
   }
 
   async submit() {
+    if (Platform.isMobile || !spawn) {
+      new Notice("Codex chat requires Obsidian Desktop because the Codex CLI cannot run on iOS or Android.");
+      return;
+    }
     const question = this.promptInput.value.trim();
     if (!question || this.runningProcess) return;
     const attachments = [...this.pendingAttachments];
@@ -1153,6 +1181,10 @@ module.exports = class CodexWorkspacePlugin extends Plugin {
   }
 
   async openTimerPopout() {
+    if (Platform.isMobile) {
+      new Notice("The timer stays inside Obsidian on mobile because pop-out windows are not supported.");
+      return;
+    }
     try {
       const pip = window.documentPictureInPicture?.requestWindow
         ? await window.documentPictureInPicture.requestWindow({ width: 360, height: 300 })
@@ -1397,6 +1429,10 @@ module.exports = class CodexWorkspacePlugin extends Plugin {
         }
         this.refreshNotionEmbed();
         resolve(`Updated ${target.name} — working date: ${workingDate} (${dateProperty}).`);
+        return;
+      }
+      if (Platform.isMobile || !spawn) {
+        reject(new Error("This free-form schedule request needs the desktop Codex CLI. Direct requests such as “move Physics to tomorrow” still work on mobile."));
         return;
       }
       const executable = this.settings.codexPath || "codex";
