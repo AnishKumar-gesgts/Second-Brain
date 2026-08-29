@@ -1,9 +1,9 @@
 {
   "id": "vault-auto-push",
   "name": "Vault Auto Push",
-  "version": "0.3.2",
+  "version": "0.4.0",
   "minAppVersion": "1.11.0",
-  "description": "Automatically pushes queued Obsidian vault changes to a private GitHub repository on a schedule, with mobile-aware controls.",
+  "description": "Safely pushes and fast-forwards an Obsidian vault from GitHub on configurable schedules, including mobile.",
   "author": "Anish Kumar",
   "isDesktopOnly": false
 }
