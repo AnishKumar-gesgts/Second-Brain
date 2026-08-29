@@ -1,9 +1,9 @@
 {
   "id": "codex-navigator",
   "name": "Codex Workspace",
-  "version": "2.1.0",
+  "version": "2.2.0",
   "minAppVersion": "1.8.0",
-  "description": "Persistent Codex CLI conversations, Google search, and a task-focused home page in native Obsidian tabs.",
+  "description": "A mobile-friendly Second Brain home, tasks, Canvas, Notion, search, timers, and desktop Codex CLI conversations.",
   "author": "Anish",
-  "isDesktopOnly": true
+  "isDesktopOnly": false
 }
