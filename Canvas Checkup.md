@@ -5,11 +5,11 @@ cssclasses:
 
 # Canvas Checkup
 
-> [!info] Last checked Mon, Aug 24, 10:02 PM. Obsidian checks Canvas hourly from 8 AM through 11 PM and resets its change tracker at 6 AM.
+> [!info] Last checked Sun, Aug 30, 2:00 PM. Obsidian checks Canvas hourly from 8 AM through 11 PM and resets its change tracker at 6 AM.
 
 ## Check status
 
-4 assignments are past due. Next due: Nutrition Notes for Health - semester course - Klamberg, K on Tue, Aug 25, 11:59 PM.
+9 assignments are past due. Next due: For the quiz on Monday 8/31, read p. 82-111 (chapter 3). for U.S. History A (AP) - Harrington, J on Mon, Aug 31, 11:59 PM. 5 new or changed assignments in this check.
 
 ## Pending assignments
 
@@ -20,18 +20,6 @@ cssclasses:
 - **Points:** 28
 - **Status:** Past due
 - **Canvas:** https://iusd.instructure.com/courses/153566/assignments/2184319
-
-**Directions**
-
-No written directions were included on Canvas.
-
-### Unit 1 LT2 Quiz 2
-
-- **Class:** Computer Science A (AP) - Sakallah, F
-- **Due:** Sun, Aug 31, 11:00 PM
-- **Points:** 5
-- **Status:** Past due
-- **Canvas:** https://iusd.instructure.com/courses/153566/assignments/2184298
 
 **Directions**
 
@@ -66,7 +54,7 @@ Read Ch. 2 p. 42-72 for the quiz on Monday. This is your link to the online text
 - **Class:** Health - semester course - Klamberg, K
 - **Due:** Tue, Aug 25, 11:59 PM
 - **Points:** 4
-- **Status:** Not submitted
+- **Status:** Past due
 - **Canvas:** https://iusd.instructure.com/courses/153422/assignments/2187907
 
 **Directions**
@@ -78,8 +66,56 @@ https://docs.google.com/document/d/1MXek0Wo_6dgv-ysTjGIhEC1KrsYFwy9M0VDAnwVxkJk/
 - **Class:** Computer Science A (AP) - Sakallah, F
 - **Due:** Sat, Aug 29, 11:59 PM
 - **Points:** 32
-- **Status:** Not submitted
+- **Status:** Past due
 - **Canvas:** https://iusd.instructure.com/courses/153566/assignments/2184329
+
+**Directions**
+
+No written directions were included on Canvas.
+
+### 1.3 Expressions and Output
+
+- **Class:** Computer Science A (AP) - Sakallah, F
+- **Due:** Sat, Aug 29, 11:59 PM
+- **Points:** 20
+- **Status:** Past due
+- **Canvas:** https://iusd.instructure.com/courses/153566/assignments/2184331
+
+**Directions**
+
+No written directions were included on Canvas.
+
+### 1.4 Assignment and Input
+
+- **Class:** Computer Science A (AP) - Sakallah, F
+- **Due:** Sat, Aug 29, 11:59 PM
+- **Points:** 16
+- **Status:** Past due
+- **Canvas:** https://iusd.instructure.com/courses/153566/assignments/2184333
+
+**Directions**
+
+No written directions were included on Canvas.
+
+### 1.5 Casting and Ranges
+
+- **Class:** Computer Science A (AP) - Sakallah, F
+- **Due:** Sat, Aug 29, 11:59 PM
+- **Points:** 22
+- **Status:** Past due
+- **Canvas:** https://iusd.instructure.com/courses/153566/assignments/2184335
+
+**Directions**
+
+No written directions were included on Canvas.
+
+### 1.6 Compound Operators
+
+- **Class:** Computer Science A (AP) - Sakallah, F
+- **Due:** Sat, Aug 29, 11:59 PM
+- **Points:** 18
+- **Status:** Past due
+- **Canvas:** https://iusd.instructure.com/courses/153566/assignments/2184337
 
 **Directions**
 
@@ -97,19 +133,67 @@ No written directions were included on Canvas.
 
 https://www.biknotes.com/_files/ugd/b8b6dc_3a883217a41448b89d2ea2737337eccd.pdf
 
-### U3 if Statements Exam
+### Unit 1A Review
 
 - **Class:** Computer Science A (AP) - Sakallah, F
-- **Due:** No due date
-- **Points:** 55
+- **Due:** Wed, Sep 2, 11:59 PM
+- **Points:** 48
 - **Status:** Not submitted
-- **Canvas:** https://iusd.instructure.com/courses/153566/assignments/2184307
+- **Canvas:** https://iusd.instructure.com/courses/153566/assignments/2184472
 
 **Directions**
 
 No written directions were included on Canvas.
 
 ## Submitted assignments
+
+### Practice Timed Write: Abigail Adams Letter to Her Son
+
+- **Class:** English Language A (AP) - Kane, K
+- **Due:** Fri, Aug 28, 11:59 PM
+- **Points:** 0
+- **Status:** Submitted; awaiting grade
+- **Canvas:** https://iusd.instructure.com/courses/153470/assignments/2201307
+
+**Directions**
+
+Practice Timed Write: Abigail Adams Letter to Her Son
+
+### Ideal Gas law Lab
+
+- **Class:** Physics 2A (AP) - Elmasri, J
+- **Due:** Mon, Aug 31, 11:59 PM
+- **Points:** 0
+- **Status:** Submitted; awaiting grade
+- **Canvas:** https://iusd.instructure.com/courses/153624/assignments/2201669
+
+**Directions**
+
+Gimme gimme
+
+### Abigail Adams Letter to Her Son Questions
+
+- **Class:** English Language A (AP) - Kane, K
+- **Due:** Thu, Aug 27, 11:59 PM
+- **Points:** 6
+- **Status:** Submitted; awaiting grade
+- **Canvas:** https://iusd.instructure.com/courses/153470/assignments/2199697
+
+**Directions**
+
+Abigail Adams Letter to Her Son Questions
+
+### AI Nutrition 
+
+- **Class:** Health - semester course - Klamberg, K
+- **Due:** Tue, Aug 25, 11:59 PM
+- **Points:** 4
+- **Status:** Submitted; awaiting grade
+- **Canvas:** https://iusd.instructure.com/courses/153422/assignments/2187888
+
+**Directions**
+
+No written directions were included on Canvas.
 
 ### Popcorn Lab Submission
 
@@ -146,18 +230,6 @@ Living Like Weasels Questions
 **Directions**
 
 Read the course Syllabus and make sure you understand the HW policy. Then, please upload a pdf scan of the signature section to this assignment
-
-### Introduction Poster
-
-- **Class:** Health - semester course - Klamberg, K
-- **Due:** Thu, Aug 20, 11:59 PM
-- **Points:** 4
-- **Status:** Submitted; awaiting grade
-- **Canvas:** https://iusd.instructure.com/courses/153422/assignments/2187905
-
-**Directions**
-
-https://docs.google.com/document/d/1jneoXXfTXN0f03Yo7-AsuXlBnUHruCrKqqQS2nN5RwU/edit?usp=sharing
 
 ### Unit 1A Digital Notes
 
@@ -220,6 +292,18 @@ Health Triangle Reflection Activity - students write: Pick 2 statements from the
 **Directions**
 
 https://docs.google.com/document/d/1Ijv4RBglMTzAoOK2l3Rxkbn3ad4bGHJIws3UOk_PbTA/edit?usp=sharing
+
+### Introduction Poster
+
+- **Class:** Health - semester course - Klamberg, K
+- **Due:** Thu, Aug 20, 11:59 PM
+- **Points:** 4
+- **Status:** Graded
+- **Canvas:** https://iusd.instructure.com/courses/153422/assignments/2187905
+
+**Directions**
+
+https://docs.google.com/document/d/1jneoXXfTXN0f03Yo7-AsuXlBnUHruCrKqqQS2nN5RwU/edit?usp=sharing
 
 ### Day 1
 

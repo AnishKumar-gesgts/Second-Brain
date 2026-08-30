@@ -27,6 +27,8 @@ const DEFAULT_SETTINGS = {
   homeRequestProvider: "codex",
   ollamaBaseUrl: "http://127.0.0.1:11434",
   ollamaModel: "",
+  ollamaContextWindow: 8192,
+  ultimateThinkerContextWindow: 12288,
   canvasBaseUrl: "https://iusd.instructure.com",
   canvasToken: "",
   canvasSyncEnabled: false,
@@ -42,8 +44,12 @@ const MODEL_OPTIONS = [
 
 const PROVIDER_OPTIONS = [
   { value: "codex", label: "Codex" },
-  { value: "ollama", label: "Ollama (local)" }
+  { value: "ollama", label: "Ollama (local)" },
+  { value: "ultimate", label: "Ultimate Thinker" }
 ];
+
+const ULTIMATE_MODEL = "ultimate-thinker";
+const DEFAULT_OLLAMA_WORKERS = ["llama3.1:8b", "qwen2.5-coder:7b", "deepseek-r1:8b"];
 
 class VaultFilePicker extends FuzzySuggestModal {
   constructor(app, onChoose) {
@@ -69,6 +75,17 @@ function iconButton(parent, icon, label, handler) {
   setIcon(button, icon);
   button.addEventListener("click", handler);
   return button;
+}
+
+function normalizeLatexDelimiters(value) {
+  const parts = String(value || "").split(/(```[\s\S]*?```)/g);
+  return parts.map((part, index) => {
+    if (index % 2 === 1) return part;
+    return part
+      .replace(/\\\[([\s\S]*?)\\\]/g, (_, body) => `$$\n${body}\n$$`)
+      .replace(/\\\(([\s\S]*?)\\\)/g, (_, body) => `$${body}$`)
+      .replace(/(^|\n)\[\s*\n([\s\S]*?\\[A-Za-z][\s\S]*?)\n\](?=\n|$)/g, (_, prefix, body) => `${prefix}$$\n${body}\n$$`);
+  }).join("");
 }
 
 function todayKey() {
@@ -556,6 +573,8 @@ class CodexChatView extends ItemView {
     const root = this.containerEl.children[1];
     root.empty();
     root.addClass("cw-chat");
+    const activeProvider = this.chat.provider || this.plugin.settings.provider || "codex";
+    this.chat.provider = activeProvider;
 
     const header = root.createDiv({ cls: "cw-chat-header" });
     const identity = header.createDiv({ cls: "cw-chat-identity" });
@@ -563,7 +582,7 @@ class CodexChatView extends ItemView {
     setIcon(mark, "sparkles");
     const heading = identity.createDiv();
     heading.createEl("strong", { text: this.chat.title });
-    heading.createEl("span", { text: this.chat.provider === "ollama" ? "Local Ollama conversation" : this.chat.threadId ? "Persistent Codex CLI conversation" : "New Codex CLI conversation" });
+    heading.createEl("span", { text: activeProvider === "ultimate" ? "Codex bridge · three local Ollama workers · Codex review" : activeProvider === "ollama" ? "Local Ollama conversation" : this.chat.threadId ? "Persistent Codex CLI conversation" : "New Codex CLI conversation" });
 
     const actions = header.createDiv({ cls: "cw-chat-actions" });
     const providerSelect = actions.createEl("select", { cls: "dropdown cw-provider-select", attr: { autocomplete: "off", "aria-label": "AI provider", title: "Choose AI provider" } });
@@ -571,18 +590,20 @@ class CodexChatView extends ItemView {
       const option = providerSelect.createEl("option", { text: provider.label });
       option.value = provider.value;
     });
-    providerSelect.value = this.chat.provider || this.plugin.settings.provider || "codex";
+    providerSelect.value = activeProvider;
     const modelSelect = actions.createEl("select", { cls: "dropdown cw-model-select", attr: { autocomplete: "off", "aria-label": "AI model", title: "Choose model" } });
     const populateModels = (provider) => {
       modelSelect.empty();
-      const options = provider === "ollama"
+      const options = provider === "ultimate"
+        ? [{ value: ULTIMATE_MODEL, label: "Ultimate Thinker", detail: "Codex + 3 local models" }]
+        : provider === "ollama"
         ? (this.plugin.ollamaModels?.length ? this.plugin.ollamaModels.map((value) => ({ value, label: value, detail: "local" })) : [{ value: this.chat.model || this.plugin.settings.ollamaModel || "", label: this.chat.model || this.plugin.settings.ollamaModel || "Set in settings", detail: "local" }])
         : MODEL_OPTIONS;
       options.forEach((model) => {
         const option = modelSelect.createEl("option", { text: model.detail ? `${model.label} · ${model.detail}` : model.label });
         option.value = model.value;
       });
-      modelSelect.value = this.chat.model || (provider === "ollama" ? this.plugin.settings.ollamaModel : this.plugin.settings.model) || options[0]?.value || "";
+      modelSelect.value = this.chat.model || (provider === "ultimate" ? ULTIMATE_MODEL : provider === "ollama" ? this.plugin.settings.ollamaModel : this.plugin.settings.model) || options[0]?.value || "";
     };
     populateModels(providerSelect.value);
     modelSelect.addEventListener("change", async () => {
@@ -593,7 +614,7 @@ class CodexChatView extends ItemView {
     });
     providerSelect.addEventListener("change", async () => {
       this.chat.provider = providerSelect.value;
-      this.chat.model = providerSelect.value === "ollama" ? (this.plugin.settings.ollamaModel || this.plugin.ollamaModels?.[0] || "") : (this.plugin.settings.model || MODEL_OPTIONS[0].value);
+      this.chat.model = providerSelect.value === "ultimate" ? ULTIMATE_MODEL : providerSelect.value === "ollama" ? (this.plugin.settings.ollamaModel || this.plugin.ollamaModels?.[0] || "") : (this.plugin.settings.model || MODEL_OPTIONS[0].value);
       populateModels(providerSelect.value);
       this.composerModel?.setText(this.chat.model || "Ollama model not set");
       await this.plugin.savePluginData();
@@ -764,9 +785,9 @@ class CodexChatView extends ItemView {
     const avatar = message.createDiv({ cls: "cw-message-avatar" });
     setIcon(avatar, role === "user" ? "user" : "sparkles");
     const body = message.createDiv({ cls: "cw-message-content" });
-    body.createDiv({ cls: "cw-message-label", text: role === "user" ? "You" : "Codex" });
+    body.createDiv({ cls: "cw-message-label", text: role === "user" ? "You" : this.chat.provider === "ultimate" ? "Ultimate Thinker" : this.chat.provider === "ollama" ? "Ollama" : "Codex" });
     const messageText = body.createDiv({ cls: "cw-message-text markdown-rendered" });
-    const markdown = String(text || "");
+    const markdown = normalizeLatexDelimiters(String(text || ""));
     MarkdownRenderer.render(this.app, markdown, messageText, "", this).catch(() => {
       messageText.empty();
       messageText.setText(markdown);
@@ -821,6 +842,10 @@ class CodexChatView extends ItemView {
 
     if ((this.chat.provider || this.plugin.settings.provider) === "ollama") {
       await this.submitOllama(question, attachments);
+      return;
+    }
+    if ((this.chat.provider || this.plugin.settings.provider) === "ultimate") {
+      await this.submitUltimate(question, attachments);
       return;
     }
 
@@ -903,6 +928,29 @@ class CodexChatView extends ItemView {
     }
   }
 
+  async submitUltimate(question, attachments) {
+    this.setBusy(true, "Codex is tailoring the local-model prompts…");
+    try {
+      const history = this.chat.messages.slice(0, -1).slice(-8).map((message) => `${message.role.toUpperCase()}: ${message.text}`).join("\n\n");
+      const prompt = `${question}${history ? `\n\nRECENT CONVERSATION\n${history}` : ""}${this.attachmentPrompt(attachments)}`;
+      const answer = await this.plugin.runUltimateThinkerRequest(prompt, (status) => this.setBusy(true, status));
+      this.chat.messages.push({ role: "assistant", text: answer, at: Date.now() });
+      this.renderMessage("assistant", answer);
+      await this.plugin.savePluginData();
+      this.statusEl.setText("Conversation saved · Ultimate Thinker");
+    } catch (error) {
+      const text = `I couldn't complete the Ultimate Thinker request.\n\n${error.message}`;
+      this.chat.messages.push({ role: "assistant", text, at: Date.now() });
+      this.renderMessage("assistant", text);
+      await this.plugin.savePluginData();
+      this.statusEl.setText("Ultimate Thinker run failed");
+      this.statusEl.addClass("is-error");
+    } finally {
+      this.setBusy(false);
+      this.promptInput.focus();
+    }
+  }
+
   consumeJson(chunk) {
     this.stdoutBuffer += chunk;
     const lines = this.stdoutBuffer.split(/\r?\n/);
@@ -965,7 +1013,7 @@ class CodexWorkspaceSettings extends PluginSettingTab {
     const { containerEl } = this;
     containerEl.empty();
     containerEl.createEl("h2", { text: "Codex Workspace" });
-    containerEl.createEl("p", { text: "Choose Codex or a model installed in Ollama. Ollama requests stay on this computer; Google searches open through Obsidian’s core Web Viewer." });
+    containerEl.createEl("p", { text: "Choose Codex, a local Ollama model, or Ultimate Thinker. Ultimate Thinker uses Codex for planning and review while three local Ollama models do the main work." });
     new Setting(containerEl).setName("Default AI provider").addDropdown((dropdown) => {
       PROVIDER_OPTIONS.forEach((provider) => dropdown.addOption(provider.value, provider.label));
       dropdown.setValue(this.plugin.settings.provider).onChange(async (value) => { this.plugin.settings.provider = value; await this.plugin.savePluginData(); });
@@ -993,6 +1041,12 @@ class CodexWorkspaceSettings extends PluginSettingTab {
       .setPlaceholder("llama3.2, qwen2.5, etc.")
       .setValue(this.plugin.settings.ollamaModel)
       .onChange(async (value) => { this.plugin.settings.ollamaModel = value.trim(); await this.plugin.savePluginData(); }));
+    new Setting(containerEl).setName("Ollama context window").setDesc("Local context size sent to Ollama, in tokens.").addText((text) => text
+      .setValue(String(this.plugin.settings.ollamaContextWindow))
+      .onChange(async (value) => { const parsed = Number(value); if (Number.isInteger(parsed) && parsed >= 1024) { this.plugin.settings.ollamaContextWindow = parsed; await this.plugin.savePluginData(); } }));
+    new Setting(containerEl).setName("Ultimate Thinker context window").setDesc("Context budget for each local worker during Ultimate Thinker runs.").addText((text) => text
+      .setValue(String(this.plugin.settings.ultimateThinkerContextWindow))
+      .onChange(async (value) => { const parsed = Number(value); if (Number.isInteger(parsed) && parsed >= 1024) { this.plugin.settings.ultimateThinkerContextWindow = parsed; await this.plugin.savePluginData(); } }));
     new Setting(containerEl).setName("Refresh Ollama models").setDesc("Checks the local Ollama server; nothing is sent to GitHub.").addButton((button) => button.setButtonText("Refresh").onClick(async () => { await this.plugin.refreshOllamaModels(); this.display(); }));
     new Setting(containerEl).setName("Reasoning effort").addDropdown((dropdown) => dropdown
       .addOption("low", "Low")
@@ -1127,7 +1181,7 @@ module.exports = class CodexWorkspacePlugin extends Plugin {
         threadId: null,
         permission: this.settings.defaultPermission || "workspace-write",
         provider: this.settings.provider || "codex",
-        model: (this.settings.provider || "codex") === "ollama" ? (this.settings.ollamaModel || "") : (this.settings.model || "gpt-5.6-luna"),
+        model: (this.settings.provider || "codex") === "ultimate" ? ULTIMATE_MODEL : (this.settings.provider || "codex") === "ollama" ? (this.settings.ollamaModel || "") : (this.settings.model || "gpt-5.6-luna"),
         reasoningEffort: this.settings.reasoningEffort || "low",
         messages: [],
         createdAt: Date.now()
@@ -1159,7 +1213,7 @@ module.exports = class CodexWorkspacePlugin extends Plugin {
     }
   }
 
-  async runOllamaRequest(messages, model) {
+  async runOllamaRequest(messages, model, contextWindow = this.settings.ollamaContextWindow) {
     const base = (this.settings.ollamaBaseUrl || DEFAULT_SETTINGS.ollamaBaseUrl).replace(/\/$/, "");
     const selectedModel = model || this.settings.ollamaModel;
     if (!selectedModel) throw new Error("Choose an Ollama model in Codex Workspace settings first.");
@@ -1167,13 +1221,61 @@ module.exports = class CodexWorkspacePlugin extends Plugin {
       url: `${base}/api/chat`,
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ model: selectedModel, messages, stream: false }),
+      body: JSON.stringify({ model: selectedModel, messages, stream: false, options: { num_ctx: Number(contextWindow) || DEFAULT_SETTINGS.ollamaContextWindow } }),
       throw: false
     });
     if (response.status < 200 || response.status >= 300) throw new Error(response.json?.error || response.text || `Ollama returned HTTP ${response.status}`);
     const answer = response.json?.message?.content;
     if (!answer) throw new Error("Ollama returned no answer.");
     return answer;
+  }
+
+  runCodexRequest(prompt) {
+    return new Promise((resolve, reject) => {
+      const executable = this.settings.codexPath || "codex";
+      const args = ["exec", "--json", "--skip-git-repo-check", "--color", "never", "--cd", this.getVaultPath(), "--sandbox", "read-only", "--model", this.settings.model || "gpt-5.6-luna", "-c", `model_reasoning_effort=\"${this.settings.reasoningEffort || "low"}\"`, "-"];
+      const child = spawn(executable, args, { cwd: this.getVaultPath(), windowsHide: true, shell: false, env: { ...process.env, NO_COLOR: "1" } });
+      let output = "", buffer = "", stderr = "", finalAnswer = "";
+      child.stdout.setEncoding("utf8"); child.stderr.setEncoding("utf8");
+      child.stdout.on("data", (chunk) => {
+        output += chunk; buffer += chunk;
+        const lines = buffer.split(/\r?\n/); buffer = lines.pop() || "";
+        for (const line of lines) { try { const event = JSON.parse(line); if (event.type === "item.completed" && event.item?.type === "agent_message") finalAnswer = event.item.text || finalAnswer; } catch (_) {} }
+      });
+      child.stderr.on("data", (chunk) => { stderr += chunk; });
+      child.on("error", reject);
+      child.on("close", (code) => {
+        if (code !== 0) { reject(new Error(stderr.trim() || output.trim().split(/\r?\n/).slice(-3).join("\n") || `Codex exited with code ${code}`)); return; }
+        resolve(finalAnswer || output.trim());
+      });
+      child.stdin.end(prompt, "utf8");
+    });
+  }
+
+  async runUltimateThinkerRequest(userPrompt, onStatus = () => {}) {
+    const skillContext = await this.getRelevantSkillContext(userPrompt);
+    onStatus("Codex is clarifying and decomposing the request…");
+    const planner = await this.runCodexRequest(`You are the planning stage of Ultimate Thinker. Do not ask the user for repository paths that are listed below; they are already known. Do not use tools or edit files. Create a concise, provider-neutral work plan for three local Ollama models. If the request is genuinely ambiguous, return JSON exactly as {"clarification":"question"}. Otherwise return JSON exactly as {"worker_prompt":"tailored task prompt","success_criteria":["criterion"]}. Include relevant skill instructions and context requirements, but do not invent unavailable tools.\n\nKNOWN WORKSPACE\nVault root: ${this.getVaultPath()}\nCodex Workspace source: .obsidian/plugins/codex-navigator/main.js\nVault Git source: .obsidian/plugins/vault-auto-push/main.js\nRelevant local skills: Machine/Skills/*/SKILL.md\n\n${skillContext}\n\nUSER REQUEST\n${userPrompt}`);
+    const planMatch = planner.match(/\{[\s\S]*\}/);
+    let plan = null;
+    try { plan = planMatch ? JSON.parse(planMatch[0]) : null; } catch (_) {}
+    if (plan?.clarification) return `Clarification needed before I run the local models: ${plan.clarification}`;
+    const workerPrompt = plan?.worker_prompt || planner;
+    const criteria = Array.isArray(plan?.success_criteria) ? plan.success_criteria.join("\n- ") : "Answer the user's request accurately and state assumptions.";
+    const workers = [
+      ["llama3.1:8b", "Act as the broad subject-matter analyst."],
+      ["qwen2.5-coder:7b", "Act as the technical and implementation specialist."],
+      ["deepseek-r1:8b", "Act as the independent reasoner and skeptical critic."]
+    ];
+    onStatus("Three local Ollama models are working in parallel…");
+    const results = await Promise.allSettled(workers.map(([model, role]) => this.runOllamaRequest([
+      { role: "system", content: `${role} Follow the relevant vault skills below. You are one worker in a multi-model workflow. Do not claim unavailable tools or hide uncertainty.\n\n${skillContext}` },
+      { role: "user", content: `${workerPrompt}\n\nSUCCESS CRITERIA\n- ${criteria}` }
+    ], model, this.settings.ultimateThinkerContextWindow)));
+    const successful = results.map((result, index) => result.status === "fulfilled" ? `WORKER ${index + 1} (${workers[index][0]}):\n${result.value}` : `WORKER ${index + 1} (${workers[index][0]}): FAILED\n${result.reason?.message || result.reason}`).join("\n\n---\n\n");
+    if (!results.some((result) => result.status === "fulfilled")) throw new Error("All three Ollama workers failed. Check that the installed models and local Ollama server are available.");
+    onStatus("Codex is checking the local results and polishing the answer…");
+    return await this.runCodexRequest(`You are the final review stage of Ultimate Thinker. Do not use tools or edit files. Answer the original user request using the local worker reports below. Check for contradictions, unsupported claims, missing assumptions, and failure reports. Apply the success criteria. Return only the polished answer, without discussing hidden orchestration unless it matters to the user.\n\nORIGINAL REQUEST\n${userPrompt}\n\nSUCCESS CRITERIA\n- ${criteria}\n\nLOCAL WORKER REPORTS\n${successful}`);
   }
 
   async getRelevantSkillContext(question) {

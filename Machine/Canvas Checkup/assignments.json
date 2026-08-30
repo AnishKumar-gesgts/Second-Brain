@@ -1,5 +1,5 @@
 {
-  "updatedAt": "2026-08-25T05:02:21.275Z",
+  "updatedAt": "2026-08-30T21:00:04.004Z",
   "assignments": [
     {
       "id": "2184319",
@@ -15,21 +15,6 @@
       "directions": "",
       "url": "https://iusd.instructure.com/courses/153566/assignments/2184319",
       "updatedAt": "2026-08-21T17:52:40Z"
-    },
-    {
-      "id": "2184298",
-      "courseId": "153566",
-      "name": "Unit 1 LT2 Quiz 2",
-      "course": "Computer Science A (AP) - Sakallah, F",
-      "dueAt": "2025-09-01T06:00:00Z",
-      "points": 5,
-      "bucket": "pending",
-      "status": "Past due",
-      "submittedAt": null,
-      "gradedAt": null,
-      "directions": "",
-      "url": "https://iusd.instructure.com/courses/153566/assignments/2184298",
-      "updatedAt": "2026-08-23T16:06:47Z"
     },
     {
       "id": "2157529",
@@ -69,7 +54,7 @@
       "dueAt": "2026-08-26T06:59:59Z",
       "points": 4,
       "bucket": "pending",
-      "status": "Not submitted",
+      "status": "Past due",
       "submittedAt": null,
       "gradedAt": null,
       "directions": "https://docs.google.com/document/d/1MXek0Wo_6dgv-ysTjGIhEC1KrsYFwy9M0VDAnwVxkJk/edit?usp=sharing",
@@ -92,6 +77,66 @@
       "updatedAt": "2026-08-24T15:20:03Z"
     },
     {
+      "id": "2184331",
+      "courseId": "153566",
+      "name": "1.3 Expressions and Output",
+      "course": "Computer Science A (AP) - Sakallah, F",
+      "dueAt": "2026-08-30T06:59:59Z",
+      "points": 20,
+      "bucket": "pending",
+      "status": "Not submitted",
+      "submittedAt": null,
+      "gradedAt": null,
+      "directions": "",
+      "url": "https://iusd.instructure.com/courses/153566/assignments/2184331",
+      "updatedAt": "2026-08-27T14:31:49Z"
+    },
+    {
+      "id": "2184333",
+      "courseId": "153566",
+      "name": "1.4 Assignment and Input",
+      "course": "Computer Science A (AP) - Sakallah, F",
+      "dueAt": "2026-08-30T06:59:59Z",
+      "points": 16,
+      "bucket": "pending",
+      "status": "Not submitted",
+      "submittedAt": null,
+      "gradedAt": null,
+      "directions": "",
+      "url": "https://iusd.instructure.com/courses/153566/assignments/2184333",
+      "updatedAt": "2026-08-27T14:32:11Z"
+    },
+    {
+      "id": "2184335",
+      "courseId": "153566",
+      "name": "1.5 Casting and Ranges",
+      "course": "Computer Science A (AP) - Sakallah, F",
+      "dueAt": "2026-08-30T06:59:59Z",
+      "points": 22,
+      "bucket": "pending",
+      "status": "Not submitted",
+      "submittedAt": null,
+      "gradedAt": null,
+      "directions": "",
+      "url": "https://iusd.instructure.com/courses/153566/assignments/2184335",
+      "updatedAt": "2026-08-27T15:04:36Z"
+    },
+    {
+      "id": "2184337",
+      "courseId": "153566",
+      "name": "1.6 Compound Operators",
+      "course": "Computer Science A (AP) - Sakallah, F",
+      "dueAt": "2026-08-30T06:59:59Z",
+      "points": 18,
+      "bucket": "pending",
+      "status": "Not submitted",
+      "submittedAt": null,
+      "gradedAt": null,
+      "directions": "",
+      "url": "https://iusd.instructure.com/courses/153566/assignments/2184337",
+      "updatedAt": "2026-08-27T15:05:39Z"
+    },
+    {
       "id": "2198526",
       "courseId": "153647",
       "name": "For the quiz on Monday 8/31, read p. 82-111 (chapter 3).",
@@ -107,19 +152,79 @@
       "updatedAt": "2026-08-24T17:47:16Z"
     },
     {
-      "id": "2184307",
+      "id": "2184472",
       "courseId": "153566",
-      "name": "U3 if Statements Exam",
+      "name": "Unit 1A Review",
       "course": "Computer Science A (AP) - Sakallah, F",
-      "dueAt": null,
-      "points": 55,
+      "dueAt": "2026-09-03T06:59:59Z",
+      "points": 48,
       "bucket": "pending",
       "status": "Not submitted",
       "submittedAt": null,
       "gradedAt": null,
       "directions": "",
-      "url": "https://iusd.instructure.com/courses/153566/assignments/2184307",
-      "updatedAt": "2026-08-17T22:22:35Z"
+      "url": "https://iusd.instructure.com/courses/153566/assignments/2184472",
+      "updatedAt": "2026-08-27T15:06:03Z"
+    },
+    {
+      "id": "2201307",
+      "courseId": "153470",
+      "name": "Practice Timed Write: Abigail Adams Letter to Her Son",
+      "course": "English Language A (AP) - Kane, K",
+      "dueAt": "2026-08-29T06:59:59Z",
+      "points": 0,
+      "bucket": "submitted",
+      "status": "Submitted; awaiting grade",
+      "submittedAt": "2026-08-28T18:33:48Z",
+      "gradedAt": null,
+      "directions": "Practice Timed Write: Abigail Adams Letter to Her Son",
+      "url": "https://iusd.instructure.com/courses/153470/assignments/2201307",
+      "updatedAt": "2026-08-28T17:10:01Z"
+    },
+    {
+      "id": "2201669",
+      "courseId": "153624",
+      "name": "Ideal Gas law Lab",
+      "course": "Physics 2A (AP) - Elmasri, J",
+      "dueAt": "2026-09-01T06:59:59Z",
+      "points": 0,
+      "bucket": "submitted",
+      "status": "Submitted; awaiting grade",
+      "submittedAt": "2026-08-28T15:53:44Z",
+      "gradedAt": null,
+      "directions": "Gimme gimme",
+      "url": "https://iusd.instructure.com/courses/153624/assignments/2201669",
+      "updatedAt": "2026-08-28T15:32:58Z"
+    },
+    {
+      "id": "2199697",
+      "courseId": "153470",
+      "name": "Abigail Adams Letter to Her Son Questions",
+      "course": "English Language A (AP) - Kane, K",
+      "dueAt": "2026-08-28T06:59:59Z",
+      "points": 6,
+      "bucket": "submitted",
+      "status": "Submitted; awaiting grade",
+      "submittedAt": "2026-08-28T09:51:40Z",
+      "gradedAt": null,
+      "directions": "Abigail Adams Letter to Her Son Questions",
+      "url": "https://iusd.instructure.com/courses/153470/assignments/2199697",
+      "updatedAt": "2026-08-26T17:10:03Z"
+    },
+    {
+      "id": "2187888",
+      "courseId": "153422",
+      "name": "AI Nutrition ",
+      "course": "Health - semester course - Klamberg, K",
+      "dueAt": "2026-08-26T06:59:59Z",
+      "points": 4,
+      "bucket": "submitted",
+      "status": "Submitted; awaiting grade",
+      "submittedAt": "2026-08-25T22:06:26Z",
+      "gradedAt": null,
+      "directions": "",
+      "url": "https://iusd.instructure.com/courses/153422/assignments/2187888",
+      "updatedAt": "2026-08-25T21:58:05Z"
     },
     {
       "id": "2195488",
@@ -165,21 +270,6 @@
       "directions": "Read the course Syllabus and make sure you understand the HW policy. Then, please upload a pdf scan of the signature section to this assignment",
       "url": "https://iusd.instructure.com/courses/153566/assignments/2186802",
       "updatedAt": "2026-08-19T18:07:31Z"
-    },
-    {
-      "id": "2187905",
-      "courseId": "153422",
-      "name": "Introduction Poster",
-      "course": "Health - semester course - Klamberg, K",
-      "dueAt": "2026-08-21T06:59:59Z",
-      "points": 4,
-      "bucket": "submitted",
-      "status": "Submitted; awaiting grade",
-      "submittedAt": "2026-08-20T21:41:40Z",
-      "gradedAt": null,
-      "directions": "https://docs.google.com/document/d/1jneoXXfTXN0f03Yo7-AsuXlBnUHruCrKqqQS2nN5RwU/edit?usp=sharing",
-      "url": "https://iusd.instructure.com/courses/153422/assignments/2187905",
-      "updatedAt": "2026-08-20T21:26:15Z"
     },
     {
       "id": "2193292",
@@ -257,6 +347,21 @@
       "updatedAt": "2026-08-20T21:26:51Z"
     },
     {
+      "id": "2187905",
+      "courseId": "153422",
+      "name": "Introduction Poster",
+      "course": "Health - semester course - Klamberg, K",
+      "dueAt": "2026-08-21T06:59:59Z",
+      "points": 4,
+      "bucket": "graded",
+      "status": "Graded",
+      "submittedAt": "2026-08-20T21:41:40Z",
+      "gradedAt": "2026-08-25T22:03:57Z",
+      "directions": "https://docs.google.com/document/d/1jneoXXfTXN0f03Yo7-AsuXlBnUHruCrKqqQS2nN5RwU/edit?usp=sharing",
+      "url": "https://iusd.instructure.com/courses/153422/assignments/2187905",
+      "updatedAt": "2026-08-20T21:26:15Z"
+    },
+    {
       "id": "2187921",
       "courseId": "153422",
       "name": "Day 1",
@@ -273,6 +378,6 @@
     }
   ],
   "changes": [],
-  "summary": "4 assignments are past due. Next due: Nutrition Notes for Health - semester course - Klamberg, K on Tue, Aug 25, 11:59 PM.",
+  "summary": "4 assignments are past due. Next due: 1.2 Variables and Data Types for Computer Science A (AP) - Sakallah, F on Sat, Aug 29, 11:59 PM. 3 new or changed assignments in this check.",
   "error": "leaf.view.render is not a function"
 }
