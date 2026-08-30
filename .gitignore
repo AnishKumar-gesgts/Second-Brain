@@ -4,6 +4,7 @@
 
 # Vault Auto Push local settings/status
 .obsidian/plugins/vault-auto-push/data.json
+.obsidian/plugins/codex-navigator/data.json
 
 # Local/system files
 .DS_Store

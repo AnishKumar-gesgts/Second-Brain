@@ -8,6 +8,9 @@ const {
   TFile,
   requestUrl,
 } = require("obsidian");
+const { spawn } = require("child_process");
+const fs = require("fs");
+const path = require("path");
 
 const QUEUE_SCHEMA_VERSION = 2;
 const STARTUP_ARM_DELAY_MS = 2000;
@@ -17,10 +20,7 @@ const DEFAULT_SETTINGS = {
   repo: "Second-Brain",
   branch: "main",
   secretName: "",
-  intervalMinutes: 5,
-  autoPush: true,
-  pushOnLoad: true,
-  commitPrefix: "Obsidian auto-push",
+  commitPrefix: "Obsidian manual push",
   pendingChanged: [],
   pendingDeleted: [],
   queueSchemaVersion: 0,
@@ -32,10 +32,12 @@ const IGNORED_PATHS = new Set([
   ".obsidian/workspace.json",
   ".obsidian/workspace-mobile.json",
   ".obsidian/plugins/vault-auto-push/data.json",
+  ".obsidian/plugins/codex-navigator/data.json",
   "Coding Output/Latex/basic-miktex-25.12-x64.exe",
   "Coding Output/Latex/strawberry-perl-5.42.0.1-64bit.msi",
 ]);
 const IGNORED_COMPONENTS = new Set([".git", ".git-backup", "node_modules", ".trash"]);
+const LOCAL_ONLY_FILES = [".obsidian/plugins/codex-navigator/data.json", ".obsidian/plugins/vault-auto-push/data.json"];
 
 module.exports = class VaultAutoPushPlugin extends Plugin {
   async onload() {
@@ -48,9 +50,12 @@ module.exports = class VaultAutoPushPlugin extends Plugin {
     this.lastPush = null;
     this.lastError = null;
     this.lastSkipped = [];
-    this.timerId = null;
     this.persistTimer = null;
     this.armTimer = null;
+    this.gitState = "idle";
+    this.gitDetails = "";
+    this.statusBar = this.addStatusBarItem();
+    this.updateGitState("idle");
 
     this.addSettingTab(new VaultAutoPushSettingTab(this.app, this));
 
@@ -60,7 +65,14 @@ module.exports = class VaultAutoPushPlugin extends Plugin {
       callback: () => void this.pushNow(true),
     });
 
+    this.addCommand({
+      id: "pull-now",
+      name: "Pull vault from GitHub now",
+      callback: () => void this.pullNow(true),
+    });
+
     this.addRibbonIcon("upload-cloud", "Push vault to GitHub", () => void this.pushNow(true));
+    this.addRibbonIcon("download-cloud", "Pull vault from GitHub", () => void this.pullNow(true));
 
     // Obsidian can emit create/modify events for many existing files while the
     // vault is starting. Ignore all file events until startup has settled.
@@ -80,20 +92,6 @@ module.exports = class VaultAutoPushPlugin extends Plugin {
       }
     }));
 
-    this.registerDomEvent(document, "visibilitychange", () => {
-      if (
-        document.visibilityState === "visible" &&
-        this.trackingEnabled &&
-        this.settings.autoPush &&
-        this.settings.pushOnLoad &&
-        (this.changedPaths.size || this.deletedPaths.size)
-      ) {
-        void this.pushNow(false);
-      }
-    });
-
-    this.configureTimer();
-
     this.app.workspace.onLayoutReady(() => {
       // Give Obsidian a short grace period to finish its startup event burst.
       this.armTimer = window.setTimeout(async () => {
@@ -101,19 +99,11 @@ module.exports = class VaultAutoPushPlugin extends Plugin {
         this.trackingEnabled = true;
         await this.persistQueue();
 
-        if (
-          this.settings.pushOnLoad &&
-          this.settings.autoPush &&
-          (this.changedPaths.size || this.deletedPaths.size)
-        ) {
-          void this.pushNow(false);
-        }
       }, STARTUP_ARM_DELAY_MS);
     });
   }
 
   onunload() {
-    if (this.timerId !== null) window.clearInterval(this.timerId);
     if (this.persistTimer !== null) window.clearTimeout(this.persistTimer);
     if (this.armTimer !== null) window.clearTimeout(this.armTimer);
     void this.persistQueue();
@@ -134,31 +124,17 @@ module.exports = class VaultAutoPushPlugin extends Plugin {
       await this.saveData(this.settings);
     }
 
+    // Legacy automatic-sync settings are intentionally ignored and removed.
+    delete this.settings.autoPush;
+    delete this.settings.pushOnLoad;
+    delete this.settings.intervalMinutes;
+
     if (!Array.isArray(this.settings.pendingChanged)) this.settings.pendingChanged = [];
     if (!Array.isArray(this.settings.pendingDeleted)) this.settings.pendingDeleted = [];
   }
 
   async saveSettings() {
     await this.persistQueue();
-    this.configureTimer();
-  }
-
-  configureTimer() {
-    if (this.timerId !== null) window.clearInterval(this.timerId);
-    this.timerId = null;
-    if (!this.settings.autoPush) return;
-
-    const minutes = Math.max(1, Number(this.settings.intervalMinutes) || 5);
-    this.timerId = window.setInterval(() => {
-      if (
-        this.trackingEnabled &&
-        !this.pushing &&
-        (this.changedPaths.size || this.deletedPaths.size)
-      ) {
-        void this.pushNow(false);
-      }
-    }, minutes * 60_000);
-    this.registerInterval(this.timerId);
   }
 
   shouldIgnore(path) {
@@ -246,17 +222,17 @@ module.exports = class VaultAutoPushPlugin extends Plugin {
 
   async pushNow(showNotice) {
     if (!this.trackingEnabled) {
-      if (showNotice) new Notice("Vault Auto Push: finishing startup; try again in a moment.");
+      if (showNotice) new Notice("Vault Git: finishing startup; try again in a moment.");
       return;
     }
 
     if (this.pushing) {
-      if (showNotice) new Notice("Vault Auto Push: a push is already running.");
+      if (showNotice) new Notice("Vault Git: a push is already running.");
       return;
     }
 
     if (!this.settings.owner || !this.settings.repo || !this.settings.branch) {
-      if (showNotice) new Notice("Vault Auto Push: configure the repository first.");
+      if (showNotice) new Notice("Vault Git: configure the repository first.");
       return;
     }
 
@@ -265,7 +241,7 @@ module.exports = class VaultAutoPushPlugin extends Plugin {
 
     if (pathsToUpload.length === 0 && pathsToDelete.length === 0) {
       this.lastPush = new Date();
-      if (showNotice) new Notice("Vault Auto Push: nothing changed.");
+      if (showNotice) new Notice("Vault Git: nothing changed.");
       return;
     }
 
@@ -274,6 +250,7 @@ module.exports = class VaultAutoPushPlugin extends Plugin {
     this.lastSkipped = [];
 
     try {
+      return await (async () => {
       const head = await this.github(`/git/ref/heads/${encodeURIComponent(this.settings.branch)}`);
       const headSha = head.object.sha;
       const baseCommit = await this.github(`/git/commits/${headSha}`);
@@ -327,22 +304,103 @@ module.exports = class VaultAutoPushPlugin extends Plugin {
       this.lastPush = new Date();
       if (showNotice) {
         if (tree.length === 0 && this.lastSkipped.length) {
-          new Notice(`Vault Auto Push: skipped ${this.lastSkipped.length} oversized file(s).`);
+          new Notice(`Vault Git: skipped ${this.lastSkipped.length} oversized file(s).`);
         } else {
           const suffix = this.lastSkipped.length ? ` Skipped ${this.lastSkipped.length} oversized file(s).` : "";
-          new Notice(`Vault Auto Push: pushed successfully.${suffix}`);
+          new Notice(`Vault Git: pushed successfully.${suffix}`);
         }
       }
+      return true;
+      })();
     } catch (error) {
       this.lastError = error instanceof Error ? error.message : String(error);
-      console.error("Vault Auto Push", error);
+      console.error("Vault Git", error);
       await this.persistQueue();
-      if (showNotice) new Notice(`Vault Auto Push failed: ${this.lastError}`);
+      if (showNotice) new Notice(`Vault Git failed: ${this.lastError}`);
     } finally {
       this.pushing = false;
     }
   }
+
+  async pullNow(showNotice = true) {
+    if (this.pushing) {
+      if (showNotice) new Notice("Vault Git: a Git operation is already running.");
+      return false;
+    }
+
+    const basePath = typeof this.app.vault.adapter.getBasePath === "function"
+      ? this.app.vault.adapter.getBasePath()
+      : "";
+    if (!basePath) {
+      if (showNotice) new Notice("Vault Git: the local vault path is unavailable.");
+      return false;
+    }
+
+    this.pushing = true;
+    this.lastError = null;
+    try {
+      const result = await runGitPull(basePath, this.settings.branch || "main");
+      this.changedPaths.clear();
+      this.deletedPaths.clear();
+      await this.persistQueue();
+      this.lastPush = new Date();
+      if (showNotice) new Notice("Vault Git: pulled successfully.");
+      return result;
+    } catch (error) {
+      this.lastError = error instanceof Error ? error.message : String(error);
+      console.error("Vault Git pull", error);
+      if (showNotice) new Notice(`Vault Git pull needs attention: ${shortError(this.lastError)}`);
+      return false;
+    } finally {
+      this.pushing = false;
+    }
+  }
+
+  updateGitState(state, details = "") {
+    this.gitState = state;
+    this.gitDetails = details;
+    if (this.statusBar) {
+      this.statusBar.setText(state === "running" ? "Git: running…" : state === "success" ? "Git: success" : state === "attention" ? "Git: needs attention" : "Git: idle");
+      this.statusBar.setAttribute("aria-label", details || state);
+    }
+  }
+
 };
+
+function shortError(value) { return String(value || "Git operation failed").split(/\r?\n/)[0].slice(0, 220); }
+
+function runGitPull(cwd, branch) {
+  const protectedFiles = LOCAL_ONLY_FILES.map((relativePath) => {
+    const absolutePath = path.join(cwd, ...relativePath.split("/"));
+    try { return { absolutePath, existed: fs.existsSync(absolutePath), bytes: fs.existsSync(absolutePath) ? fs.readFileSync(absolutePath) : null }; } catch (_) { return { absolutePath, existed: false, bytes: null }; }
+  });
+  return new Promise((resolve, reject) => {
+    const child = spawn("git", ["pull", "--ff-only", "origin", branch], {
+      cwd,
+      windowsHide: true,
+      shell: false,
+      env: { ...process.env, GIT_TERMINAL_PROMPT: "0" },
+    });
+    let output = "";
+    child.stdout.setEncoding("utf8");
+    child.stderr.setEncoding("utf8");
+    child.stdout.on("data", (chunk) => { output += chunk; });
+    child.stderr.on("data", (chunk) => { output += chunk; });
+    const restore = () => protectedFiles.forEach(({ absolutePath, existed, bytes }) => {
+      if (bytes !== null) {
+        try { fs.writeFileSync(absolutePath, bytes); } catch (_) {}
+      } else if (!existed && fs.existsSync(absolutePath)) {
+        try { fs.unlinkSync(absolutePath); } catch (_) {}
+      }
+    });
+    child.on("error", (error) => { restore(); reject(error); });
+    child.on("close", (code) => {
+      restore();
+      if (code === 0) resolve(output.trim());
+      else reject(new Error(output.trim() || `git pull exited with code ${code}`));
+    });
+  });
+}
 
 class VaultAutoPushSettingTab extends PluginSettingTab {
   constructor(app, plugin) {
@@ -354,13 +412,13 @@ class VaultAutoPushSettingTab extends PluginSettingTab {
     const { containerEl } = this;
     containerEl.empty();
     containerEl.toggleClass("vault-auto-push-mobile", Platform.isMobile);
-    containerEl.createEl("h2", { text: "Vault Auto Push" });
+    containerEl.createEl("h2", { text: "Vault Git" });
 
     const status = containerEl.createDiv({ cls: "vault-auto-push-status" });
     status.createEl("strong", { text: Platform.isMobile ? "Mobile mode" : "Desktop mode" });
     status.createEl("div", {
       text: Platform.isIosApp
-        ? "iOS detected. Scheduled pushes run while Obsidian is active; pending changes persist across restarts."
+        ? "iOS detected. Git actions are manual; pending changes persist across restarts."
         : Platform.isMobile
           ? "Mobile Obsidian detected."
           : "Desktop Obsidian detected.",
@@ -371,18 +429,30 @@ class VaultAutoPushSettingTab extends PluginSettingTab {
       text: !this.plugin.trackingEnabled
         ? "Status: finishing startup…"
         : this.plugin.pushing
-          ? "Status: pushing…"
+          ? "Status: Git operation running…"
           : this.plugin.lastPush
             ? `Last push/check: ${this.plugin.lastPush.toLocaleString()}`
             : "Status: idle",
     });
-    if (this.plugin.lastError) status.createEl("div", { cls: "vault-auto-push-error", text: this.plugin.lastError });
+    if (this.plugin.lastError) {
+      const details = status.createEl("details", { cls: "vault-auto-push-error" });
+      details.createEl("summary", { text: "Git needs attention" });
+      details.createEl("pre", { text: this.plugin.lastError });
+    }
 
     new Setting(containerEl)
       .setName("Push now")
       .setDesc("Push only files currently queued as changed or deleted.")
       .addButton((button) => button.setButtonText("Push now").setCta().onClick(async () => {
         await this.plugin.pushNow(true);
+        this.display();
+      }));
+
+    new Setting(containerEl)
+      .setName("Pull now")
+      .setDesc("Fast-forward the local vault from GitHub. Local uncommitted changes are never discarded.")
+      .addButton((button) => button.setButtonText("Pull now").onClick(async () => {
+        await this.plugin.pullNow(true);
         this.display();
       }));
 
@@ -417,35 +487,6 @@ class VaultAutoPushSettingTab extends PluginSettingTab {
           await this.plugin.saveSettings();
         }));
 
-    new Setting(containerEl)
-      .setName("Automatic push")
-      .setDesc("Push queued changes on the repeating timer while Obsidian is running.")
-      .addToggle((toggle) => toggle.setValue(this.plugin.settings.autoPush).onChange(async (value) => {
-        this.plugin.settings.autoPush = value;
-        await this.plugin.saveSettings();
-      }));
-
-    new Setting(containerEl)
-      .setName("Interval")
-      .setDesc("Minutes between automatic push attempts.")
-      .addText((text) => text
-        .setPlaceholder("5")
-        .setValue(String(this.plugin.settings.intervalMinutes))
-        .onChange(async (value) => {
-          const parsed = Number(value);
-          if (Number.isFinite(parsed) && parsed >= 1) {
-            this.plugin.settings.intervalMinutes = parsed;
-            await this.plugin.saveSettings();
-          }
-        }));
-
-    new Setting(containerEl)
-      .setName("Push on app load/resume")
-      .setDesc("If pending changes exist, push them when Obsidian starts or returns to the foreground.")
-      .addToggle((toggle) => toggle.setValue(this.plugin.settings.pushOnLoad).onChange(async (value) => {
-        this.plugin.settings.pushOnLoad = value;
-        await this.plugin.saveSettings();
-      }));
   }
 }
 

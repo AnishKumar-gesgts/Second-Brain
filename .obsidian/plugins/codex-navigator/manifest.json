@@ -1,9 +1,9 @@
 {
   "id": "codex-navigator",
   "name": "Codex Workspace",
-  "version": "2.1.0",
+  "version": "2.2.0",
   "minAppVersion": "1.8.0",
-  "description": "Persistent Codex CLI conversations, Google search, and a task-focused home page in native Obsidian tabs.",
+  "description": "Persistent Codex or local Ollama conversations, Google search, and a task-focused home page in native Obsidian tabs.",
   "author": "Anish",
   "isDesktopOnly": true
 }

@@ -9,6 +9,7 @@ const CANVAS_DATA_PATH = "Machine/Canvas Checkup/assignments.json";
 const CANVAS_NOTE_PATH = "Canvas Checkup.md";
 
 const DEFAULT_SETTINGS = {
+  provider: "codex",
   codexPath: "codex",
   model: "gpt-5.6-luna",
   reasoningEffort: "low",
@@ -23,6 +24,9 @@ const DEFAULT_SETTINGS = {
   notionPanelWidth: 34,
   notionEmbedUrl: "https://schedulemgmt.notion.site/ebd//15163c0b69ed805085d1df7f4207ac0a?v=15163c0b69ed81729f38000c5bf2c2b6",
   homeRequestModel: "gpt-5.6-luna",
+  homeRequestProvider: "codex",
+  ollamaBaseUrl: "http://127.0.0.1:11434",
+  ollamaModel: "",
   canvasBaseUrl: "https://iusd.instructure.com",
   canvasToken: "",
   canvasSyncEnabled: false,
@@ -34,6 +38,11 @@ const MODEL_OPTIONS = [
   { value: "gpt-5.6-luna", label: "GPT-5.6 Luna", detail: "Fast" },
   { value: "gpt-5.6-terra", label: "GPT-5.6 Terra", detail: "Balanced" },
   { value: "gpt-5.6-sol", label: "GPT-5.6 Sol", detail: "Deep" }
+];
+
+const PROVIDER_OPTIONS = [
+  { value: "codex", label: "Codex" },
+  { value: "ollama", label: "Ollama (local)" }
 ];
 
 class VaultFilePicker extends FuzzySuggestModal {
@@ -203,6 +212,25 @@ class WorkspaceHomeView extends ItemView {
     });
     const notionPush = heroActions.createEl("button", { text: "Push task status" });
     notionPush.addEventListener("click", () => this.plugin.pushNotionTaskStatus());
+    const gitPush = heroActions.createEl("button", { text: "Git Push" });
+    const gitStatus = root.createDiv({ cls: "cw-git-status", text: "Git controls ready" });
+    const runGit = async (action, button) => {
+      if (button.disabled) return;
+      button.disabled = true;
+      gitStatus.setText(action === "pull" ? "Git pull running…" : "Git push running…");
+      gitStatus.removeClass("is-error");
+      try {
+        const result = await this.plugin.runVaultGit(action);
+        gitStatus.setText(result === false ? "Git needs attention" : "Git operation completed");
+        if (result === false) gitStatus.addClass("is-error");
+      } catch (error) {
+        gitStatus.setText("Git needs attention");
+        gitStatus.addClass("is-error");
+      } finally { button.disabled = false; }
+    };
+    gitPush.addEventListener("click", () => runGit("push", gitPush));
+    const gitPull = heroActions.createEl("button", { text: "Git Pull" });
+    gitPull.addEventListener("click", () => runGit("pull", gitPull));
 
     const bookmarks = root.createDiv({ cls: "cw-bookmarks-bar", attr: { "aria-label": "Workspace bookmarks" } });
     bookmarks.createSpan({ cls: "cw-bookmarks-label", text: "Bookmarks" });
@@ -535,20 +563,44 @@ class CodexChatView extends ItemView {
     setIcon(mark, "sparkles");
     const heading = identity.createDiv();
     heading.createEl("strong", { text: this.chat.title });
-    heading.createEl("span", { text: this.chat.threadId ? "Persistent Codex CLI conversation" : "New Codex CLI conversation" });
+    heading.createEl("span", { text: this.chat.provider === "ollama" ? "Local Ollama conversation" : this.chat.threadId ? "Persistent Codex CLI conversation" : "New Codex CLI conversation" });
 
     const actions = header.createDiv({ cls: "cw-chat-actions" });
-    const modelSelect = actions.createEl("select", { cls: "dropdown cw-model-select", attr: { autocomplete: "off", "aria-label": "Codex model", title: "Choose model" } });
-    MODEL_OPTIONS.forEach((model) => {
-      const option = modelSelect.createEl("option", { text: `${model.label} · ${model.detail}` });
-      option.value = model.value;
+    const providerSelect = actions.createEl("select", { cls: "dropdown cw-provider-select", attr: { autocomplete: "off", "aria-label": "AI provider", title: "Choose AI provider" } });
+    PROVIDER_OPTIONS.forEach((provider) => {
+      const option = providerSelect.createEl("option", { text: provider.label });
+      option.value = provider.value;
     });
-    modelSelect.value = this.chat.model || this.plugin.settings.model || "gpt-5.6-luna";
+    providerSelect.value = this.chat.provider || this.plugin.settings.provider || "codex";
+    const modelSelect = actions.createEl("select", { cls: "dropdown cw-model-select", attr: { autocomplete: "off", "aria-label": "AI model", title: "Choose model" } });
+    const populateModels = (provider) => {
+      modelSelect.empty();
+      const options = provider === "ollama"
+        ? (this.plugin.ollamaModels?.length ? this.plugin.ollamaModels.map((value) => ({ value, label: value, detail: "local" })) : [{ value: this.chat.model || this.plugin.settings.ollamaModel || "", label: this.chat.model || this.plugin.settings.ollamaModel || "Set in settings", detail: "local" }])
+        : MODEL_OPTIONS;
+      options.forEach((model) => {
+        const option = modelSelect.createEl("option", { text: model.detail ? `${model.label} · ${model.detail}` : model.label });
+        option.value = model.value;
+      });
+      modelSelect.value = this.chat.model || (provider === "ollama" ? this.plugin.settings.ollamaModel : this.plugin.settings.model) || options[0]?.value || "";
+    };
+    populateModels(providerSelect.value);
     modelSelect.addEventListener("change", async () => {
       this.chat.model = modelSelect.value;
       const selected = MODEL_OPTIONS.find((item) => item.value === modelSelect.value);
-      this.composerModel?.setText(selected?.label || modelSelect.value);
+      this.composerModel?.setText(selected?.label || modelSelect.value || "Ollama model not set");
       await this.plugin.savePluginData();
+    });
+    providerSelect.addEventListener("change", async () => {
+      this.chat.provider = providerSelect.value;
+      this.chat.model = providerSelect.value === "ollama" ? (this.plugin.settings.ollamaModel || this.plugin.ollamaModels?.[0] || "") : (this.plugin.settings.model || MODEL_OPTIONS[0].value);
+      populateModels(providerSelect.value);
+      this.composerModel?.setText(this.chat.model || "Ollama model not set");
+      await this.plugin.savePluginData();
+      if (providerSelect.value === "ollama") {
+        await this.plugin.refreshOllamaModels();
+        this.render();
+      }
     });
 
     const effortSelect = actions.createEl("select", { cls: "dropdown cw-effort-select", attr: { autocomplete: "off", "aria-label": "Reasoning effort", title: "Reasoning effort" } });
@@ -627,7 +679,7 @@ class CodexChatView extends ItemView {
     iconButton(composerTools, "paperclip", "Attach a vault file", () => this.openVaultFilePicker());
     iconButton(composerTools, "folder-open", "Attach a file from your computer", () => this.fileInput.click());
     const activeModel = MODEL_OPTIONS.find((item) => item.value === (this.chat.model || this.plugin.settings.model));
-    this.composerModel = composerTools.createSpan({ cls: "cw-composer-model", text: activeModel?.label || this.chat.model || this.plugin.settings.model });
+    this.composerModel = composerTools.createSpan({ cls: "cw-composer-model", text: activeModel?.label || this.chat.model || this.plugin.settings.ollamaModel || "Ollama model not set" });
 
     this.fileInput = composer.createEl("input", { attr: { type: "file", multiple: "true", "aria-label": "Attach files" } });
     this.fileInput.addClass("cw-hidden-file-input");
@@ -748,7 +800,7 @@ class CodexChatView extends ItemView {
     const permissionInstruction = this.chat.permission === "read-only"
       ? "This conversation is read-only: inspect and answer without changing files."
       : "This conversation has workspace-write access: make requested vault changes directly and verify them.";
-    return `You are the assistant embedded in this Obsidian vault through Codex CLI. The vault root is your working directory. Read AGENTS.md and follow the vault workflows and Human/Machine/System boundaries. ${permissionInstruction} Use Obsidian-compatible Markdown in responses. Format mathematical notation as LaTeX with $...$ for inline equations and $$...$$ for display equations. Use your available web-search capability when the question needs current information. Your internal web search is not guaranteed to use Google, so do not claim that it does. When the user explicitly asks to see Google results in Obsidian, put [[GOOGLE_SEARCH:their search query]] on the final line; the plugin will open that Google search in a separate Obsidian tab.${history ? `\n\nVISIBLE CONVERSATION HISTORY\n${history}` : ""}${this.attachmentPrompt(attachments)}\n\nUSER REQUEST\n${question}`;
+    return `You are the assistant embedded in this Obsidian vault through Codex CLI. The vault root is your working directory. Read AGENTS.md, inspect relevant Machine/Skills/*/SKILL.md files, and follow the vault workflows and Human/Machine/System boundaries. ${permissionInstruction} Use Obsidian-compatible Markdown in responses. Format mathematical notation as LaTeX with $...$ for inline equations and $$...$$ for display equations. Use your available web-search capability when the question needs current information. Your internal web search is not guaranteed to use Google, so do not claim that it does. When the user explicitly asks to see Google results in Obsidian, put [[GOOGLE_SEARCH:their search query]] on the final line; the plugin will open that Google search in a separate Obsidian tab.${history ? `\n\nVISIBLE CONVERSATION HISTORY\n${history}` : ""}${this.attachmentPrompt(attachments)}\n\nUSER REQUEST\n${question}`;
   }
 
   async submit() {
@@ -766,6 +818,11 @@ class CodexChatView extends ItemView {
       this.app.workspace.requestSaveLayout();
     }
     await this.plugin.savePluginData();
+
+    if ((this.chat.provider || this.plugin.settings.provider) === "ollama") {
+      await this.submitOllama(question, attachments);
+      return;
+    }
 
     const isResume = Boolean(this.chat.threadId);
     const executable = this.plugin.settings.codexPath || "codex";
@@ -811,6 +868,38 @@ class CodexChatView extends ItemView {
       child.stdin.end(promptForCli, "utf8");
     } catch (error) {
       this.finishRun(null, error.message);
+    }
+  }
+
+  async submitOllama(question, attachments) {
+    this.setBusy(true, "Running local Ollama model…");
+    try {
+      const history = this.chat.messages.slice(0, -1).slice(-12).map((message) => ({
+        role: message.role === "assistant" ? "assistant" : "user",
+        content: message.text
+      }));
+      const skillContext = await this.plugin.getRelevantSkillContext(question);
+      const system = `You are the assistant embedded in this Obsidian vault. Answer using the vault context supplied in the request. You cannot directly edit files or browse the web through Ollama unless the local tool broker supplies and confirms that capability. Follow the relevant skill instructions below, but never claim to have used a tool whose result is not present.\n\n${skillContext}`;
+      const prompt = `${question}${this.attachmentPrompt(attachments)}`;
+      const answer = await this.plugin.runOllamaRequest([
+        { role: "system", content: system },
+        ...history,
+        { role: "user", content: prompt }
+      ], this.chat.model || this.plugin.settings.ollamaModel);
+      this.chat.messages.push({ role: "assistant", text: answer, at: Date.now() });
+      this.renderMessage("assistant", answer);
+      await this.plugin.savePluginData();
+      this.statusEl.setText("Conversation saved · local Ollama");
+    } catch (error) {
+      const text = `I couldn't complete that local request.\n\n${error.message}`;
+      this.chat.messages.push({ role: "assistant", text, at: Date.now() });
+      this.renderMessage("assistant", text);
+      await this.plugin.savePluginData();
+      this.statusEl.setText("Ollama run failed");
+      this.statusEl.addClass("is-error");
+    } finally {
+      this.setBusy(false);
+      this.promptInput.focus();
     }
   }
 
@@ -876,7 +965,15 @@ class CodexWorkspaceSettings extends PluginSettingTab {
     const { containerEl } = this;
     containerEl.empty();
     containerEl.createEl("h2", { text: "Codex Workspace" });
-    containerEl.createEl("p", { text: "Each Obsidian chat tab maps to a persistent Codex CLI conversation. Google searches open through Obsidian’s core Web Viewer." });
+    containerEl.createEl("p", { text: "Choose Codex or a model installed in Ollama. Ollama requests stay on this computer; Google searches open through Obsidian’s core Web Viewer." });
+    new Setting(containerEl).setName("Default AI provider").addDropdown((dropdown) => {
+      PROVIDER_OPTIONS.forEach((provider) => dropdown.addOption(provider.value, provider.label));
+      dropdown.setValue(this.plugin.settings.provider).onChange(async (value) => { this.plugin.settings.provider = value; await this.plugin.savePluginData(); });
+    });
+    new Setting(containerEl).setName("Home schedule provider").setDesc("Provider used by the Home page's Notion schedule command.").addDropdown((dropdown) => {
+      PROVIDER_OPTIONS.forEach((provider) => dropdown.addOption(provider.value, provider.label));
+      dropdown.setValue(this.plugin.settings.homeRequestProvider).onChange(async (value) => { this.plugin.settings.homeRequestProvider = value; await this.plugin.savePluginData(); });
+    });
     new Setting(containerEl).setName("Codex executable").addText((text) => text.setValue(this.plugin.settings.codexPath).onChange(async (value) => {
       this.plugin.settings.codexPath = value.trim();
       await this.plugin.savePluginData();
@@ -888,6 +985,15 @@ class CodexWorkspaceSettings extends PluginSettingTab {
         await this.plugin.savePluginData();
       });
     });
+    new Setting(containerEl).setName("Ollama server").setDesc("Local Ollama address. The default is the standard Ollama desktop endpoint.").addText((text) => text
+      .setPlaceholder("http://127.0.0.1:11434")
+      .setValue(this.plugin.settings.ollamaBaseUrl)
+      .onChange(async (value) => { this.plugin.settings.ollamaBaseUrl = value.trim().replace(/\/$/, "") || DEFAULT_SETTINGS.ollamaBaseUrl; await this.plugin.savePluginData(); }));
+    new Setting(containerEl).setName("Ollama model").setDesc(this.plugin.ollamaModels?.length ? `Installed: ${this.plugin.ollamaModels.join(", ")}` : "Enter an installed model name, then refresh the list.").addText((text) => text
+      .setPlaceholder("llama3.2, qwen2.5, etc.")
+      .setValue(this.plugin.settings.ollamaModel)
+      .onChange(async (value) => { this.plugin.settings.ollamaModel = value.trim(); await this.plugin.savePluginData(); }));
+    new Setting(containerEl).setName("Refresh Ollama models").setDesc("Checks the local Ollama server; nothing is sent to GitHub.").addButton((button) => button.setButtonText("Refresh").onClick(async () => { await this.plugin.refreshOllamaModels(); this.display(); }));
     new Setting(containerEl).setName("Reasoning effort").addDropdown((dropdown) => dropdown
       .addOption("low", "Low")
       .addOption("medium", "Medium")
@@ -1020,7 +1126,8 @@ module.exports = class CodexWorkspacePlugin extends Plugin {
         title: "New Codex Chat",
         threadId: null,
         permission: this.settings.defaultPermission || "workspace-write",
-        model: this.settings.model || "gpt-5.6-luna",
+        provider: this.settings.provider || "codex",
+        model: (this.settings.provider || "codex") === "ollama" ? (this.settings.ollamaModel || "") : (this.settings.model || "gpt-5.6-luna"),
         reasoningEffort: this.settings.reasoningEffort || "low",
         messages: [],
         createdAt: Date.now()
@@ -1032,6 +1139,57 @@ module.exports = class CodexWorkspacePlugin extends Plugin {
 
   async savePluginData() {
     await this.saveData({ settings: this.settings, chats: this.chats });
+  }
+
+  async refreshOllamaModels() {
+    try {
+      const response = await requestUrl({ url: `${(this.settings.ollamaBaseUrl || DEFAULT_SETTINGS.ollamaBaseUrl).replace(/\/$/, "")}/api/tags`, method: "GET", throw: false });
+      if (response.status < 200 || response.status >= 300) throw new Error(`Ollama returned HTTP ${response.status}`);
+      this.ollamaModels = (response.json?.models || []).map((model) => model.name).filter(Boolean);
+      if (!this.settings.ollamaModel && this.ollamaModels[0]) {
+        this.settings.ollamaModel = this.ollamaModels[0];
+        await this.savePluginData();
+      }
+      new Notice(`Found ${this.ollamaModels.length} local Ollama model${this.ollamaModels.length === 1 ? "" : "s"}.`);
+      return this.ollamaModels;
+    } catch (error) {
+      this.ollamaModels = [];
+      new Notice(`Ollama is unavailable: ${error.message}`);
+      return [];
+    }
+  }
+
+  async runOllamaRequest(messages, model) {
+    const base = (this.settings.ollamaBaseUrl || DEFAULT_SETTINGS.ollamaBaseUrl).replace(/\/$/, "");
+    const selectedModel = model || this.settings.ollamaModel;
+    if (!selectedModel) throw new Error("Choose an Ollama model in Codex Workspace settings first.");
+    const response = await requestUrl({
+      url: `${base}/api/chat`,
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ model: selectedModel, messages, stream: false }),
+      throw: false
+    });
+    if (response.status < 200 || response.status >= 300) throw new Error(response.json?.error || response.text || `Ollama returned HTTP ${response.status}`);
+    const answer = response.json?.message?.content;
+    if (!answer) throw new Error("Ollama returned no answer.");
+    return answer;
+  }
+
+  async getRelevantSkillContext(question) {
+    const normalized = String(question || "").toLowerCase();
+    const skillFiles = this.app.vault.getMarkdownFiles().filter((file) => file.path.startsWith("Machine/Skills/") && file.name.toLowerCase() === "skill.md");
+    const selected = skillFiles.filter((file) => {
+      const folder = file.path.split("/").slice(-2, -1)[0].toLowerCase();
+      if (folder === "chat-context-compaction") return /compact|context|checkpoint|summarize|carry forward/.test(normalized);
+      if (folder === "apush-reading-notes") return /apush|history reading|textbook reading/.test(normalized);
+      if (folder === "notion-schedule-control") return /notion|working date|due date|deadline|priority|task status/.test(normalized);
+      return false;
+    });
+    if (!selected.length) return "No specialized vault skill was selected for this request.";
+    const sections = [];
+    for (const file of selected) sections.push(`SKILL: ${file.path}\n${await this.app.vault.cachedRead(file)}`);
+    return `RELEVANT VAULT SKILLS\n\n${sections.join("\n\n---\n\n")}\n\nProvider rule: follow these instructions without inventing unavailable Codex tools. Return verified tool results separately from reasoning.`;
   }
 
   registerTimerWidget(element, render) {
@@ -1170,6 +1328,15 @@ module.exports = class CodexWorkspacePlugin extends Plugin {
   getVaultPath() {
     const adapter = this.app.vault.adapter;
     return typeof adapter.getBasePath === "function" ? adapter.getBasePath() : "";
+  }
+
+  runVaultGit(action) {
+    const vaultAutoPush = this.app.plugins?.getPlugin("vault-auto-push");
+    if (!vaultAutoPush) {
+      new Notice("Enable the Vault Auto Push plugin to use Git controls here.");
+      return;
+    }
+    return action === "pull" ? vaultAutoPush.pullNow(true) : vaultAutoPush.pushNow(true);
   }
 
   async openHome() {
@@ -1399,8 +1566,30 @@ module.exports = class CodexWorkspacePlugin extends Plugin {
         resolve(`Updated ${target.name} — working date: ${workingDate} (${dateProperty}).`);
         return;
       }
-      const executable = this.settings.codexPath || "codex";
       const prompt = `You are a schedule command parser. Today is ${todayKey()}. Do not use tools and do not modify files. Convert the user's request into exactly one JSON object and no other text. Resolve relative dates such as tomorrow using today's date. Permanent command rules: every request using “move” refers only to the date the user will work on, never the due date. Supported edits are task name, description, working_date, priority, and completion status. The task's working date and due date are separate; never infer or edit due from “move”. Allowed output shapes: {"action":"update","task":"exact task name","working_date":"YYYY-MM-DD"}, {"action":"update","task":"exact task name","name":"new name"}, {"action":"update","task":"exact task name","description":"new description"}, {"action":"update","task":"exact task name","priority":"High"}, {"action":"update","task":"exact task name","status":"Done"}, or {"action":"clarify","message":"short question"}. Only choose a task from this list: ${JSON.stringify(pages)}. User request: ${request}`;
+      if (this.settings.homeRequestProvider === "ollama") {
+        const ollamaAnswer = await this.runOllamaRequest([
+          { role: "system", content: "You are a schedule command parser. Return exactly one JSON object and no other text. Resolve relative dates using today's date. Supported actions are update or clarify. Supported edits are task name, description, working_date, priority, and completion status." },
+          { role: "user", content: prompt }
+        ], this.settings.ollamaModel);
+        const match = ollamaAnswer.match(/\{[\s\S]*\}/);
+        const command = match ? JSON.parse(match[0]) : null;
+        if (!command || command.action === "clarify") { resolve(command?.message || "I could not determine which task to change."); return; }
+        const target = pages.find((page) => page.name && page.name.toLowerCase() === String(command.task || "").toLowerCase()) || pages.find((page) => page.name && page.name.toLowerCase().includes(String(command.task || "").toLowerCase()));
+        if (!target) { resolve(`I could not find the task “${command.task || ""}”.`); return; }
+        const properties = {};
+        if (command.status) properties.Status = { select: { name: command.status } };
+        if (command.working_date || command.due) {
+          const dateProperty = await this.notionPropertyName("date", command.working_date ? ["Work Date", "Working Date", "Date"] : ["Due", "Date"]);
+          if (!dateProperty) { resolve("I could not find a date property in the Notion task database."); return; }
+          properties[dateProperty] = { date: { start: command.working_date || command.due } };
+        }
+        await this.notionRequest("PATCH", `pages/${target.id}`, { properties });
+        this.refreshNotionEmbed();
+        resolve(`Updated ${target.name}${command.status ? ` — status: ${command.status}` : ""}${command.working_date ? ` — working date: ${command.working_date}` : ""}${command.due ? ` — due: ${command.due}` : ""}.`);
+        return;
+      }
+      const executable = this.settings.codexPath || "codex";
       const child = spawn(executable, ["exec", "--json", "--skip-git-repo-check", "--color", "never", "--cd", this.getVaultPath(), "--sandbox", "workspace-write", "--model", this.settings.homeRequestModel || "gpt-5.6-luna", "-c", "model_reasoning_effort=low", "-"], { cwd: this.getVaultPath(), windowsHide: true, shell: false, env: { ...process.env, NO_COLOR: "1" } });
       let output = "", jsonBuffer = "", errorOutput = "", finalAnswer = "";
       child.stdout.setEncoding("utf8"); child.stderr.setEncoding("utf8");

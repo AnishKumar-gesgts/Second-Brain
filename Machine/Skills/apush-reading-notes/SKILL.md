@@ -1,11 +1,15 @@
 ---
 name: apush-reading-notes
-description: Create APUSH textbook reading notes from the latest U.S. History AP reading assignment in Canvas Checkup when matching notes do not already exist.
+description: Create compact APUSH textbook reading notes from the latest matching U.S. History AP reading assignment in the local Canvas Checkup sync when no note for that assignment exists. Use for APUSH reading-note requests, not general history summaries or unrelated Canvas work.
 ---
 
 # APUSH Reading Notes
 
 Use this skill for the user's recurring AP U.S. History textbook readings.
+
+## Purpose and use when
+
+Use this skill to turn the newest synced APUSH reading assignment into a quiz-ready note while preserving the teacher's scope, the established vault location, and the previous note's format. Do not create a note when the assignment is ambiguous or already covered.
 
 ## Source of truth
 
@@ -24,6 +28,8 @@ Before doing any textbook work, inspect `Anish's Second Brain/Notes/APUSH/`.
 - Treat a note as associated with the assignment when its filename or contents clearly match the assigned page range or Canvas assignment ID.
 - If matching notes already exist, make no duplicate note and stop.
 - If no matching note exists, continue.
+
+If the local Canvas sync is stale or missing, report that limitation before using another source. Do not silently substitute a different course, assignment, or page range.
 
 ## Reading rules
 
@@ -76,3 +82,24 @@ After creating the note, verify that:
 3. key terms and people have definitions;
 4. the filename uses APUSH Unit + assigned pages;
 5. no duplicate note was created.
+
+## Access and tool behavior
+
+- Use the local Canvas sync and Obsidian vault files named above as the primary inputs. Read the previous APUSH note before writing so formatting and density remain consistent.
+- Read the assigned textbook/PDF pages themselves when accessible; use assignment metadata only to identify scope and standing instructions.
+- Write only to `Anish's Second Brain/Notes/APUSH/` and preserve existing notes, links, and unrelated files.
+
+## Provider handoff
+
+This skill is provider-neutral. Codex may use its native Canvas, browser, and file tools; Ollama or Ultimate Thinker may use this workflow only when the orchestrator supplies the referenced local files or verified tool results. Do not claim that an Ollama model accessed Canvas, a textbook, or a PDF unless those contents were actually provided to it. Preserve the assignment scope, duplicate check, and validation requirements across every handoff.
+
+## Error recovery
+
+- If Canvas data, the assignment link, the textbook pages, or the previous note cannot be accessed, stop before creating a partial note and report the missing input.
+- If the newest assignment is not clearly APUSH, the page range is missing, or the unit cannot be established without a risky inference, ask for clarification.
+- If a duplicate is found after work begins, stop and do not overwrite it; report the matching filename or assignment ID.
+- If writing or validation fails, do not claim completion and leave no partial or misleading note when safe cleanup is possible.
+
+## Validation
+
+Before finishing, verify the note's assignment ID/page range, APUSH unit filename, complete assigned-page coverage, exclusion of colored feature material, definitions for required terms and people, required review sections, formatting consistency with the previous note, and absence of a duplicate.

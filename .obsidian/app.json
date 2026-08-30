@@ -3,5 +3,6 @@
   "newFileLocation": "current",
   "userIgnoreFilters": [
     "Sample Obsidian Vault/"
-  ]
+  ],
+  "readableLineLength": true
 }
