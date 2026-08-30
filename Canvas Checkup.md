@@ -5,11 +5,11 @@ cssclasses:
 
 # Canvas Checkup
 
-> [!info] Last checked Sun, Aug 30, 2:00 PM. Obsidian checks Canvas hourly from 8 AM through 11 PM and resets its change tracker at 6 AM.
+> [!info] Last checked Sun, Aug 30, 4:00 PM. Obsidian checks Canvas hourly from 8 AM through 11 PM and resets its change tracker at 6 AM.
 
 ## Check status
 
-9 assignments are past due. Next due: For the quiz on Monday 8/31, read p. 82-111 (chapter 3). for U.S. History A (AP) - Harrington, J on Mon, Aug 31, 11:59 PM. 5 new or changed assignments in this check.
+9 assignments are past due. Next due: For the quiz on Monday 8/31, read p. 82-111 (chapter 3). for U.S. History A (AP) - Harrington, J on Mon, Aug 31, 11:59 PM.
 
 ## Pending assignments
 

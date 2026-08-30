@@ -4,7 +4,7 @@
 .cw-canvas,
 .cw-chat {
   --cw-font-family: "Barlow", var(--font-text, "Segoe UI"), sans-serif;
-  --cw-accent: var(--interactive-accent, #010f6e);
+  --cw-accent: var(--interactive-accent, #1f7a4d);
   --cw-accent-hover: color-mix(in srgb, var(--cw-accent) 82%, white);
   --cw-border: var(--background-modifier-border);
   height: 100%;
@@ -399,7 +399,7 @@
   display: grid;
   place-items: center;
   color: var(--text-on-accent);
-  background: linear-gradient(135deg, var(--cw-accent), color-mix(in srgb, var(--cw-accent) 60%, #7656ff));
+  background: linear-gradient(135deg, var(--cw-accent), color-mix(in srgb, var(--cw-accent) 62%, #0f5132));
   box-shadow: 0 6px 16px color-mix(in srgb, var(--cw-accent) 22%, transparent);
 }
 
