@@ -1,5 +1,5 @@
 {
-  "updatedAt": "2026-08-30T23:00:05.058Z",
+  "updatedAt": "2026-09-04T06:15:56.020Z",
   "assignments": [
     {
       "id": "2184319",
@@ -137,6 +137,21 @@
       "updatedAt": "2026-08-27T15:05:39Z"
     },
     {
+      "id": "2184469",
+      "courseId": "153566",
+      "name": "Unit 1 Progress Checks Part A",
+      "course": "Computer Science A (AP) - Sakallah, F",
+      "dueAt": "2026-09-01T06:00:00Z",
+      "points": 5,
+      "bucket": "pending",
+      "status": "Past due",
+      "submittedAt": null,
+      "gradedAt": null,
+      "directions": "Go to AP Classroom and complete Unit 1 Progress Check Part A",
+      "url": "https://iusd.instructure.com/courses/153566/assignments/2184469",
+      "updatedAt": "2026-08-31T16:36:16Z"
+    },
+    {
       "id": "2198526",
       "courseId": "153647",
       "name": "For the quiz on Monday 8/31, read p. 82-111 (chapter 3).",
@@ -144,7 +159,7 @@
       "dueAt": "2026-09-01T06:59:59Z",
       "points": 9,
       "bucket": "pending",
-      "status": "Not submitted",
+      "status": "Past due",
       "submittedAt": null,
       "gradedAt": null,
       "directions": "https://www.biknotes.com/_files/ugd/b8b6dc_3a883217a41448b89d2ea2737337eccd.pdf",
@@ -152,7 +167,52 @@
       "updatedAt": "2026-08-24T17:47:16Z"
     },
     {
-      "id": "2184472",
+      "id": "2184336",
+      "courseId": "153566",
+      "name": "AP Classroom: Unit 1A AP Review",
+      "course": "Computer Science A (AP) - Sakallah, F",
+      "dueAt": "2026-09-02T06:59:59Z",
+      "points": 18,
+      "bucket": "pending",
+      "status": "Past due",
+      "submittedAt": null,
+      "gradedAt": null,
+      "directions": "Go to AP Classroom and complete Unit 1A AP Review",
+      "url": "https://iusd.instructure.com/courses/153566/assignments/2184336",
+      "updatedAt": "2026-08-31T16:53:11Z"
+    },
+    {
+      "id": "2187899",
+      "courseId": "153422",
+      "name": "Food Labels",
+      "course": "Health - semester course - Klamberg, K",
+      "dueAt": "2026-09-02T06:59:59Z",
+      "points": 4,
+      "bucket": "pending",
+      "status": "Past due",
+      "submittedAt": null,
+      "gradedAt": null,
+      "directions": "https://docs.google.com/document/d/1W-sGwRlNLGp4YbN9PAD0KMdwM__ycu9Qq3WQeVs05Bk/edit?usp=sharing",
+      "url": "https://iusd.instructure.com/courses/153422/assignments/2187899",
+      "updatedAt": "2026-09-01T21:40:47Z"
+    },
+    {
+      "id": "2203314",
+      "courseId": "153566",
+      "name": "Testing Blocksi",
+      "course": "Computer Science A (AP) - Sakallah, F",
+      "dueAt": "2026-09-03T06:59:59Z",
+      "points": 2,
+      "bucket": "pending",
+      "status": "Not submitted",
+      "submittedAt": null,
+      "gradedAt": null,
+      "directions": "",
+      "url": "https://iusd.instructure.com/courses/153566/assignments/2203314",
+      "updatedAt": "2026-09-02T16:46:20Z"
+    },
+    {
+      "id": "2202647",
       "courseId": "153566",
       "name": "Unit 1A Review",
       "course": "Computer Science A (AP) - Sakallah, F",
@@ -162,9 +222,84 @@
       "status": "Not submitted",
       "submittedAt": null,
       "gradedAt": null,
+      "directions": "Complete the Unit 1A Review on runestone",
+      "url": "https://iusd.instructure.com/courses/153566/assignments/2202647",
+      "updatedAt": "2026-08-31T17:09:42Z"
+    },
+    {
+      "id": "2203008",
+      "courseId": "153470",
+      "name": "Patrick Henry’s Speech to VA Convention Questions",
+      "course": "English Language A (AP) - Kane, K",
+      "dueAt": "2026-09-04T06:59:59Z",
+      "points": 6,
+      "bucket": "pending",
+      "status": "Not submitted",
+      "submittedAt": null,
+      "gradedAt": null,
+      "directions": "Patrick Henry’s Speech to VA Convention Questions",
+      "url": "https://iusd.instructure.com/courses/153470/assignments/2203008",
+      "updatedAt": "2026-09-02T17:10:03Z"
+    },
+    {
+      "id": "2184313",
+      "courseId": "153566",
+      "name": "Unit 1A Test - (1.1-1.6)",
+      "course": "Computer Science A (AP) - Sakallah, F",
+      "dueAt": "2026-09-08T18:35:00Z",
+      "points": 68,
+      "bucket": "pending",
+      "status": "Not submitted",
+      "submittedAt": null,
+      "gradedAt": null,
+      "directions": "",
+      "url": "https://iusd.instructure.com/courses/153566/assignments/2184313",
+      "updatedAt": "2026-08-31T17:05:55Z"
+    },
+    {
+      "id": "2184472",
+      "courseId": "153566",
+      "name": "Unit 1A Project",
+      "course": "Computer Science A (AP) - Sakallah, F",
+      "dueAt": "2026-09-09T06:59:59Z",
+      "points": 20,
+      "bucket": "pending",
+      "status": "Not submitted",
+      "submittedAt": null,
+      "gradedAt": null,
       "directions": "",
       "url": "https://iusd.instructure.com/courses/153566/assignments/2184472",
-      "updatedAt": "2026-08-27T15:06:03Z"
+      "updatedAt": "2026-08-31T17:01:00Z"
+    },
+    {
+      "id": "2184285",
+      "courseId": "153566",
+      "name": "Unit 1A Quiz - (1.1-1.4)",
+      "course": "Computer Science A (AP) - Sakallah, F",
+      "dueAt": "2026-09-02T06:59:59Z",
+      "points": 33,
+      "bucket": "submitted",
+      "status": "Submitted; awaiting grade",
+      "submittedAt": "2026-09-01T18:06:18Z",
+      "gradedAt": "2026-09-02T22:25:12Z",
+      "directions": "",
+      "url": "https://iusd.instructure.com/courses/153566/assignments/2184285",
+      "updatedAt": "2026-09-02T17:00:01Z"
+    },
+    {
+      "id": "2201753",
+      "courseId": "153470",
+      "name": "To Restore Civil Society",
+      "course": "English Language A (AP) - Kane, K",
+      "dueAt": "2026-09-01T06:59:59Z",
+      "points": 2,
+      "bucket": "submitted",
+      "status": "Submitted; awaiting grade",
+      "submittedAt": "2026-09-01T06:24:37Z",
+      "gradedAt": null,
+      "directions": "Respond to one of the following prompts with a full paragraph: In your opinion, is the public library obsolete? Should we be investing in \"social infrastructure\" as a society? For many, a library is a vital 3rd space. That is, a space that is neither home (1st space) or work/school (2nd space) to spend time. How important are 3rd spaces to a community? (You may write about your own experience with 3rd spaces in your answer.)",
+      "url": "https://iusd.instructure.com/courses/153470/assignments/2201753",
+      "updatedAt": "2026-08-31T16:30:04Z"
     },
     {
       "id": "2201307",
@@ -227,21 +362,6 @@
       "updatedAt": "2026-08-25T21:58:05Z"
     },
     {
-      "id": "2195488",
-      "courseId": "153624",
-      "name": "Popcorn Lab Submission",
-      "course": "Physics 2A (AP) - Elmasri, J",
-      "dueAt": "2026-08-24T06:59:59Z",
-      "points": 0,
-      "bucket": "submitted",
-      "status": "Submitted; awaiting grade",
-      "submittedAt": "2026-08-24T17:08:45Z",
-      "gradedAt": null,
-      "directions": "",
-      "url": "https://iusd.instructure.com/courses/153624/assignments/2195488",
-      "updatedAt": "2026-08-21T17:35:10Z"
-    },
-    {
       "id": "2193258",
       "courseId": "153470",
       "name": "Living Like Weasels Questions ",
@@ -269,7 +389,7 @@
       "gradedAt": null,
       "directions": "Read the course Syllabus and make sure you understand the HW policy. Then, please upload a pdf scan of the signature section to this assignment",
       "url": "https://iusd.instructure.com/courses/153566/assignments/2186802",
-      "updatedAt": "2026-08-19T18:07:31Z"
+      "updatedAt": "2026-08-31T17:10:09Z"
     },
     {
       "id": "2193292",
@@ -284,7 +404,7 @@
       "gradedAt": null,
       "directions": "On Your IUSD google drive, create a folder named AP Comp Sci 2627 Make a Copy of the Unit 1A Digital Notes only once. Save the copy into the folder you created Hit the share button on the top right Change general access to anyone with the link Push the copy link button and past it below",
       "url": "https://iusd.instructure.com/courses/153566/assignments/2193292",
-      "updatedAt": "2026-08-20T17:18:18Z"
+      "updatedAt": "2026-08-31T20:09:25Z"
     },
     {
       "id": "2184434",
@@ -315,6 +435,36 @@
       "directions": "After reviewing the Non-District Adopted Software with your parent / guardian, please sign it, scan as a pdf and upload to this assignment.",
       "url": "https://iusd.instructure.com/courses/153566/assignments/2184318",
       "updatedAt": "2026-08-18T14:30:20Z"
+    },
+    {
+      "id": "2187918",
+      "courseId": "153422",
+      "name": "Time Use Analysis",
+      "course": "Health - semester course - Klamberg, K",
+      "dueAt": "2026-09-02T06:59:59Z",
+      "points": 4,
+      "bucket": "graded",
+      "status": "Graded",
+      "submittedAt": "2026-09-01T21:53:31Z",
+      "gradedAt": "2026-09-01T21:58:44Z",
+      "directions": "https://docs.google.com/document/d/1XKfiENU0WsBsnKZjS9Vx7jzUglsz_GG9_NmQgKrsY34/edit?usp=sharing",
+      "url": "https://iusd.instructure.com/courses/153422/assignments/2187918",
+      "updatedAt": "2026-09-01T19:49:57Z"
+    },
+    {
+      "id": "2195488",
+      "courseId": "153624",
+      "name": "Popcorn Lab Submission",
+      "course": "Physics 2A (AP) - Elmasri, J",
+      "dueAt": "2026-08-24T06:59:59Z",
+      "points": 0,
+      "bucket": "graded",
+      "status": "Graded",
+      "submittedAt": "2026-08-24T17:08:45Z",
+      "gradedAt": "2026-08-31T19:06:52Z",
+      "directions": "",
+      "url": "https://iusd.instructure.com/courses/153624/assignments/2195488",
+      "updatedAt": "2026-08-21T17:35:10Z"
     },
     {
       "id": "2187904",
@@ -378,6 +528,6 @@
     }
   ],
   "changes": [],
-  "summary": "9 assignments are past due. Next due: For the quiz on Monday 8/31, read p. 82-111 (chapter 3). for U.S. History A (AP) - Harrington, J on Mon, Aug 31, 11:59 PM. 5 new or changed assignments in this check.",
+  "summary": "13 assignments are past due. Next due: Testing Blocksi for Computer Science A (AP) - Sakallah, F on Wed, Sep 2, 11:59 PM.",
   "error": "leaf.view.render is not a function"
 }
