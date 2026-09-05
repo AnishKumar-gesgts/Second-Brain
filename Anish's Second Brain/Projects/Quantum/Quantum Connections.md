@@ -5,6 +5,11 @@ This hub connects the vault’s quantum-information, quantum-algorithm, quantum-
 ## Quantum information and algorithms
 
 - [[Anish's Second Brain/Projects/Quantum/Ideas/Ideas|Quantum Photonics Ideas]]
+- [[Anish's Second Brain/Projects/Quantum/Ideas/QEC-Optimized Temporal Filtering|Idea 2 - QEC-Optimized Temporal Filtering]]
+- [[Anish's Second Brain/Projects/Quantum/Ideas/Physical Photonic Noise Compiler|Idea 3 - Physical Photonic Noise Compiler]]
+- [[Anish's Second Brain/Projects/Quantum/Ideas/Hidden Logical Errors from Multiphoton Emission and Photon Loss|Idea 1 - Hidden Logical Errors from Multiphoton Emission and Photon Loss]]
+- [[Anish's Second Brain/Projects/Quantum/Active Research Projects/QEC-Optimized Temporal Filtering/README|Idea 2 project workspace]]
+- [[Anish's Second Brain/Projects/Quantum/Active Research Projects/Physical Photonic Noise Compiler/README|Idea 3 project workspace]]
 - [[Anish's Second Brain/Projects/Quantum/Phase 1 Notes - Surface-Code Memory and Simulation Fundamentals|Phase 1 Notes - Surface-Code Memory and Simulation Fundamentals]]
 - [[Anish's Second Brain/Projects/Quantum/Phase 2 Notes - Decoder-Aware Photonic Hardware Allocation|Phase 2 Notes - Decoder-Aware Photonic Hardware Allocation]]
 - [[Anish's Second Brain/Projects/Quantum/Phase 3 Notes - Hybrid Erasure-MWPM Decoder for Photonic Circuits|Phase 3 Notes - Hybrid Erasure-MWPM Decoder for Photonic Circuits]]
