@@ -8,7 +8,7 @@ This project collects simulation code and experiments related to error-detection
 
 Contents summary
 
-- [[Anish's Second Brain/Projects/Quantum/HybridMCMC-CRW/Hybrid MCMC Correlated Random-Walk Decoder|HybridMCMC-CRW]]: Holds the extracted proposal for Hybrid Monte Carlo / correlated random-walk style decoder work.
+- [[Anish's Second Brain/Projects/Quantum/Decoder Research/HybridMCMC-CRW/Hybrid MCMC Correlated Random-Walk Decoder|HybridMCMC-CRW]]: Holds the extracted proposal for Hybrid Monte Carlo / correlated random-walk style decoder work.
 
 - `Science Fair 25_26/`: Contains the main simulation code and supporting tests used for the Science Fair project. Key files:
   - `Simulation Program.py`: Qiskit-based simulation that models amplitude-damping / loss and runs decoders.
