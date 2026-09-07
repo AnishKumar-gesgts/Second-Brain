@@ -1,0 +1,16 @@
+README.md
+pyproject.toml
+src/photonic_noise_compiler/__init__.py
+src/photonic_noise_compiler/diagnostics.py
+src/photonic_noise_compiler/qec.py
+src/photonic_noise_compiler/schema.py
+src/photonic_noise_compiler/adapters/__init__.py
+src/photonic_noise_compiler/adapters/temporal_type_ii.py
+src/physical_photonic_noise_compiler.egg-info/PKG-INFO
+src/physical_photonic_noise_compiler.egg-info/SOURCES.txt
+src/physical_photonic_noise_compiler.egg-info/dependency_links.txt
+src/physical_photonic_noise_compiler.egg-info/requires.txt
+src/physical_photonic_noise_compiler.egg-info/top_level.txt
+tests/test_qec.py
+tests/test_schema.py
+tests/test_temporal_adapter.py

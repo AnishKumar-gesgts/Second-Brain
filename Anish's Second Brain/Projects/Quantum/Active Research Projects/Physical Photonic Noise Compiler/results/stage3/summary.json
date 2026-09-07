@@ -1,0 +1,36 @@
+{
+  "conditions": 80,
+  "max_cutoff_tail_probability": 5.662137425588298e-15,
+  "hidden_fault_probability_min": 0.010194030883052175,
+  "hidden_fault_probability_max": 0.1856922985190833,
+  "worst_condition": {
+    "pair_probability": 0.2,
+    "signal_efficiency": 0.85,
+    "idler_efficiency": 0.85,
+    "one_count_herald_probability": 0.14454245934743332,
+    "conditional_vacuum_probability": 0.1424138406858992,
+    "conditional_single_photon_probability": 0.8143077014809167,
+    "conditional_multiphoton_probability": 0.0432784578331841,
+    "conditional_hidden_fault_probability": 0.1856922985190833,
+    "two_pair_masked_fraction_of_valid_heralds": 0.056454000000000004,
+    "two_pair_hidden_fault_probability": 0.04205823,
+    "decoder_visible_record_count": 1.0,
+    "cutoff_tail_probability": 1.1102230246251565e-15
+  },
+  "best_condition": {
+    "pair_probability": 0.01,
+    "signal_efficiency": 0.99,
+    "idler_efficiency": 0.99,
+    "one_count_herald_probability": 0.009802960494069209,
+    "conditional_vacuum_probability": 0.009998020096030203,
+    "conditional_single_photon_probability": 0.9898059691169477,
+    "conditional_multiphoton_probability": 0.00019601078702197224,
+    "conditional_hidden_fault_probability": 0.010194030883052175,
+    "two_pair_masked_fraction_of_valid_heralds": 0.0001999600020000002,
+    "two_pair_hidden_fault_probability": 0.00019600079396040019,
+    "decoder_visible_record_count": 1.0,
+    "cutoff_tail_probability": 0.0
+  },
+  "all_decoder_records_alias_hidden_histories": true,
+  "claim_boundary": "This source-level study validates hidden vacuum and multiphoton branches. It does not yet map leakage through a fusion circuit or establish a logical-QEC effect."
+}

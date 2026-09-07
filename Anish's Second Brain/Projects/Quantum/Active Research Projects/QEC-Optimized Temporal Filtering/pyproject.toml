@@ -1,0 +1,28 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "temporal-filter-qec"
+version = "0.1.0"
+description = "QEC-level evaluation of temporal filtering for distinguishable photons"
+requires-python = ">=3.10"
+dependencies = [
+  "numpy>=1.24,<2.3",
+  "scipy>=1.10,<1.14",
+  "matplotlib>=3.7",
+  "stim>=1.14",
+  "pymatching>=2.2",
+  "strawberryfields==0.23.0",
+]
+
+[project.optional-dependencies]
+test = ["pytest>=8"]
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-ra"
+

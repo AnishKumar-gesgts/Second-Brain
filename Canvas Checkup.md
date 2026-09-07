@@ -5,11 +5,11 @@ cssclasses:
 
 # Canvas Checkup
 
-> [!info] Last checked Thu, Sep 3, 11:15 PM. Obsidian checks Canvas hourly from 8 AM through 11 PM and resets its change tracker at 6 AM.
+> [!info] Last checked Sun, Sep 6, 11:47 AM. Obsidian checks Canvas hourly from 8 AM through 11 PM and resets its change tracker at 6 AM.
 
 ## Check status
 
-13 assignments are past due. Next due: Food Pyramid  for Health - semester course - Klamberg, K on Thu, Sep 3, 11:59 PM. 9 new or changed assignments in this check.
+14 assignments are past due. Next due: Unit 1A Test - (1.1-1.6) for Computer Science A (AP) - Sakallah, F on Tue, Sep 8, 11:35 AM. 12 new or changed assignments in this check.
 
 ## Pending assignments
 
@@ -174,24 +174,12 @@ Complete the Unit 1A Review on runestone
 - **Class:** Health - semester course - Klamberg, K
 - **Due:** Thu, Sep 3, 11:59 PM
 - **Points:** 4
-- **Status:** Not submitted
+- **Status:** Past due
 - **Canvas:** https://iusd.instructure.com/courses/153422/assignments/2187900
 
 **Directions**
 
 https://docs.google.com/presentation/d/1Dgrk6x6gW3Vl38PS9RU77uGBdx3ycbJx27zTdhSlpU8/edit?usp=sharing
-
-### Practice Timed Write: Patrick Henry
-
-- **Class:** English Language A (AP) - Kane, K
-- **Due:** Fri, Sep 4, 11:59 PM
-- **Points:** 0
-- **Status:** Not submitted
-- **Canvas:** https://iusd.instructure.com/courses/153470/assignments/2203758
-
-**Directions**
-
-No written directions were included on Canvas.
 
 ### Unit 1A Test - (1.1-1.6)
 
@@ -218,6 +206,18 @@ No written directions were included on Canvas.
 Go to runestone and complete the Unit 1A Project. Please remember the due date is different depending on your period, however, that is not shown in runestone as both classes are combined.
 
 ## Submitted assignments
+
+### Practice Timed Write: Patrick Henry
+
+- **Class:** English Language A (AP) - Kane, K
+- **Due:** Fri, Sep 4, 11:59 PM
+- **Points:** 0
+- **Status:** Submitted; awaiting grade
+- **Canvas:** https://iusd.instructure.com/courses/153470/assignments/2203758
+
+**Directions**
+
+Practice Timed Write: Patrick Henry
 
 ### Patrick Henry’s Speech to VA Convention Questions
 
@@ -255,18 +255,6 @@ https://docs.google.com/document/d/1MXek0Wo_6dgv-ysTjGIhEC1KrsYFwy9M0VDAnwVxkJk/
 
 https://docs.google.com/document/d/1W-sGwRlNLGp4YbN9PAD0KMdwM__ycu9Qq3WQeVs05Bk/edit?usp=sharing
 
-### To Restore Civil Society
-
-- **Class:** English Language A (AP) - Kane, K
-- **Due:** Mon, Aug 31, 11:59 PM
-- **Points:** 2
-- **Status:** Submitted; awaiting grade
-- **Canvas:** https://iusd.instructure.com/courses/153470/assignments/2201753
-
-**Directions**
-
-Respond to one of the following prompts with a full paragraph: In your opinion, is the public library obsolete? Should we be investing in "social infrastructure" as a society? For many, a library is a vital 3rd space. That is, a space that is neither home (1st space) or work/school (2nd space) to spend time. How important are 3rd spaces to a community? (You may write about your own experience with 3rd spaces in your answer.)
-
 ### Practice Timed Write: Abigail Adams Letter to Her Son
 
 - **Class:** English Language A (AP) - Kane, K
@@ -291,18 +279,6 @@ Practice Timed Write: Abigail Adams Letter to Her Son
 
 Gimme gimme
 
-### Abigail Adams Letter to Her Son Questions
-
-- **Class:** English Language A (AP) - Kane, K
-- **Due:** Thu, Aug 27, 11:59 PM
-- **Points:** 6
-- **Status:** Submitted; awaiting grade
-- **Canvas:** https://iusd.instructure.com/courses/153470/assignments/2199697
-
-**Directions**
-
-Abigail Adams Letter to Her Son Questions
-
 ### AI Nutrition 
 
 - **Class:** Health - semester course - Klamberg, K
@@ -314,18 +290,6 @@ Abigail Adams Letter to Her Son Questions
 **Directions**
 
 No written directions were included on Canvas.
-
-### Living Like Weasels Questions 
-
-- **Class:** English Language A (AP) - Kane, K
-- **Due:** Tue, Aug 25, 11:59 PM
-- **Points:** 4
-- **Status:** Submitted; awaiting grade
-- **Canvas:** https://iusd.instructure.com/courses/153470/assignments/2193258
-
-**Directions**
-
-Living Like Weasels Questions
 
 ### Course Syllabus Signature Page
 
@@ -401,6 +365,30 @@ https://docs.google.com/document/d/1XKfiENU0WsBsnKZjS9Vx7jzUglsz_GG9_NmQgKrsY34/
 
 No written directions were included on Canvas.
 
+### To Restore Civil Society
+
+- **Class:** English Language A (AP) - Kane, K
+- **Due:** Mon, Aug 31, 11:59 PM
+- **Points:** 2
+- **Status:** Graded
+- **Canvas:** https://iusd.instructure.com/courses/153470/assignments/2201753
+
+**Directions**
+
+Respond to one of the following prompts with a full paragraph: In your opinion, is the public library obsolete? Should we be investing in "social infrastructure" as a society? For many, a library is a vital 3rd space. That is, a space that is neither home (1st space) or work/school (2nd space) to spend time. How important are 3rd spaces to a community? (You may write about your own experience with 3rd spaces in your answer.)
+
+### Abigail Adams Letter to Her Son Questions
+
+- **Class:** English Language A (AP) - Kane, K
+- **Due:** Thu, Aug 27, 11:59 PM
+- **Points:** 6
+- **Status:** Graded
+- **Canvas:** https://iusd.instructure.com/courses/153470/assignments/2199697
+
+**Directions**
+
+Abigail Adams Letter to Her Son Questions
+
 ### Popcorn Lab Submission
 
 - **Class:** Physics 2A (AP) - Elmasri, J
@@ -412,6 +400,18 @@ No written directions were included on Canvas.
 **Directions**
 
 No written directions were included on Canvas.
+
+### Living Like Weasels Questions 
+
+- **Class:** English Language A (AP) - Kane, K
+- **Due:** Tue, Aug 25, 11:59 PM
+- **Points:** 4
+- **Status:** Graded
+- **Canvas:** https://iusd.instructure.com/courses/153470/assignments/2193258
+
+**Directions**
+
+Living Like Weasels Questions
 
 ### Health Triangle Reflection
 

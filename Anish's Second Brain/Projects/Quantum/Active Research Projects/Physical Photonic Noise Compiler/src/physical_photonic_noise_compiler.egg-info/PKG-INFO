@@ -1,0 +1,11 @@
+Metadata-Version: 2.4
+Name: physical-photonic-noise-compiler
+Version: 0.1.0
+Summary: Decoder-honest compilation of physical photonic event models into QEC channels
+Requires-Python: >=3.11
+Requires-Dist: matplotlib>=3.8
+Requires-Dist: numpy>=1.26
+Requires-Dist: pymatching>=2.3
+Requires-Dist: stim>=1.15
+Provides-Extra: test
+Requires-Dist: pytest>=8; extra == "test"

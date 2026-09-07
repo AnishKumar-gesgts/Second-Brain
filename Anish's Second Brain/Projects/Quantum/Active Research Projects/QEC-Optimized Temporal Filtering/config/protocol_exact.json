@@ -1,0 +1,23 @@
+{
+  "physical": {
+    "wavepacket_sigma_ps": 60.0,
+    "detector_efficiency": 0.995,
+    "spectral_diffusion_ghz": 0.0
+  },
+  "detunings_ghz": [0.6, 0.9, 1.2, 1.5],
+  "detector_jitters_ps": [0.0, 15.0, 30.0, 60.0],
+  "gate_widths_ps": [40, 140, 180, 220, 250, 320, 450],
+  "narrow_control_gate_ps": 40,
+  "distances": [3, 5, 7],
+  "selection_distance": 5,
+  "intrinsic_failure_probability": 0.0,
+  "pilot_shots": 5000,
+  "heldout_shots": 30000,
+  "pilot_seed": 20267001,
+  "heldout_seed": 20268001,
+  "temporal_grid_points": 20001,
+  "reference_condition": {
+    "detuning_ghz": 1.2,
+    "detector_jitter_ps": 15.0
+  }
+}

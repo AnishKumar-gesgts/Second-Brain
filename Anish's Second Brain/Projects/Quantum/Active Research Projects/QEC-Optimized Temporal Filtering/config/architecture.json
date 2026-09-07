@@ -1,0 +1,29 @@
+{
+  "physical": {
+    "wavepacket_sigma_ps": 60.0,
+    "detector_jitter_ps": 15.0,
+    "detector_efficiency": 0.995,
+    "spectral_diffusion_ghz": 0.0
+  },
+  "detunings_ghz": [0.4, 0.6, 1.2],
+  "wrong_correlation_fractions": [0.0, 0.5, 1.0],
+  "gate_widths_ps": [40, 140, 180, 220, 250, 320, 450],
+  "overly_narrow_gate_ps": 40,
+  "distances": [3, 5, 7],
+  "selection_distance": 5,
+  "intrinsic_failure_probability": 0.0,
+  "intrinsic_failure_controls": [0.0, 0.25],
+  "missed_erasure_fractions": [0.0, 0.2, 0.3, 1.0],
+  "calibration_outcome_errors": [0.005, 0.01, 0.015],
+  "calibration_shots": 20000,
+  "pilot_shots": 5000,
+  "heldout_shots": 20000,
+  "calibration_seed": 20264001,
+  "pilot_seed": 20265001,
+  "heldout_seed": 20266001,
+  "temporal_grid_points": 20001,
+  "reference_condition": {
+    "detuning_ghz": 1.2,
+    "wrong_correlation_fraction": 0.5
+  }
+}

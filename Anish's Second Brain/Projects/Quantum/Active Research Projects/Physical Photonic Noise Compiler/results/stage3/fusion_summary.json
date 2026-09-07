@@ -1,0 +1,37 @@
+{
+  "conditions": 135,
+  "hidden_error_given_full_success_min": 3.6000058502827803e-06,
+  "hidden_error_given_full_success_max": 0.017528056339755873,
+  "best_condition": {
+    "pair_probability": 0.01,
+    "signal_efficiency": 0.9,
+    "idler_efficiency": 0.99,
+    "fusion_detector_efficiency": 0.99,
+    "full_success_probability": 0.39681634858610315,
+    "partial_failure_probability": 0.3968336494960314,
+    "count_rejection_probability": 0.20635000191786546,
+    "full_success_hidden_error_probability": 1.4285411763978224e-06,
+    "hidden_error_given_full_success": 3.6000058502827803e-06,
+    "partial_retained_parity_error_probability": 8.650454963981459e-06,
+    "xx_flip_marginal": 1.4285411763978224e-06,
+    "zz_flip_marginal": 8.650454963981459e-06,
+    "max_full_bell_coherence": 1.1544854363903149e-17
+  },
+  "worst_condition": {
+    "pair_probability": 0.2,
+    "signal_efficiency": 0.99,
+    "idler_efficiency": 0.85,
+    "fusion_detector_efficiency": 0.85,
+    "full_success_probability": 0.3256158280978636,
+    "partial_failure_probability": 0.33176514645846156,
+    "count_rejection_probability": 0.34261902544367484,
+    "full_success_hidden_error_probability": 0.0057074125800156165,
+    "hidden_error_given_full_success": 0.017528056339755873,
+    "partial_retained_parity_error_probability": 0.0030746591802987945,
+    "xx_flip_marginal": 0.0057074125800156165,
+    "zz_flip_marginal": 0.0030746591802987945,
+    "max_full_bell_coherence": 2.3648232594074526e-18
+  },
+  "maximum_full_success_bell_coherence": 1.3184590637267451e-17,
+  "claim_boundary": "The remote-photon Bell-pair input model is an exact small-Fock reference for this primitive, not a validated model of a complete six-ring resource-state generator."
+}

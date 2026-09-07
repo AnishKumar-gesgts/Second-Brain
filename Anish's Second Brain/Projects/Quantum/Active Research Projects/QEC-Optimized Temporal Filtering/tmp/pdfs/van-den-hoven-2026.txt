@@ -1,0 +1,637 @@
+                                                               Photonic fusion operations transform partial distinguishability
+                                                                         S. N. van den Hoven,1 G.B. Lamers,2 and J. J. Renema1, 2, 3
+                                                                            1
+                                                                            MESA+ Institute for Nanotechnology, University of Twente,
+                                                                                P. O. box 217, 7500 AE Enschede, The Netherlands
+                                                                             2
+                                                                               Department of Applied Physics and Science Education,
+                                                             Eindhoven University of Technology, P.O. Box 513, 5600 MB Eindhoven, The Netherlands
+                                                                   3
+                                                                     Department of Electrical Engineering, Eindhoven University of Technology,
+                                                                               P.O. Box 513, 5600 MB Eindhoven, The Netherlands
+                                                                                            (Dated: September 2, 2026)
+                                                       Photonic fusion operations are a central primitive in photonic quantum information processing and are com-
+                                                    monly characterized by their success probability and resource cost. Here, we identify an additional way in which
+                                                    different implementations of fusion operations differ, namely in how they transform partial distinguishability.
+arXiv:2609.01019v1 [quant-ph] 1 Sep 2026
+
+
+
+
+                                                    We consider distinguishability originating both from imperfect entangled resource states and from imperfect
+                                                    single photons. We find that different successful fusion events can induce markedly different distinguishabil-
+                                                    ity transformations depending on the fusion protocol, heralding outcome, and error model. Under a collective
+                                                    resource-state error model, we identify a modification to an existing fusion protocol that improves the fidelity
+                                                    of the remaining state on average. Generally, however, these transformations adversely affect distinguishability,
+                                                    and many successful fusion outcomes are accompanied by distinguishability degradation. Our results show that
+                                                    partial distinguishability is dynamically shaped by interference and measurements and should be considered
+                                                    alongside overall fusion success probability when evaluating photonic fusion protocols.
+
+
+                                                             I.   INTRODUCTION                                 numbers of fusion operations both during resource-state
+                                                                                                               preparation and throughout the computation itself. Since
+                                              Photonic quantum technologies constitute one of the              linear-optical Bell measurements are inherently proba-
+                                           most promising approaches towards large-scale quan-                 bilistic, substantial effort has been devoted to increasing
+                                           tum information processing due to their low decoherence             their success probability through the use of ancillary re-
+                                           rates, integrability with the telecom industry, and natu-           source states [14, 15]. Consequently, fusion protocols
+                                           ral suitability for transmitting quantum information over           are commonly characterized by their success probability
+                                           long distances. Recent years have witnessed substantial             and ancillary resource requirements.
+                                           experimental progress, including advances in determinis-               Because fusion operations rely directly on multipho-
+                                           tic single-photon sources, integrated photonic platforms,           ton interference, their performance is sensitive to de-
+                                           and the generation of increasingly complex photonic re-             viations from ideal bosonic behaviour. Such devia-
+                                           source states [1–4]. As photonic systems continue to                tions, commonly referred to as partial distinguishabil-
+                                           scale in size and complexity, understanding the effect              ity, arise when photons carry residual which-way infor-
+                                           of realistic imperfections on multiphoton quantum states            mation through internal degrees of freedom (e.g. spec-
+                                           becomes increasingly important.                                     trum or polarization). Partial distinguishability degrades
+                                              A central feature underlying photonic quantum infor-             quantum interference [16–19] and can undermine pho-
+                                           mation processing is multiphoton interference [5]. Since            tonic quantum information processing by enabling ef-
+                                           photons do not naturally interact, effective nonlinearities         ficient classical simulation of boson sampling [20, 21]
+                                           must instead arise from interference effects combined               or by introducing errors during entangling operations
+                                           with measurements. This mechanism underlies linear                  [11, 22, 23].
+                                           optical quantum computing [6], measurement-based ap-                   Recent work has shown that carefully designed in-
+                                           proaches using cluster states [7], fusion-based quantum             terference experiments and partial measurements can
+                                           computation (FBQC) [8, 9], and quantum networking ar-               probabilistically improve the quality of single photons
+                                           chitectures based on photonic entanglement distribution             through distillation-like processes [22, 24–29]. These
+                                           [10–12].                                                            results demonstrate that measurements do not only re-
+                                              Among the most important interference-based primi-               veal imperfections but can also actively transform them.
+                                           tives are Bell measurements, commonly referred to as fu-            This naturally raises the question of whether fusion oper-
+                                           sions [13]. Fusions can be used to construct larger entan-          ations themselves possess analogous distinguishability-
+                                           gled resource states from smaller building blocks, to per-          transformation properties.
+                                           form entanglement-swapping operations between distant                  In this work, we investigate how photonic fusion pro-
+                                           nodes, and, in fusion-based architectures, to drive the             tocols transform partial distinguishability. Rather than
+                                           computation itself. They therefore play a central role in a         considering distinguishability solely as a source of re-
+                                           wide range of photonic quantum-information protocols.               duced interference visibility, we study its evolution con-
+                                           In particular, large-scale FBQC architectures rely on vast          ditioned on successful fusion events and ask whether fu-
+                                                                                                                         2
+
+sion operations themselves can exhibit distillation-like      in terms of their ancillary resource requirements and
+behaviour. Specifically, we investigate whether different     achievable success probabilities. However, these metrics
+fusion protocols preferentially suppress or amplify dis-      alone do not completely characterize the performance of
+tinguishability properties in the surviving state.            a fusion operation in the presence of realistic imperfec-
+   To address this question, we study two complementary       tions.
+scenarios. First, we introduce a collective distinguisha-        Loss errors affect fusion operations in a comparatively
+bility model for Bell states and investigate how the fi-      direct manner. Successful Bell measurements rely on ob-
+delity of Bell states evolves when noisy Bell pairs are       serving specific multi-photon detection signatures, and
+fused using different protocols with imperfect ancillary      the loss of a single photon can alter these signatures suf-
+resources. Second, we consider a more granular descrip-       ficiently to convert a successful event into either a failure
+tion based on distinguishable single photons and inves-       event or an incorrect outcome. Consequently, fusion pro-
+tigate the average effect of fusion operations acting on      tocols employing larger ancillary resource states gener-
+larger resource states constructed from such photons. To-     ally become increasingly sensitive to loss, since the prob-
+gether, these approaches allow us to investigate distin-      ability that all required photons survive decreases with
+guishability both at the level of entangled resource states   the total photon number.
+and at the level of their underlying constituents.               The effect of partial distinguishability is more subtle.
+   We find that different fusion protocols can exhibit sub-   Several works have shown that distinguishability effects
+stantially different behaviour with respect to the dis-       can often be interpreted as inducing effective measure-
+tinguishability content of the heralded state. Differ-        ment errors [11, 22, 23, 25]. Such descriptions provide
+ences appear not only between different fusion proto-         an intuitive and practically useful way of understanding
+cols, but also within the same fusion protocol when dif-      the effect of distinguishability on quantities directly re-
+ferent heralding patterns, or different error models are      lated to measurement outcomes. However, they do not
+considered. Consequently, protocols that appear com-          generally capture the effect that a fusion operation may
+parable in terms of success probability and ancillary re-     have on the distinguishability properties of the remaining
+source cost can nevertheless differ in how they trans-        heralded state. Consequently, while distinguishability-
+form imperfections. Our results therefore identify an ad-     induced measurement errors have received considerable
+ditional design consideration for photonic fusion opera-      attention, comparatively little is known about how dif-
+tions that should be considered alongside the traditional     ferent fusion operations transform the distinguishability
+metrics of resource overhead and success probability.         content of the surviving state itself.
+More broadly, our work highlights the importance of un-
+derstanding how realistic imperfections evolve through
+repeated interference processes in large-scale photonic                      B.   Partial distinguishability
+quantum systems.
+                                                                 Physically, partial distinguishability can be understood
+                                                              as a mismatch in one or more internal photonic degrees
+                 II.   PRELIMINARIES
+                                                              of freedom such as temporal profile, spectrum, spatial
+                                                              mode, or polarization. Consequently, photons that are
+                  A.   Photonic fusions                       intended to interfere are no longer perfectly identical.
+                                                              The mathematical framework describing distinguishabil-
+   In linear optical quantum information processing, de-      ity effects in many-particle interference has been studied
+structive and probabilistic Bell measurements, com-           extensively [37, 38]. This framework has been used to
+monly referred to as fusions [13], constitute one of the      study the effect of partial distinguishability on measure-
+central primitives. Depending on the specific applica-        ment outcomes [11, 22, 23, 25]. However, such descrip-
+tion, fusion operations can be used to construct large        tions do not capture the effect that a measurement itself
+entangled resource states from smaller building blocks        may have on the remaining heralded state.
+[30–33], to perform entangling gates within a computa-           To isolate this effect, we employ simplified distin-
+tion [8, 9, 34], or to distribute entanglement across dis-    guishability models that retain the essential physics
+tant nodes [10, 11, 35].                                      while remaining analytically tractable. Throughout this
+   A central challenge for photonic architectures is          work we use orthogonal distinguishability models, in
+that linear-optical Bell measurements are fundamentally       which imperfect photons occupy internal modes orthog-
+probabilistic. The maximum success probability of             onal to the desired target mode. While such models
+standard linear-optical Bell measurements with ancillary      neglect the continuous structure of realistic mode mis-
+modes prepared in the vacuum state is limited to 50%          match, they have been widely adopted as a phenomeno-
+[36]. The use of additional ancillary resource states can     logical model of distinguishability and have proven use-
+increase this success probability [14, 15]. Consequently,     ful for describing and simulating experimentally relevant
+different fusion protocols are commonly characterized         photonic systems[11, 20, 22, 24–26, 28, 39–41].
+                                                                                                                           3
+
+   We first employ the orthogonal bad bit (OBB) model
+introduced in Ref.[22]. In this model, a single-photon
+state is represented by a mixture consisting of two com-               ρOBχ = (1 − ϵ)|χψ0 ⟩⟨χψ0 | + ϵ|χψi ⟩⟨χψi |,
+ponents. With probability (1 − ϵ) the photon occupies
+the desired internal mode ψ0 , while with probability ϵ it         where all photons belonging to the faulty compo-
+occupies an orthogonal undesired mode ψi ,                      nent occupy a common internal mode ψi , while faulty
+                                                                states originating from different preparation events are
+                                                                assumed mutually orthogonal.
+       ρOBB = (1 − ϵ)|1ψ0 ⟩⟨1ψ0 | + ϵ|1ψi ⟩⟨1ψi |.       (1)       Throughout this work we primarily consider two spe-
+                                                                cific realizations: the Bell-state model OBBell and its
+   Following the standard OBB prescription, all unde-           4-GHZ counterpart OBGHZ.
+sired modes are assumed mutually orthogonal,
+
+                                                                   III.   DISTILLATION PROPERTIES OF FUSION
+                      ⟨ψi |ψj ⟩ = δij ,                  (2)                       PROTOCOLS
+
+   such that every faulty photon is distinguishable both
+                                                                   We now investigate how different fusion implementa-
+from photons in the target mode and from all other faulty
+                                                                tions transform distinguishability errors in the heralded
+photons.
+                                                                state. Rather than considering fusion performance solely
+   In addition, to investigate distinguishability effects di-
+                                                                in terms of success probability and ancillary resource re-
+rectly at the level of entangled resource states, we intro-
+                                                                quirements, we study whether successful fusion events
+duce a collective extension of this model, which we refer
+                                                                can alter the fidelity of the heralded state with respect to
+to as the orthogonal bad Bell (OBBell) model. Rather
+                                                                the fidelity of the input state. We will investigate both
+than assigning distinguishability independently to indi-
+                                                                the average evolution of distinguishability as well as the
+vidual photons, distinguishability is assigned collectively
+                                                                behaviour of individual heralding outcomes.
+to the Bell pair itself. The state is therefore described by
+                                                                   Throughout this section, we use the term indistin-
+                                                                guishability distillation to denote situations in which the
+   ρOBBell = (1 − ϵ)|Φ+     +         +     +                   fidelity of the heralded state exceeds that of the input
+                      ψ0 ⟩⟨Φψ0 | + ϵ|Φψi ⟩⟨Φψi |,        (3)
+                                                                state, whereas anti-distillation refers to a reduction in fi-
+  where                                                         delity following successful fusion.
+
+
+                     a†1,ψi a†3,ψi + a†2,ψi a†4,ψi                           A.   Fusion protocols considered
+          |Φ+
+            ψi ⟩ =                √                |0⟩   (4)
+                                    2
+                                                                  The complexity of simulating many-photon interfer-
+denotes a Bell state of two dual rail qubits defined over       ence experiments increases rapidly with photon number
+modes {1, 2} and {3, 4} respectively.                           and distinguishability structure. We therefore restrict our
+   Importantly, the photons belonging to a faulty Bell          analysis to several representative fusion protocols com-
+state occupy the same internal mode and therefore re-           monly considered in photonic quantum information pro-
+main perfectly indistinguishable with respect to one an-        cessing.
+other. However, photons belonging to different faulty             Specifically, we consider
+Bell states are assumed to occupy mutually orthogonal
+modes.                                                             1. the standard unboosted fusion protocol [13],
+   The OBBell model can be viewed as a collective gen-
+eralization of the OBB model and captures situations               2. the Grice protocol employing a single Bell state
+in which imperfections originate from the resource-state              ancilla [15],
+generation process itself and therefore affect all photons
+                                                                   3. the Ewert & van Loock protocol employing four
+within the resource state simultaneously. This may arise,
+                                                                      ancillary single photons [14],
+for example, in deterministic generation schemes based
+on quantum emitters, where fluctuations during a sin-              4. the Grice protocol employing both a Bell-state and
+gle emission event introduce a common mode mismatch                   a 4-GHZ ancilla [15].
+shared by all emitted photons afterwards [42].
+   More generally, the OBBell model represents a spe-              Interestingly, the Ewert & van Loock protocol can be
+cific instance of a broader class of collective distin-         viewed as belonging to the same family of interferomet-
+guishability models. For an arbitrary entangled photonic        ric constructions as the Grice scheme. The primary dis-
+resource state |χ⟩, one may define a corresponding or-          tinction lies in the ancillary resource state, which in this
+thogonal bad resource-state model according to                  case corresponds to four photons transformed according
+                                                                                                                                4
+
+to H4 . To our knowledge this connection has not been         preparation procedures and therefore provide additional
+explicitly highlighted previously.                            opportunities for imperfections to accumulate. Such be-
+   The ancillary resource state thus represents one of        haviour is qualitatively consistent with experimental ob-
+the principal design freedoms available in boosted fu-        servations of decreasing state fidelity with increasing
+sion protocols. We therefore performed a numeri-              resource-state size in deterministic photonic state genera-
+cal investigation of alternative ancillary-state configura-   tion [1]. We emphasize that this parameter choice serves
+tions while keeping the interferometric structure fixed.      as a physically motivated illustrative model and that our
+While many such configurations realize valid Bell-            qualitative conclusions remain unchanged under moder-
+measurement schemes, their success probabilities and          ate variations of these parameters.
+the way they transform distinguishability vary consider-         For each fusion protocol, we evaluate the fidelity of
+ably.                                                         the heralded Bell state conditioned on successful fusion
+   For example, one configuration employing |Φ+ ⟩⊗3           outcomes (F ′ ). We evaluate the fidelity for each indi-
+ancilla states achieves a Bell-measurement success prob-      vidual heralding pattern, since individual heralding pat-
+ability of 78.5% in the noiseless limit while requiring       terns may possess substantially different distinguishabil-
+only Bell-state resources rather than a 4-GHZ state. A        ity properties. We characterize both a weighted average
+detailed discussion of these alternative constructions is     based on the probability of observing respective herald-
+beyond the scope of the present work and is deferred to       ing patterns and the distribution of individual heralding
+the Supplementary Material. Nevertheless, these obser-        patterns.
+vations suggest that ancillary-state design itself can sig-
+                                                                                                                     |Φ+⟩
+nificantly influence fusion performance.
+                                                                                                                      P= 1/16
+   In the present work, however, we focus specifically on                                                             P= 3/16
+distinguishability propagation. Guided by the numerical                                                               P= 1/4
+investigation described above, we introduce two modi-                                                                 P= 1/4
+fied protocols whose ancillary-state structure exhibit par-
+                                                                                                                     |Ψ +⟩
+ticularly favourable distinguishability behaviour.                                                                     P= 1/8
+   The first modification replaces the |Φ+ ⟩ Bell-state an-                                                            P= 1/8
+cilla of the original Grice proposal with a |Ψ+ ⟩ Bell                                                                 P= 1/4
+state. The second modification replaces the |Φ+ ⟩ Bell-
+state plus 4-GHZ ancilla by three |Ψ+ ⟩ Bell states. We                                                            not boosted
+will refer to these modifications as the altered Grice pro-                                                            P= 1/2
+tocols.
+
+                                                              Figure 1. Loglog plot of the infidelity of a Bell state after fus-
+ B.   Bell-state fusion under collective distinguishability   ing two Bell states together with various fusion protocols. The
+                                                              output infidelity is plot as a function of the input infidelity of
+   We first consider a setting that isolates distinguisha-    the Bell states. The intersections with the y-axis show the in-
+bility effects directly at the level of entangled resource    crease in infidelity in the low error regime for various families
+states. We subsequently investigate whether the result-       of heralding patterns. The families of the different heralding
+                                                              patterns for the fusion protocols without ancillary states, with
+ing behaviour persists in settings where resource states
+                                                              a |Φ+ ⟩ ancilla state and with a |Ψ+ ⟩ ancilla state are shown as
+are generated from imperfect single photons.                  solid lines with an orange hue, dashed lines with a green hue
+   Specifically, we first consider the fusion of two Bell     and a blue dotted line respectively. The different shades of the
+states described by the OBBell model introduced in Sec.       different lines correspond to the probability of finding a herald
+II B. Ancillary resource states are assumed to follow         pattern from a certain family. The probabilities sum up to 34 , 12
+the corresponding orthogonal distinguishability models:       and 12 respectively.
+single-photon ancillas follow the OBB model, while Bell
+and 4-GHZ resource states follow their collective coun-          Figure (1) shows the Bell-state infidelity (ϵ′ = 1 − F ′ )
+terparts OBBell and OBGHZ respectively.                       as a function of the distinguishability parameter ϵ for sev-
+   To compare protocols featuring ancillary states of dif-    eral representative fusion schemes. To preserve visual
+ferent complexity, we assume that the distinguishability      clarity, we restrict this comparison to the unboosted pro-
+parameter increases with resource-state size according to     tocol and Bell-state-boosted protocols employing either
+                                                              Φ+ or Ψ+ ancillas.
+                      1          1                               Several observations can be made from Fig.1. First,
+            ϵOBB =      ϵOBBell = ϵOBGHZ .                    the distinguishability properties of the heralded Bell state
+                      2          4
+                                                              differ significantly between fusion protocols despite their
+   This choice reflects the expectation that larger en-       similar functionality at the level of Bell-state projections.
+tangled resource states generally require more complex           Second, distinct herald patterns within a single proto-
+                                                                                                                              5
+
+ col can exhibit markedly different behaviour. Successful            duced by successful fusion events. The latter is depicted
+ Bell projections therefore do not correspond to a unique                                          1−F
+                                                                     as an error reduction factor          .
+ distinguishability transformation, but rather to a distribu-                                      1 − F′
+ tion of distinguishability outcomes.                                   Notably, for the previously known fusion protocols
+    Third, replacing the ancillary Bell state from |Φ+ ⟩             that use ancillary states with up to 6 photons, the
+ to |Ψ+ ⟩ significantly alters the distinguishability be-            increase in Bell-measurement success probability ob-
+ haviour despite leaving the interferometric structure un-           tained through boosting is frequently accompanied by
+ changed. This indicates that distinguishability propaga-            unfavourable indistinguishability distillation properties.
+ tion depends not only on the interferometric structure it-          While ancillary resource states can be used to in-
+ self, but also on the detailed choice of ancillary resource         crease the probability of obtaining successful Bell pro-
+ states.                                                             jections, they simultaneously introduce additional path-
+    Lastly, we note that although the distinguishability             ways through which distinguishability can propagate.
+ propagation differs significantly between protocols and                Interestingly, modifying the ancillary states can sub-
+ herald patterns, none of the fusion protocols shown in              stantially alter this behaviour. In particular, the al-
+ Fig.1 exhibits net indistinguishability distillation under          tered Grice protocols employing |Ψ+ ⟩ ancillas exhibit
+ the OBBell model.                                                   considerably more favourable distinguishability proper-
+    Taken together, these observations demonstrate that              ties than their conventional counterparts. This improve-
+ fusion protocols possess distinguishability transforma-             ment, however, comes at the cost of a reduced Bell-
+ tion properties that are largely independent of their Bell-         measurement success probability. These observations in-
+ measurement functionality. Consequently, distinguisha-              dicate that ancillary-state design introduces a trade-off
+ bility propagation should be regarded as an additional              between Bell-measurement success probability and dis-
+ design consideration alongside success probability and              tinguishability propagation.
+ ancillary resource requirements when comparing fusion                  Figure (2) shows the expectation value of the indistin-
+ protocols.                                                          guishability distillation properties conditioned on finding
+    To quantify the differences between the distinguisha-            a Bell-projection alongside the success probability in the
+ bility propagation of different fusion protocols more di-           low error limit. Although this is a very useful quantity
+ rectly, we now focus on the low-error regime. Figure (2)            that can be used to compare various schemes, it does not
+ summarizes the behaviour of all considered fusion pro-              capture the substantial variation that can occur between
+ tocols in the limit ϵ → 0.                                          individual heralding outcomes.
+                          1
+                                                                        As discussed above, different herald patterns within
+Success probability
+
+
+
+
+                         0.8
+                                                                     the same fusion protocol can exhibit markedly different
+                         0.6
+                                                                     distinguishability transformations. Consequently, cer-
+                         0.4
+                                                                     tain successful Bell projections may contribute dispro-
+                         0.2
+                                                                     portionately to distinguishability accumulation in larger
+                          0
+                                                                     computations. In some applications, such as resource-
+                                                                     state generation, it may therefore be desirable to discard
+Error reduction factor
+
+
+
+
+                                                                     a semi-finished product upon observing herald patterns
+                                                                     whose distinguishability properties fall below a speci-
+                                                                     fied threshold, even though they correspond to successful
+                                                                     Bell measurements in the conventional sense.
+                                                                        This motivates considering a minimum required error
+                                                                     reduction factor. Figure (3) shows the cumulative suc-
+                                                                     cess probability as a function of this threshold, thereby
+                                                                     quantifying the probability of obtaining a successful fu-
+                                                                     sion outcome that also achieves at least a desired degree
+ Figure 2. Both the success probability (top) and the expectation
+ value of the error reduction factor (bottom) are shown for var-     of indistinguishability improvement.
+ ious fusion protocols. On the left of the bottom histogram we          These results highlight that the conventional notion of
+ see that existing protocols for fusions (up to 6-photon ancillary   fusion success may be incomplete. Depending on the
+ states) all show error reduction factors below one and hence        application, successful Bell projections associated with
+ perform anti-distillation on average, while the altered Grice       strong anti-distillation behaviour may be undesirable de-
+ protocols on the right excel in terms of distillation properties.   spite satisfying the standard Bell-measurement criterion.
+ This comes at the expense of reducing the success probability.      This suggests that more granular decision rules in choos-
+                                                                     ing which states to forward to the next step of the com-
+    For each protocol we show two quantities: 1) the suc-            putation may be needed.
+ cess probability in the absence of distinguishability er-              Interestingly Fig. (3) shows that for all conventional
+ rors and 2) the average change in Bell-state fidelity in-           fusion protocols (so excluding the altered Grice proto-
+                                                                                                                                                                                    6
+
+                                 0.9
+Cumulative success probability
+                                                                                   Unboosted
+                                                                                                                      compared directly without the complication that the size
+                                 0.8
+                                                                                   Grice: +                           or structure of the state changes. This provides a simple
+                                 0.7                                               Grice: + GHZ4
+                                                                                   Ewert & van Loock
+                                                                                                                      setting in which the accumulation of distinguishability
+                                 0.6                                               Altered Grice: +                   through repeated fusion operations can be investigated.
+                                                                                                    +    +    +
+                                 0.5                                               Altered Grice:                         Often, small entangled resource states are created via
+                                 0.4                                                                                  heralded state generators [30, 43]. In these cases, an
+                                 0.3                                                                                  OBB error model as described in Sec. II B is more re-
+                                 0.2
+                                                                                                                      alistic than the OBBell model as featured in Sec. III B.
+                                 0.1
+                                                                                                                      For the results shown in this section, all states, includ-
+                                                                                                                      ing the ancillary states, are generated from OBB single
+                                  0
+                                       0   0.2   0.4     0.6    0.8    1     1.2   1.4      1.6         1.8       2   photons via the GHZ-state generators that use so called
+                                                       Minimum error reduction factor                                 primates, described in Ref. [30].
+                                                                                                                          Before turning to repeated fusion sequences, it is use-
+ Figure 3. For various fusion protocols, the cumulative success                                                       ful to first isolate the effect of changing the underlying
+ probability is shown as a function of a desired minimum error                                                             1
+                                                                                                                      distinguishability   model. Fig. (4) therefore compares
+ reduction factor. The curves therefore indicate the probability
+
+
+
+
+                                                                                                                      Success probability
+                                                                                                                      the0.8average distinguishability transformation for the fu-
+ of obtaining a successful herald outcome conditioned on de-
+ manding at least a specified degree of indistinguishability dis-                                                        0.6 of two Bell states under the collective distinguisha-
+                                                                                                                      sion
+ tillation.                                                                                                           bility
+                                                                                                                         0.4
+                                                                                                                              model with that obtained when the Bell states (and
+                                                                                                                      ancillary states) are instead generated from OBB single
+                                                                                                                         0.2
+                                                                                                                      photons.
+                                                                                                                                                  0
+ cols) the majority of the herald patterns that contribute to
+ the success probability of a Bell-projection are accom-                                                                 Error reduction factor
+                                                                                                                                                      Collective
+ panied by unfavourable anti-distillation behaviour under                                                                                             OBB
+
+ the OBBell error model. While the altered fusion pro-
+ tocols with Ψ+ ancillas have a high success probability
+ when aiming for a minimum error reduction factor of 1.
+    Note that Fig. (3) reports the possibility to perform
+ a heralded interference experiment that increases the fi-
+ delity of Bell states. This generalizes the single-photon
+ distillation protocols and shows that distillation proto-
+ cols are possible for entangled states too. Such heralded                                                            Figure 4. Comparison of the average error reduction factor for
+ distinguishability distillation of entangled states may be                                                           the collective distinguishability model (orange) and Bell states
+ useful in photonic architectures employing determinis-                                                               generated from OBB single photons (green).
+ tic resource-state generation, where entangled photonic
+ states can often exhibit source-dependent distinguisha-                                                                 Figure (4) immediately illustrates that distinguishabil-
+ bility.                                                                                                              ity transformation strongly depends on the underlying
+                                                                                                                      physical error model.
+                                                                                                                                        N      Although the altered Grice pro-
+                                                                                                                      tocol with |Ψ+ ⟩ 3 exhibit average indistinguishability
+                 C.                    Distinguishability propagation in an FBQC-inspired                             distillation under the collective distinguishability model,
+                                                       fusion sequence                                                no comparable improvement is observed when the Bell
+                                                                                                                      states are generated from imperfect single photons.
+    To investigate distinguishability propagation in a                                                                   A second important observation is that the qualitative
+ larger computational setting, we consider a simple model                                                             ordering of the fusion protocols changes substantially.
+ in which the qubits of a 4-GHZ state are sequentially                                                                In particular, the Ewert & van Loock protocol performs
+ fused with Bell states. This setting captures an essen-                                                              comparatively poorly under the collective model but be-
+ tial feature of fusion-based quantum computation, where                                                              comes one of the most favourable protocols under the
+ small entangled resource states are repeatedly connected                                                             OBB model. These observations demonstrate that dis-
+ through large numbers of fusion operations. The 4-GHZ                                                                tinguishability propagation cannot be regarded as an in-
+ state is particularly relevant since it could act as a re-                                                           trinsic property of a fusion protocol alone, but depends
+ source state for surface-code implementations of FBQC,                                                               strongly on the specific origin of the distinguishability
+ and in such architectures each qubit of the state ulti-                                                                 We next consider repeated fusion operations acting
+ mately participates in a fusion.                                                                                     on larger resource states. Following each successful fu-
+    An additional advantage of this setup is that a success-                                                          sion operation, we evaluate the fidelity of the remain-
+ ful fusion between a 4-GHZ state and a Bell state yields                                                             ing GHZ state. For each protocol, successful herald
+ another 4-GHZ state. Consequently, the quality of the                                                                outcomes are sampled according to their correspond-
+ resource state after successive fusion operations can be                                                             ing probabilities. Because the distinguishability trans-
+                                                                                                                              7
+
+formation depends on the specific sequence of herald                generation. This does not contradict the Bell-state anal-
+outcomes, Monte Carlo sampling is used to capture the               ysis. Figure (4) fuses two Bell states of equal input fi-
+stochastic evolution of realistic fusion trajectories. We           delity, whereas Fig. (5) fuses a relatively low-fidelity 4-
+consider 250 random fusion sequences.                               GHZ state with a considerably higher-fidelity Bell state.
+                                                                    For ϵ = 0.0025, the initial fidelities are 0.9680 and
+   0.99                                                             0.9888 respectively. We therefore attribute the increase
+                                                                    in fidelity to the relatively high quality Bell state used
+   0.97                                                             in this fusion experiment, outweighing the average anti-
+                                                                    distillation associated with the fusion itself.
+   0.95                                                                Most importantly, regardless of the fusion protocol
+                                                                    employed, we see a trend in which the fidelity of the
+   0.93                                                             resulting quantum state progressively decreases as addi-
+                Unboosted                                           tional fusion operations are performed. Although differ-
+   0.91         Grice:   +                                          ent protocols exhibit noticeably different rates of degra-
+                         +
+                Grice:       GHZ 4                                  dation, none of the considered protocols is able to pre-
+                Ewert & van Loock                                   vent the gradual accumulation of distinguishability.
+   0.89                              +
+                Altered Grice:                                         This observation is particularly relevant for large-scale
+                                     +   +   +
+                Altered Grice:
+                                                                    FBQC, where even a single logical operation requires
+   0.87
+          0              1                       2   3         4    many successive fusion operations. Consequently, rela-
+                               Number of fusions                    tively small differences in distinguishability propagation
+                                                                    may accumulate. These results therefore suggest that
+Figure 5. Average fidelity of a 4-GHZ state as a function of the    distinguishability transformation properties should be an
+number of successful fusion operations for the various fusion       important consideration when designing fusion protocols
+protocols considered. All states (including ancilla states) are     for large-scale photonic quantum computation.
+generated from OBB single photons. For most data points, the
+error bars are smaller than the markers. For this figure an input
+error of ϵOBB = 0.0025 is used, which follows the reported
+value of Ref. [3].                                                          IV.   DISCUSSION AND CONCLUSION
+
+
+   Figure (5) shows that substantial differences remain                In this work, we investigated how photonic fusion pro-
+between fusion protocols when considering repeated fu-              tocols transform partial distinguishability in heralded en-
+sion operations on larger resource states. As anticipated           tangled states. Rather than characterizing fusion oper-
+from Fig. (4), however, the qualitative ordering differs            ations solely through Bell-measurement success proba-
+from that obtained under the collective distinguishability          bility and ancillary resource cost, we studied how dis-
+model. Interestingly, although the altered Grice proto-             tinguishability evolves conditioned on successful fusion
+cols were identified through optimization under the col-            events and whether fusion operations can exhibit distil-
+lective distinguishability model, they continue to exhibit          lation or anti-distillation behaviour.
+more favourable distinguishability properties than their               Our results show that distinguishability transformation
+counterparts employing ancillary states of equal photon             properties constitute an important and largely overlooked
+number. However, unlike the collective disitnguishabil-             aspect of photonic fusion operations. Fusion protocols
+ity scenario, introducing larger ancillary states now sub-          do not merely determine whether a Bell projection suc-
+stantially worsens distinguishability propagation. As a             ceeds, but additionally shape the distinguishability prop-
+result, we find that the unboosted fusion has the most              erties of the surviving state. Successful fusion events can
+favourable distinguishability propagation. It should be             therefore systematically increase, preserve, or decrease
+noted that the Ewert & van Loock protocol exhibits the              the quality of the remaining state with respect to multi-
+second best distinguishability propagation in this setting          photon interference.
+despite not showing advantageous behaviour under the                   Importantly, we find that different fusion proto-
+collective distinguishability model.                                cols can exhibit substantially different distinguisha-
+   When looking at Fig. (5), we see the same qualitative            bility behaviour despite implementing the same Bell-
+behavior as Fig. (4). This gives rise to the hypothesis             measurement functionality. Consequently, fusion proto-
+that the size of the resource state has a smaller impact            cols that appear comparable when characterized only by
+on distinguishability propagation compared to the error             success probability and ancillary resource requirements
+model.                                                              may nevertheless behave very differently once realistic
+   Interestingly, despite the average anti-distillation be-         distinguishability errors are taken into account. In par-
+haviour shown in Fig. (4), the fidelity of the surviving            ticular, for the conventional fusion protocols considered
+4-GHZ state after the first successful fusion is slightly           here, including the standard fusion protocol, the Ewert
+higher than the fidelity immediately after resource-state           & van Loock protocol, and the boosted Grice protocols
+                                                                                                                              8
+
+employing Bell-state and 4-GHZ ancillary states, the av-            comes a dynamical property of the computation itself.
+erage error reduction factor remains below unity under                 This observation may have important implications
+the OBBell error model, indicating net anti-distillation            for effective noise modeling in photonic quantum
+behaviour.                                                          computation.       Several existing approaches model
+   At the same time, we find that modified ancillary-state          distinguishability-induced imperfections as fixed
+constructions can significantly alter this behaviour. The           measurement-error probabilities associated with in-
+altered Grice protocols employing |Ψ+ ⟩ ancillary states            dividual fusion operations. While such descriptions
+exhibit considerably more favourable distinguishability             can accurately capture certain measurement statistics,
+properties than their conventional counterparts, despite            the present results indicate that the underlying dis-
+possessing lower Bell-measurement success probabili-                tinguishability content of the surviving state evolves
+ties. These observations reveal a trade-off between suc-            throughout the computation due to repeated interference
+cess probability and distinguishability propagation and             and measurement. Effective measurement-error models
+demonstrate that ancillary-state design provides an ad-             based solely on the distinguishability of the initial
+ditional degree of freedom in the optimization of fusion            resource states may therefore fail to capture important
+protocols.                                                          correlations and history-dependent effects that emerge
+                                                                    during large fusion sequences.
+   The importance of these effects becomes increas-
+                                                                       Finally, our work raises several directions for future
+ingly pronounced in large-scale photonic architectures.
+                                                                    investigation. Extending the present analysis beyond or-
+Fusion-based approaches rely on very large numbers of
+                                                                    thogonal distinguishability models would provide a more
+repeated fusion operations during resource-state gener-
+                                                                    refined understanding of distinguishability propagation
+ation and computation. Even relatively small system-
+                                                                    in realistic devices. It would furthermore be interesting
+atic biases in distinguishability propagation can there-
+                                                                    to investigate whether fusion protocols can be explicitly
+fore accumulate throughout a computation and signifi-
+                                                                    optimized for favourable distinguishability transforma-
+cantly affect the quality of the surviving entangled states.
+                                                                    tion properties while simultaneously retaining high suc-
+Consequently, distinguishability transformation proper-
+                                                                    cess probabilities. More generally, understanding how
+ties should be regarded as an important design consid-
+                                                                    realistic imperfections propagate and interact throughout
+eration alongside resource overhead, loss tolerance, and
+                                                                    a computational system may contribute to the develop-
+Bell-measurement success probability.
+                                                                    ment of more complete noise models for large-scale pho-
+   A second important observation is that the qualitative           tonic quantum architectures.
+behaviour of fusion protocols depends strongly on the                  In conclusion, we have shown that photonic fusion
+underlying physical error model. Under the collective               operations possess nontrivial distinguishability transfor-
+OBBell model, the different protocols follow a markedly             mation properties that significantly affect the quality of
+different ordering than in the sequential fusion scenario           heralded entangled states. Our results demonstrate that
+constructed from OBB photons. This demonstrates that                these properties differ substantially between fusion pro-
+distinguishability propagation depends sensitively on the           tocols and depend strongly on the underlying physical
+microscopic origin of the imperfections and cannot gen-             error model. Recognizing distinguishability propagation
+erally be inferred from simplified effective error descrip-         as an additional design consideration therefore provides
+tions alone.                                                        a more complete framework for the analysis and design
+   More broadly, our results suggest that partial distin-           of scalable photonic quantum technologies.
+guishability should not be viewed as a static source of                Acknowledgments.-We thank F.H.B. Somhorst, I.L.
+measurement errors that remains unchanged throughout                Maxwell for scientific discussions. This research is sup-
+a computation. Instead, interference and measurements               ported by the PhotonDelta National Growth Fund pro-
+actively transform the distinguishability structure of the          gram. This publication is part of the project At the Quan-
+photonic state. As a result, the effective error behaviour          tum Edge (VI. Vidi.223.075) of the research programme
+of a fusion operation depends not only on the distin-               VIDI which is financed by the Dutch Research Council
+guishability of the input resources, but also on the spe-           (NWO).
+cific fusion implementation and the sequence of preced-                Data availability.-All data used in this study are avail-
+ing herald outcomes. In this sense, distinguishability be-          able in the 4TU.ResearchData database. [44]
+
+
+
+
+ [1] P. Thomas, L. Ruscio, O. Morin, and G. Rempe, Na-                   R. J. Warburton, et al., Nature Nanotechnology 21, 642
+     ture 608, 677 (2022), ISSN 1476-4687, URL https:                    (2026), ISSN 1748-3395, URL https://doi.org/
+     //doi.org/10.1038/s41586-022-04987-5.                               10.1038/s41565-026-02156-7.
+ [2] M. Albrechtsen, S. Krüger, J. C. Loredo, L. Stefan, Z. Liu,    [3] K. Alexander, A. Benyamini, D. Black, D. Bon-
+     Y. Meng, L. L. Niekamp, B. F. Seyschab, N. Spitzer,                 neau, S. Burgos, B. Burridge, H. Cable, G. Camp-
+                                                                                                                                   9
+
+     bell, G. Catalano, A. Ceballos, et al., Nature 641, 876          W. S. Kolthammer, and I. A. Walmsley, Phys. Rev. Lett.
+     (2025), ISSN 1476-4687, URL https://doi.org/                     120, 220502 (2018).
+     10.1038/s41586-025-08820-7.                                 [21] S. N. van den Hoven, E. Kanis, and J. J. Ren-
+ [4] Y. Meng, C. F. D. Faurby, M. L. Chan, R. B. Nielsen,             ema, Phys. Rev. A 111, 052448 (2025), URL
+     P. I. Sund, Z. Liu, Y. Wang, N. Bart, A. D. Wieck,               https://link.aps.org/doi/10.1103/
+     A. Ludwig, et al., Nature Communications 16, 7602                PhysRevA.111.052448.
+     (2025), ISSN 2041-1723, URL https://doi.org/                [22] C. Sparrow, Ph.D. thesis, Imperial College London
+     10.1038/s41467-025-62130-0.                                      (2018).
+ [5] M. Fox, Quantum Optics: An Introduction, Oxford Mas-        [23] P. P. Rohde and T. C. Ralph, Phys. Rev. A 73, 062312
+     ter Series in Physics (Oxford University Press, Oxford,          (2006), URL https://link.aps.org/doi/10.
+     United Kingdom, 2006), ISBN 9780198566731.                       1103/PhysRevA.73.062312.
+ [6] E. Knill, R. Laflamme, and G. J. Milburn, nature 409, 46    [24] J. Marshall, Phys. Rev. Lett. 129, 213601 (2022).
+     (2001).                                                     [25] J. Saied, J. Marshall, N. Anand, and E. G. Rieffel, General
+ [7] R. Raussendorf and H. J. Briegel, Phys. Rev. Lett. 86,           protocols for the efficient distillation of indistinguishable
+     5188 (2001), URL https://link.aps.org/doi/                       photons (2024), 2404.14217.
+     10.1103/PhysRevLett.86.5188.                                [26] F. H. B. Somhorst, B. K. Sauër, S. N. van den Hoven, and
+ [8] S. Bartolucci, P. Birchall, H. Bombin, H. Cable, C. Daw-         J. J. Renema, Photon distillation schemes with reduced
+     son, M. Gimeno-Segovia, E. Johnston, K. Kieling,                 resource costs based on multiphoton fourier interference
+     N. Nickerson, M. Pant, et al., Nat. Commun. 14, 912              (2024), 2404.14262.
+     (2023).                                                     [27] C. F. D. Faurby, L. Carosini, H. Cao, P. I. Sund, L. M.
+ [9] H. Bombı́n, C. Dawson, R. V. Mishmash, N. Nickerson,             Hansen, F. Giorgino, A. B. Villadsen, S. N. van den
+     F. Pastawski, and S. Roberts, PRX Quantum 4, 020303              Hoven, P. Lodahl, S. Paesani, et al. (2024), 2403.12866.
+     (2023), URL https://link.aps.org/doi/10.                    [28] F. H. B. Somhorst, J. Saied, N. Kannan, B. Kassenberg,
+     1103/PRXQuantum.4.020303.                                        J. Marshall, M. de Goede, H. J. Snijders, P. Stremoukhov,
+[10] D. Barral, F. J. Cardama, G. Dı́az-Camacho, D. Faı́lde,          A. Lukianenko, P. Venderbosch, et al., Below-threshold
+     I. F. Llovo, M. Mussa-Juane, J. Vázquez-Pérez,                 error reduction in single photons through photon dis-
+     J. Villasuso, C. Piñeiro, N. Costas, et al., Com-               tillation (2026), 2601.05947, URL https://arxiv.
+     puter Science Review 57, 100747 (2025), ISSN 1574-               org/abs/2601.05947.
+     0137, URL https://www.sciencedirect.com/                    [29] F. Hoch, A. Camillini, G. Rodari, E. Caruccio, G. Car-
+     science/article/pii/S1574013725000231.                           vacho, T. Giordani, R. Albiero, N. D. Giano, G. Cor-
+[11] J. Saied, J. Marshall, N. Anand, S. Grabbe, and E. G. Ri-        rielli, F. Ceccarelli, et al., Optimal distillation of photonic
+     effel, Advancing quantum networking: Some tools and              indistinguishability (2025), 2509.02296, URL https:
+     protocols for ideal and noisy photonic systems (2024),           //arxiv.org/abs/2509.02296.
+     2403.02515.                                                 [30] S. Bartolucci, P. M. Birchall, M. Gimeno-Segovia,
+[12] L. Pettersson and A. S. Sørensen, Phys. Rev. Appl.               E. Johnston, K. Kieling, M. Pant, T. Rudolph, J. Smith,
+     24, 044090 (2025), URL https://link.aps.org/                     C. Sparrow, and M. D. Vidrighin, Creation of entangled
+     doi/10.1103/fxcg-xxry.                                           photonic states using linear optics (2021), 2106.13825.
+[13] D. E. Browne and T. Rudolph, Phys. Rev. Lett. 95, 010501    [31] S.-H. Lee and H. Jeong, Quantum 7, 1212 (2023), ISSN
+     (2005), URL https://link.aps.org/doi/10.                         2521-327X, URL https://doi.org/10.22331/
+     1103/PhysRevLett.95.010501.                                      q-2023-12-20-1212.
+[14] F. Ewert and P. van Loock, Phys. Rev. Lett. 113, 140403     [32] S. C. Wein, T. Goubault de Brugière, L. Music, P. Senel-
+     (2014), URL https://link.aps.org/doi/10.                         lart, B. Bourdoncle, and S. Mansfield, PRX Quantum
+     1103/PhysRevLett.113.140403.                                     6, 040362 (2025), URL https://link.aps.org/
+[15] W. P. Grice, Phys. Rev. A 84, 042331 (2011), URL                 doi/10.1103/8l5g-x3b7.
+     https://link.aps.org/doi/10.1103/                           [33] S. Bartolucci, T. Bell, H. Bombin, P. Birchall, J. Bul-
+     PhysRevA.84.042331.                                              mer, C. Dawson, T. Farrelly, S. Gartenstein, M. Gimeno-
+[16] C.-K. Hong, Z.-Y. Ou, and L. Mandel, Phys. Rev. Lett. 59,        Segovia, D. Litinski, et al., Comparison of schemes for
+     2044 (1987).                                                     highly loss tolerant photonic fusion based quantum com-
+[17] A. J. Menssen, A. E. Jones, B. J. Metcalf, M. C.                 puting (2025), 2506.11975, URL https://arxiv.
+     Tichy, S. Barz, W. S. Kolthammer, and I. A. Walm-                org/abs/2506.11975.
+     sley, Phys. Rev. Lett. 118, 153603 (2017), URL              [34] S. Paesani and B. J. Brown, Phys. Rev. Lett. 131, 120603
+     https://link.aps.org/doi/10.1103/                                (2023), URL https://link.aps.org/doi/10.
+     PhysRevLett.118.153603.                                          1103/PhysRevLett.131.120603.
+[18] B. Seron, L. Novo, and N. J. Cerf, Nature Photonics 17,     [35] S. Wehner, D. Elkouss, and R. Hanson, Science 362
+     702–709 (2023), ISSN 1749-4893, URL http://dx.                   (2018), ISSN 1095-9203, URL http://dx.doi.
+     doi.org/10.1038/s41566-023-01213-0.                              org/10.1126/science.aam9288.
+[19] S. N. van den Hoven, M. C. Anguita, S. Marzban,             [36] J. Calsamiglia and N. Lütkenhaus, Applied Physics B
+     and J. J. Renema, Phys. Rev. Lett. 137, 073604                   72, 67 (2001), ISSN 1432-0649, URL https://doi.
+     (2026), URL https://link.aps.org/doi/10.                         org/10.1007/s003400000484.
+     1103/g28d-jzgj.                                             [37] M. C. Tichy, Phys. Rev. A 91, 022316 (2015).
+[20] J. J. Renema, A. Menssen, W. R. Clements, G. Triginer,      [38] V. Shchesnovich, Phys. Rev. A 91, 013844 (2015).
+                                                                                                                              10
+
+[39] R. Schadow, N. Spier, S. N. van den Hoven, M. C. An-                X. Gao, Z. Zheng, et al., Nature Reviews Materials 11,
+     guita, R. B. G. Braamhaar, S. Marzban, J. Eisert, J. J. Ren-        354–374 (2026), ISSN 2058-8437, URL http://dx.
+     ema, and N. Walk, Certification of linear optical quan-             doi.org/10.1038/s41578-026-00893-8.
+     tum state preparation (2026), 2602.12269, URL https:           [43] I. Forbes, F. Ghafari, E. C. R. Deacon, S. P. Singh,
+     //arxiv.org/abs/2602.12269.                                         E. Lavie, P. Yard, R. D. Shaw, A. Laing, and N. Tis-
+[40] A. E. Moylett, R. Garcı́a-Patrón, J. J. Renema, and P. S.          chler, Reports on Progress in Physics 88, 086002 (2025),
+     Turner, Quantum Science and Technology 5, 015001                    URL https://doi.org/10.1088/1361-6633/
+     (2019).                                                             adf85e.
+[41] E. Annoni and S. C. Wein, Incoherent behavior of par-          [44] S. van den Hoven, G. Lamers, and J. Ren-
+     tially distinguishable photons (2025), 2502.05047, URL              ema, Data underlying the publication:             ”pho-
+     https://arxiv.org/abs/2502.05047.                                   tonic fusion operations transform partial distin-
+[42] E. Daggett, C. M. Lange, B. Windt, A. Danageozian,                  guishability”,       https://doi.org/10.4121/
+     A. Senichev, J. A. Montañà-López, Chanchal, K. Barua,            aff56dab-885b-4b79-872e-f1942a4ffa84
+                                                                         (2026).
+

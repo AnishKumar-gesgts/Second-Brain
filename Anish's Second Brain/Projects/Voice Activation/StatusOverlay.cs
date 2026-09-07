@@ -29,6 +29,7 @@ internal sealed class StatusOverlay : Form
 
         Text = "VoiceBot";
         FormBorderStyle = FormBorderStyle.None;
+        Visible = false;
         ShowInTaskbar = false;
         StartPosition = FormStartPosition.Manual;
         TopMost = true;
@@ -104,7 +105,10 @@ internal sealed class StatusOverlay : Form
                 Application.SetCompatibleTextRenderingDefault(false);
                 instance = new StatusOverlay(enableSpeech, maximumSpeechCharacters, displaySeconds, voiceName);
                 Ready.Set();
-                Application.Run(instance);
+                // Run a message loop without registering the form as the main form.
+                // This prevents WinForms from showing a blank form at (0, 0) during
+                // startup; ShowMessage displays it only after setting its content.
+                Application.Run(new ApplicationContext());
             }
             catch (Exception ex)
             {

@@ -1,0 +1,17 @@
+{
+  "wavepacket_sigma_ps": 60.0,
+  "detector_efficiency": 0.995,
+  "detunings_ghz": [0.6, 0.9, 1.2, 1.5],
+  "jitters_ps": [0.0, 15.0, 30.0, 60.0],
+  "spectral_diffusions_ghz": [0.0, 0.2, 0.5],
+  "diffusion_reference_detuning_ghz": 1.2,
+  "diffusion_reference_jitter_ps": 15.0,
+  "gate_widths_ps": [40, 50, 60, 75, 90, 100, 110, 120, 130, 140, 160, 180, 200, 250, 320, 450, 700, 1200],
+  "distances": [3, 5, 7],
+  "selection_distance": 5,
+  "pilot_shots": 30000,
+  "heldout_shots": 200000,
+  "pilot_seed": 20262001,
+  "heldout_seed": 20263001,
+  "temporal_grid_points": 20001
+}

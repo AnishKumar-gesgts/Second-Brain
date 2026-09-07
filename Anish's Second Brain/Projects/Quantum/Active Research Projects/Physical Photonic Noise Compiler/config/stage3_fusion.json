@@ -1,0 +1,11 @@
+{
+  "primitive": "standard unboosted dual-rail Bell measurement",
+  "pair_probabilities": [0.01, 0.03, 0.05, 0.1, 0.2],
+  "signal_efficiencies": [0.9, 0.95, 0.99],
+  "idler_efficiencies": [0.85, 0.95, 0.99],
+  "fusion_detector_efficiencies": [0.85, 0.95, 0.99],
+  "photon_cutoff": 10,
+  "bell_coherence_tolerance": 1e-12,
+  "frozen_before_run": true,
+  "claim_boundary": "The remote-photon Bell-pair input model is an exact small-Fock reference for this primitive, not a validated model of a complete six-ring resource-state generator."
+}

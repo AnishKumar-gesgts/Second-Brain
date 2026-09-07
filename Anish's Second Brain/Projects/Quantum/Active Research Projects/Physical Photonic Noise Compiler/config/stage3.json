@@ -1,0 +1,11 @@
+{
+  "model": "TMSV source conditioned on exactly one idler PNR count",
+  "pair_probabilities": [0.01, 0.03, 0.05, 0.1, 0.2],
+  "signal_efficiencies": [0.85, 0.9, 0.95, 0.99],
+  "idler_efficiencies": [0.85, 0.9, 0.95, 0.99],
+  "photon_cutoff": 10,
+  "convergence_reference_cutoff": 16,
+  "convergence_tolerance": 1e-12,
+  "frozen_before_run": true,
+  "claim_boundary": "This source-level study validates hidden vacuum and multiphoton branches. It does not yet map leakage through a fusion circuit or establish a logical-QEC effect."
+}

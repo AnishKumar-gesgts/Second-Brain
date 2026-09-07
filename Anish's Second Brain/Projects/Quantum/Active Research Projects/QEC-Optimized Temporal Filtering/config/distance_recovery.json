@@ -1,0 +1,19 @@
+{
+  "physical": {
+    "wavepacket_sigma_ps": 60.0,
+    "detector_jitter_ps": 15.0,
+    "frequency_detuning_ghz": 1.2,
+    "detector_efficiency": 0.995
+  },
+  "gate_widths_ps": [40, 50, 60, 75, 90, 100, 110, 120, 130, 140, 160, 180, 200, 250, 320, 450, 700, 1200],
+  "distances": [3, 5, 7],
+  "selection_distance": 5,
+  "rounds_equal_distance": true,
+  "temporal_grid_points": 20001,
+  "pilot_shots": 100000,
+  "heldout_shots": 1000000,
+  "pilot_seed": 20261105,
+  "heldout_seed": 20261206,
+  "control_detunings_ghz": [0.0, 0.1],
+  "model_label": "Frozen confirmatory distance-recovery extension after broad exploratory detuning scan"
+}

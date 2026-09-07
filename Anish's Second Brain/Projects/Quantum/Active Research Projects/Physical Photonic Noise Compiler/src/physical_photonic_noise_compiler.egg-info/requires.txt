@@ -1,0 +1,7 @@
+matplotlib>=3.8
+numpy>=1.26
+pymatching>=2.3
+stim>=1.15
+
+[test]
+pytest>=8

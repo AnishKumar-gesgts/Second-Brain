@@ -1,0 +1,22 @@
+{
+  "compiled_channels": "results/idea2_adapter/compiled_channels.json",
+  "pilot_grid": {
+    "detunings_ghz": [0.6, 0.9, 1.2, 1.5],
+    "detector_jitters_ps": [0.0, 15.0, 60.0],
+    "gate_labels": ["no_filter", "220_ps", "140_ps", "40_ps"]
+  },
+  "pilot_distance": 5,
+  "pilot_shots": 3000,
+  "heldout_profiles": [
+    {"name": "low_error_open", "detuning_ghz": 0.6, "detector_jitter_ps": 15.0, "gate_label": "no_filter"},
+    {"name": "low_error_moderate", "detuning_ghz": 0.6, "detector_jitter_ps": 15.0, "gate_label": "220_ps"},
+    {"name": "reference_open", "detuning_ghz": 1.2, "detector_jitter_ps": 15.0, "gate_label": "no_filter"},
+    {"name": "reference_moderate", "detuning_ghz": 1.2, "detector_jitter_ps": 15.0, "gate_label": "220_ps"},
+    {"name": "reference_strong", "detuning_ghz": 1.2, "detector_jitter_ps": 15.0, "gate_label": "140_ps"},
+    {"name": "reference_extreme", "detuning_ghz": 1.2, "detector_jitter_ps": 15.0, "gate_label": "40_ps"}
+  ],
+  "heldout_distances": [3, 5, 7],
+  "heldout_shots": 20000,
+  "pilot_seed": 20269001,
+  "heldout_seed": 20270001
+}
