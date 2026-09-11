@@ -37,7 +37,11 @@ module.exports = class ApushReadingNotesPlugin extends Plugin {
       if (!assignmentsFile) return;
 
       const payload = JSON.parse(await this.app.vault.read(assignmentsFile));
-      const readings = (payload.assignments || [])
+      const candidates = [
+        ...(payload.assignments || []),
+        ...(payload.announcements || []).map((announcement) => ({ ...announcement, dueAt: announcement.postedAt || null }))
+      ];
+      const readings = candidates
         .filter((assignment) => assignment.course === HISTORY_COURSE)
         .map((assignment) => {
           const combined = `${assignment.name || ""}\n${assignment.directions || ""}`;

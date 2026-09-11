@@ -5,11 +5,11 @@ cssclasses:
 
 # Canvas Checkup
 
-> [!info] Last checked Sun, Sep 6, 11:47 AM. Obsidian checks Canvas hourly from 8 AM through 11 PM and resets its change tracker at 6 AM.
+> [!info] Last checked Fri, Sep 11, 4:14 PM. Obsidian checks Canvas hourly from 8 AM through 11 PM and resets its change tracker at 6 AM.
 
 ## Check status
 
-14 assignments are past due. Next due: Unit 1A Test - (1.1-1.6) for Computer Science A (AP) - Sakallah, F on Tue, Sep 8, 11:35 AM. 12 new or changed assignments in this check.
+10 assignments are past due. Next due: 1.7 APIs and Libraries for Computer Science A (AP) - Sakallah, F on Sat, Sep 12, 11:59 PM. 13 new or changed assignments in this check.
 
 ## Pending assignments
 
@@ -24,30 +24,6 @@ cssclasses:
 **Directions**
 
 No written directions were included on Canvas.
-
-### Sophomore Year Reflection
-
-- **Class:** English Language A (AP) - Kane, K
-- **Due:** Thu, Aug 20, 11:59 PM
-- **Points:** 3
-- **Status:** Past due
-- **Canvas:** https://iusd.instructure.com/courses/153470/assignments/2157529
-
-**Directions**
-
-Sophomore Year Reflection
-
-### Read p. 42-72 
-
-- **Class:** U.S. History A (AP) - Harrington, J
-- **Due:** Mon, Aug 24, 8:30 AM
-- **Points:** 9
-- **Status:** Past due
-- **Canvas:** https://iusd.instructure.com/courses/153647/assignments/2184646
-
-**Directions**
-
-Read Ch. 2 p. 42-72 for the quiz on Monday. This is your link to the online textbook for now. https://ia600601.us.archive.org/32/items/AmericasHistory/America%27s%20History%2C%20For%20the%20AP_%20-%20James%20A.%20Henretta.pdf OR https://www.biknotes.com/_files/ugd/b8b6dc_27e025940d2b45f7a87d0bc336e231c6.pdf For my class, you do not have to take notes, and you cannot use any study materials for the weekly quiz. You also do not have to read the purple, yellow, or brown pages, just the black and white pages. It is most important that you know the key terms/vocabulary, the specific people, places, things, events, etc. But, I may quiz you on something that is not bold or in italics. So, read carefully. It should take about 2 hours for the 20-30 pages, but it will become easier and faster as you go through the school year. If you put it off until Sunday night, it may be frustrating for you. Perhaps, start early, and pace it out. You have the 40-minute period on 'anchor day' to respond in handwritten short paragraphs to the nine reading comprehension questions (3 sets of 3 SAQs, 1,2,3 ABC). Each period will have a different version of the quiz, but I strive to make them fair and equal in difficulty and content coverage. Each quiz is worth 9 points. You cannot take it another day. This is your first required formative assessment.
 
 ### 1.2 Variables and Data Types
 
@@ -121,18 +97,6 @@ No written directions were included on Canvas.
 
 Go to AP Classroom and complete Unit 1 Progress Check Part A
 
-### For the quiz on Monday 8/31, read p. 82-111 (chapter 3).
-
-- **Class:** U.S. History A (AP) - Harrington, J
-- **Due:** Mon, Aug 31, 11:59 PM
-- **Points:** 9
-- **Status:** Past due
-- **Canvas:** https://iusd.instructure.com/courses/153647/assignments/2198526
-
-**Directions**
-
-https://www.biknotes.com/_files/ugd/b8b6dc_3a883217a41448b89d2ea2737337eccd.pdf
-
 ### AP Classroom: Unit 1A AP Review
 
 - **Class:** Computer Science A (AP) - Sakallah, F
@@ -144,18 +108,6 @@ https://www.biknotes.com/_files/ugd/b8b6dc_3a883217a41448b89d2ea2737337eccd.pdf
 **Directions**
 
 Go to AP Classroom and complete Unit 1A AP Review
-
-### Testing Blocksi
-
-- **Class:** Computer Science A (AP) - Sakallah, F
-- **Due:** Wed, Sep 2, 11:59 PM
-- **Points:** 2
-- **Status:** Past due
-- **Canvas:** https://iusd.instructure.com/courses/153566/assignments/2203314
-
-**Directions**
-
-No written directions were included on Canvas.
 
 ### Unit 1A Review
 
@@ -169,43 +121,139 @@ No written directions were included on Canvas.
 
 Complete the Unit 1A Review on runestone
 
-### Food Pyramid 
-
-- **Class:** Health - semester course - Klamberg, K
-- **Due:** Thu, Sep 3, 11:59 PM
-- **Points:** 4
-- **Status:** Past due
-- **Canvas:** https://iusd.instructure.com/courses/153422/assignments/2187900
-
-**Directions**
-
-https://docs.google.com/presentation/d/1Dgrk6x6gW3Vl38PS9RU77uGBdx3ycbJx27zTdhSlpU8/edit?usp=sharing
-
-### Unit 1A Test - (1.1-1.6)
-
-- **Class:** Computer Science A (AP) - Sakallah, F
-- **Due:** Tue, Sep 8, 11:35 AM
-- **Points:** 68
-- **Status:** Not submitted
-- **Canvas:** https://iusd.instructure.com/courses/153566/assignments/2184313
-
-**Directions**
-
-No written directions were included on Canvas.
-
 ### Unit 1A Project
 
 - **Class:** Computer Science A (AP) - Sakallah, F
 - **Due:** Tue, Sep 8, 11:59 PM
 - **Points:** 20
-- **Status:** Not submitted
+- **Status:** Past due
 - **Canvas:** https://iusd.instructure.com/courses/153566/assignments/2184472
 
 **Directions**
 
 Go to runestone and complete the Unit 1A Project. Please remember the due date is different depending on your period, however, that is not shown in runestone as both classes are combined.
 
+### 1.7 APIs and Libraries
+
+- **Class:** Computer Science A (AP) - Sakallah, F
+- **Due:** Sat, Sep 12, 11:59 PM
+- **Points:** 16
+- **Status:** Not submitted
+- **Canvas:** https://iusd.instructure.com/courses/153566/assignments/2184338
+
+**Directions**
+
+No written directions were included on Canvas.
+
+### 1.8 Documentation
+
+- **Class:** Computer Science A (AP) - Sakallah, F
+- **Due:** Sat, Sep 12, 11:59 PM
+- **Points:** 12
+- **Status:** Not submitted
+- **Canvas:** https://iusd.instructure.com/courses/153566/assignments/2184340
+
+**Directions**
+
+No written directions were included on Canvas.
+
+### Essay Revisions
+
+- **Class:** English Language A (AP) - Kane, K
+- **Due:** Tue, Sep 15, 11:59 PM
+- **Points:** 15
+- **Status:** Not submitted
+- **Canvas:** https://iusd.instructure.com/courses/153470/assignments/2205004
+
+**Directions**
+
+No written directions were included on Canvas.
+
 ## Submitted assignments
+
+### Practice Timed Write: JFK
+
+- **Class:** English Language A (AP) - Kane, K
+- **Due:** Thu, Sep 10, 11:59 PM
+- **Points:** 0
+- **Status:** Submitted; awaiting grade
+- **Canvas:** https://iusd.instructure.com/courses/153470/assignments/2204613
+
+**Directions**
+
+Practice Timed Write: JFK
+
+### Unit 1 Study Guide
+
+- **Class:** Health - semester course - Klamberg, K
+- **Due:** Tue, Sep 15, 2:00 PM
+- **Points:** 4
+- **Status:** Submitted; awaiting grade
+- **Canvas:** https://iusd.instructure.com/courses/153422/assignments/2187919
+
+**Directions**
+
+https://docs.google.com/document/d/1yC5XUqO5ef48N5PqExL1r_uYowR_SkvT0LZaltG2jj0/edit?usp=sharing
+
+### Unit 1B Digital Notes 
+
+- **Class:** Computer Science A (AP) - Sakallah, F
+- **Due:** Fri, Oct 2, 11:59 PM
+- **Points:** 10
+- **Status:** Submitted; awaiting grade
+- **Canvas:** https://iusd.instructure.com/courses/153566/assignments/2205021
+
+**Directions**
+
+Make a Copy of the Unit 1B Digital Notes only once. Save the copy into the folder named AP Comp Sci 2627 on your IUSD google drive Hit the share button on the top right Change general access to anyone with the link Push the copy link button and past it below
+
+### Sophomore Year Reflection
+
+- **Class:** English Language A (AP) - Kane, K
+- **Due:** Thu, Aug 20, 11:59 PM
+- **Points:** 3
+- **Status:** Submitted; awaiting grade
+- **Canvas:** https://iusd.instructure.com/courses/153470/assignments/2157529
+
+**Directions**
+
+Sophomore Year Reflection
+
+### Falling Leaves Anticipation Questions
+
+- **Class:** English Language A (AP) - Kane, K
+- **Due:** Wed, Sep 9, 11:59 PM
+- **Points:** 7
+- **Status:** Submitted; awaiting grade
+- **Canvas:** https://iusd.instructure.com/courses/153470/assignments/2204504
+
+**Directions**
+
+Falling Leaves Anticipation Questions
+
+### Fitness Plan 
+
+- **Class:** Health - semester course - Klamberg, K
+- **Due:** Mon, Sep 16, 11:59 PM
+- **Points:** 4
+- **Status:** Submitted; awaiting grade
+- **Canvas:** https://iusd.instructure.com/courses/153422/assignments/2187898
+
+**Directions**
+
+Create 1 complete exercise routines incorporating all 4 recommended components (Warm Up (Flexibility), Cardio, Muscular Strength/Endurance/, Cool Down ( Flexibility)
+
+### Unit 1A Test - (1.1-1.6)
+
+- **Class:** Computer Science A (AP) - Sakallah, F
+- **Due:** Tue, Sep 8, 11:35 AM
+- **Points:** 68
+- **Status:** Submitted; awaiting grade
+- **Canvas:** https://iusd.instructure.com/courses/153566/assignments/2184313
+
+**Directions**
+
+No written directions were included on Canvas.
 
 ### Practice Timed Write: Patrick Henry
 
@@ -231,30 +279,6 @@ Practice Timed Write: Patrick Henry
 
 Patrick Henry’s Speech to VA Convention Questions
 
-### Nutrition Notes
-
-- **Class:** Health - semester course - Klamberg, K
-- **Due:** Tue, Aug 25, 11:59 PM
-- **Points:** 4
-- **Status:** Submitted; awaiting grade
-- **Canvas:** https://iusd.instructure.com/courses/153422/assignments/2187907
-
-**Directions**
-
-https://docs.google.com/document/d/1MXek0Wo_6dgv-ysTjGIhEC1KrsYFwy9M0VDAnwVxkJk/edit?usp=sharing
-
-### Food Labels
-
-- **Class:** Health - semester course - Klamberg, K
-- **Due:** Tue, Sep 1, 11:59 PM
-- **Points:** 4
-- **Status:** Submitted; awaiting grade
-- **Canvas:** https://iusd.instructure.com/courses/153422/assignments/2187899
-
-**Directions**
-
-https://docs.google.com/document/d/1W-sGwRlNLGp4YbN9PAD0KMdwM__ycu9Qq3WQeVs05Bk/edit?usp=sharing
-
 ### Practice Timed Write: Abigail Adams Letter to Her Son
 
 - **Class:** English Language A (AP) - Kane, K
@@ -266,30 +290,6 @@ https://docs.google.com/document/d/1W-sGwRlNLGp4YbN9PAD0KMdwM__ycu9Qq3WQeVs05Bk/
 **Directions**
 
 Practice Timed Write: Abigail Adams Letter to Her Son
-
-### Ideal Gas law Lab
-
-- **Class:** Physics 2A (AP) - Elmasri, J
-- **Due:** Mon, Aug 31, 11:59 PM
-- **Points:** 0
-- **Status:** Submitted; awaiting grade
-- **Canvas:** https://iusd.instructure.com/courses/153624/assignments/2201669
-
-**Directions**
-
-Gimme gimme
-
-### AI Nutrition 
-
-- **Class:** Health - semester course - Klamberg, K
-- **Due:** Tue, Aug 25, 11:59 PM
-- **Points:** 4
-- **Status:** Submitted; awaiting grade
-- **Canvas:** https://iusd.instructure.com/courses/153422/assignments/2187888
-
-**Directions**
-
-No written directions were included on Canvas.
 
 ### Course Syllabus Signature Page
 
@@ -341,6 +341,42 @@ After reviewing the Non-District Adopted Software with your parent / guardian, p
 
 ## Graded assignments
 
+### Food Pyramid 
+
+- **Class:** Health - semester course - Klamberg, K
+- **Due:** Thu, Sep 3, 11:59 PM
+- **Points:** 4
+- **Status:** Graded
+- **Canvas:** https://iusd.instructure.com/courses/153422/assignments/2187900
+
+**Directions**
+
+https://docs.google.com/presentation/d/1Dgrk6x6gW3Vl38PS9RU77uGBdx3ycbJx27zTdhSlpU8/edit?usp=sharing
+
+### Nutrition Notes
+
+- **Class:** Health - semester course - Klamberg, K
+- **Due:** Tue, Aug 25, 11:59 PM
+- **Points:** 4
+- **Status:** Graded
+- **Canvas:** https://iusd.instructure.com/courses/153422/assignments/2187907
+
+**Directions**
+
+https://docs.google.com/document/d/1MXek0Wo_6dgv-ysTjGIhEC1KrsYFwy9M0VDAnwVxkJk/edit?usp=sharing
+
+### Food Labels
+
+- **Class:** Health - semester course - Klamberg, K
+- **Due:** Tue, Sep 1, 11:59 PM
+- **Points:** 4
+- **Status:** Graded
+- **Canvas:** https://iusd.instructure.com/courses/153422/assignments/2187899
+
+**Directions**
+
+https://docs.google.com/document/d/1W-sGwRlNLGp4YbN9PAD0KMdwM__ycu9Qq3WQeVs05Bk/edit?usp=sharing
+
 ### Time Use Analysis
 
 - **Class:** Health - semester course - Klamberg, K
@@ -377,6 +413,18 @@ No written directions were included on Canvas.
 
 Respond to one of the following prompts with a full paragraph: In your opinion, is the public library obsolete? Should we be investing in "social infrastructure" as a society? For many, a library is a vital 3rd space. That is, a space that is neither home (1st space) or work/school (2nd space) to spend time. How important are 3rd spaces to a community? (You may write about your own experience with 3rd spaces in your answer.)
 
+### Ideal Gas law Lab
+
+- **Class:** Physics 2A (AP) - Elmasri, J
+- **Due:** Mon, Aug 31, 11:59 PM
+- **Points:** 0
+- **Status:** Graded
+- **Canvas:** https://iusd.instructure.com/courses/153624/assignments/2201669
+
+**Directions**
+
+Gimme gimme
+
 ### Abigail Adams Letter to Her Son Questions
 
 - **Class:** English Language A (AP) - Kane, K
@@ -388,6 +436,18 @@ Respond to one of the following prompts with a full paragraph: In your opinion, 
 **Directions**
 
 Abigail Adams Letter to Her Son Questions
+
+### AI Nutrition 
+
+- **Class:** Health - semester course - Klamberg, K
+- **Due:** Tue, Aug 25, 11:59 PM
+- **Points:** 4
+- **Status:** Graded
+- **Canvas:** https://iusd.instructure.com/courses/153422/assignments/2187888
+
+**Directions**
+
+No written directions were included on Canvas.
 
 ### Popcorn Lab Submission
 

@@ -1581,7 +1581,7 @@ module.exports = class CodexWorkspacePlugin extends Plugin {
     const previous = await this.readCanvasData();
     try {
       const courses = await this.canvasRequest("courses?enrollment_state=active&state[]=available&include[]=term&per_page=100");
-      const now = Date.now(); const assignments = [];
+      const now = Date.now(); const assignments = []; const announcements = [];
       for (const course of courses) {
         if (!course?.id || course.access_restricted_by_date) continue;
         let items = [];
@@ -1596,6 +1596,12 @@ module.exports = class CodexWorkspacePlugin extends Plugin {
           const status = isGraded ? (submission.excused ? "Excused" : "Graded") : isSubmitted ? "Submitted; awaiting grade" : due && due < now ? "Past due" : "Not submitted";
           assignments.push({ id: String(item.id), courseId: String(course.id), name: item.name || "Untitled assignment", course: course.name || course.course_code || "Course not listed", dueAt: item.due_at || null, points: item.points_possible ?? null, bucket, status, submittedAt: submission.submitted_at || null, gradedAt: submission.graded_at || null, directions: this.canvasPlainText(item.description), url: item.html_url || "", updatedAt: item.updated_at || "" });
         }
+        try {
+          const courseAnnouncements = await this.canvasRequest(`announcements?context_codes[]=course_${course.id}&per_page=100`);
+          for (const announcement of courseAnnouncements) {
+            announcements.push({ id: String(announcement.id), courseId: String(course.id), course: course.name || course.course_code || "Course not listed", name: announcement.title || "Untitled announcement", directions: this.canvasPlainText(announcement.message), url: announcement.url || "", postedAt: announcement.posted_at || null, updatedAt: announcement.updated_at || announcement.posted_at || "" });
+          }
+        } catch (_) { /* Announcements are supplementary; keep assignment sync available if this endpoint is unavailable. */ }
       }
       assignments.sort((a, b) => {
         const order = { pending: 0, submitted: 1, graded: 2 };
@@ -1606,7 +1612,7 @@ module.exports = class CodexWorkspacePlugin extends Plugin {
       });
       const priorById = new Map((previous.assignments || []).map((item) => [String(item.id), item])); const changes = [];
       for (const item of assignments) { const old = priorById.get(String(item.id)); if (!old) changes.push({ type: "new", id: item.id, name: item.name, course: item.course }); else if (["name", "dueAt", "points", "directions", "status", "bucket", "gradedAt"].some((key) => JSON.stringify(old[key]) !== JSON.stringify(item[key]))) changes.push({ type: "changed", id: item.id, name: item.name, course: item.course }); }
-      const data = { updatedAt: new Date().toISOString(), assignments, changes, summary: this.canvasSummary(assignments, changes), error: "" };
+      const data = { updatedAt: new Date().toISOString(), assignments, announcements, changes, summary: this.canvasSummary(assignments, changes), error: "" };
       await this.ensureVaultFolder("Machine/Canvas Checkup");
       const json = JSON.stringify(data, null, 2) + "\n"; const cache = this.app.vault.getAbstractFileByPath(CANVAS_DATA_PATH);
       if (cache) await this.app.vault.modify(cache, json); else await this.app.vault.create(CANVAS_DATA_PATH, json);
