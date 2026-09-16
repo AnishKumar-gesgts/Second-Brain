@@ -1,5 +1,5 @@
 {
-  "accentColor": "#1f7a4d",
+  "accentColor": "",
   "baseFontSize": 24,
   "interfaceFontFamily": "Segoe UI Variable, Segoe UI",
   "textFontFamily": "Aptos, Segoe UI Variable, Segoe UI",
@@ -7,7 +7,6 @@
   "enabledCssSnippets": [],
   "showViewHeader": true,
   "translucency": false,
-  "baseFontSizeAction": true,
-  "cssTheme": "Ukiyo",
-  "theme": "obsidian"
+  "theme": "obsidian",
+  "cssTheme": "Cardstock"
 }

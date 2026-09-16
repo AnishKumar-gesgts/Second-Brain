@@ -4,6 +4,5 @@
   "userIgnoreFilters": [
     "Sample Obsidian Vault/"
   ],
-  "readableLineLength": false,
-  "showInlineTitle": true
+  "readableLineLength": true
 }
