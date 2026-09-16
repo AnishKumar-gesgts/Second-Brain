@@ -5,11 +5,11 @@ cssclasses:
 
 # Canvas Checkup
 
-> [!info] Last checked Fri, Sep 11, 4:14 PM. Obsidian checks Canvas hourly from 8 AM through 11 PM and resets its change tracker at 6 AM.
+> [!info] Last checked Tue, Sep 15, 6:26 PM. Obsidian checks Canvas hourly from 8 AM through 11 PM and resets its change tracker at 6 AM.
 
 ## Check status
 
-10 assignments are past due. Next due: 1.7 APIs and Libraries for Computer Science A (AP) - Sakallah, F on Sat, Sep 12, 11:59 PM. 13 new or changed assignments in this check.
+12 assignments are past due. Next due: 1.9 Method Signature for Computer Science A (AP) - Sakallah, F on Sat, Sep 19, 11:59 PM. 9 new or changed assignments in this check.
 
 ## Pending assignments
 
@@ -138,7 +138,7 @@ Go to runestone and complete the Unit 1A Project. Please remember the due date i
 - **Class:** Computer Science A (AP) - Sakallah, F
 - **Due:** Sat, Sep 12, 11:59 PM
 - **Points:** 16
-- **Status:** Not submitted
+- **Status:** Past due
 - **Canvas:** https://iusd.instructure.com/courses/153566/assignments/2184338
 
 **Directions**
@@ -150,26 +150,86 @@ No written directions were included on Canvas.
 - **Class:** Computer Science A (AP) - Sakallah, F
 - **Due:** Sat, Sep 12, 11:59 PM
 - **Points:** 12
-- **Status:** Not submitted
+- **Status:** Past due
 - **Canvas:** https://iusd.instructure.com/courses/153566/assignments/2184340
 
 **Directions**
 
 No written directions were included on Canvas.
 
-### Essay Revisions
+### 1.9 Method Signature
 
-- **Class:** English Language A (AP) - Kane, K
-- **Due:** Tue, Sep 15, 11:59 PM
-- **Points:** 15
+- **Class:** Computer Science A (AP) - Sakallah, F
+- **Due:** Sat, Sep 19, 11:59 PM
+- **Points:** 18
 - **Status:** Not submitted
-- **Canvas:** https://iusd.instructure.com/courses/153470/assignments/2205004
+- **Canvas:** https://iusd.instructure.com/courses/153566/assignments/2184342
 
 **Directions**
 
 No written directions were included on Canvas.
 
+### 1.10 Calling Class Methods
+
+- **Class:** Computer Science A (AP) - Sakallah, F
+- **Due:** Sat, Sep 19, 11:59 PM
+- **Points:** 16
+- **Status:** Not submitted
+- **Canvas:** https://iusd.instructure.com/courses/153566/assignments/2184320
+
+**Directions**
+
+No written directions were included on Canvas.
+
+### 1.11 Math Class
+
+- **Class:** Computer Science A (AP) - Sakallah, F
+- **Due:** Sat, Sep 19, 11:59 PM
+- **Points:** 23
+- **Status:** Not submitted
+- **Canvas:** https://iusd.instructure.com/courses/153566/assignments/2184322
+
+**Directions**
+
+No written directions were included on Canvas.
+
+### Unit 1 Progress Checks Part B
+
+- **Class:** Computer Science A (AP) - Sakallah, F
+- **Due:** Sat, Sep 19, 11:59 PM
+- **Points:** 5
+- **Status:** Not submitted
+- **Canvas:** https://iusd.instructure.com/courses/153566/assignments/2184470
+
+**Directions**
+
+Go to AP Classroom and complete Unit 1 Progress Checks Part B
+
 ## Submitted assignments
+
+### Math Methods Activity
+
+- **Class:** Computer Science A (AP) - Sakallah, F
+- **Due:** Tue, Sep 15, 11:59 PM
+- **Points:** 4
+- **Status:** Submitted; awaiting grade
+- **Canvas:** https://iusd.instructure.com/courses/153566/assignments/2205995
+
+**Directions**
+
+Make your own copy of the Math Methods Activity worksheet and save it on your AP Comp Sci 2627 folder. You may work on this activity with your seated partner, but each person should complete and upload the activity for a grade. Make sure once you complete the WS, save it as a pdf and upload it to the Canvas assignment
+
+### Essay Revisions
+
+- **Class:** English Language A (AP) - Kane, K
+- **Due:** Tue, Sep 15, 11:59 PM
+- **Points:** 15
+- **Status:** Submitted; awaiting grade
+- **Canvas:** https://iusd.instructure.com/courses/153470/assignments/2205004
+
+**Directions**
+
+No written directions were included on Canvas.
 
 ### Practice Timed Write: JFK
 
@@ -392,7 +452,7 @@ https://docs.google.com/document/d/1XKfiENU0WsBsnKZjS9Vx7jzUglsz_GG9_NmQgKrsY34/
 ### Unit 1A Quiz - (1.1-1.4)
 
 - **Class:** Computer Science A (AP) - Sakallah, F
-- **Due:** Tue, Sep 1, 11:59 PM
+- **Due:** Tue, Sep 15, 11:59 PM
 - **Points:** 33
 - **Status:** Graded
 - **Canvas:** https://iusd.instructure.com/courses/153566/assignments/2184285

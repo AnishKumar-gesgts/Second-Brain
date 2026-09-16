@@ -1,5 +1,5 @@
 {
-  "updatedAt": "2026-09-11T23:14:04.133Z",
+  "updatedAt": "2026-09-16T01:26:53.214Z",
   "assignments": [
     {
       "id": "2184319",
@@ -632,86 +632,7 @@
       "updatedAt": "2026-08-18T21:25:20Z"
     }
   ],
-  "changes": [
-    {
-      "type": "changed",
-      "id": "2184472",
-      "name": "Unit 1A Project",
-      "course": "Computer Science A (AP) - Sakallah, F"
-    },
-    {
-      "type": "new",
-      "id": "2184338",
-      "name": "1.7 APIs and Libraries",
-      "course": "Computer Science A (AP) - Sakallah, F"
-    },
-    {
-      "type": "new",
-      "id": "2184340",
-      "name": "1.8 Documentation",
-      "course": "Computer Science A (AP) - Sakallah, F"
-    },
-    {
-      "type": "new",
-      "id": "2205004",
-      "name": "Essay Revisions",
-      "course": "English Language A (AP) - Kane, K"
-    },
-    {
-      "type": "changed",
-      "id": "2204613",
-      "name": "Practice Timed Write: JFK",
-      "course": "English Language A (AP) - Kane, K"
-    },
-    {
-      "type": "new",
-      "id": "2187919",
-      "name": "Unit 1 Study Guide",
-      "course": "Health - semester course - Klamberg, K"
-    },
-    {
-      "type": "new",
-      "id": "2205021",
-      "name": "Unit 1B Digital Notes ",
-      "course": "Computer Science A (AP) - Sakallah, F"
-    },
-    {
-      "type": "changed",
-      "id": "2157529",
-      "name": "Sophomore Year Reflection",
-      "course": "English Language A (AP) - Kane, K"
-    },
-    {
-      "type": "changed",
-      "id": "2204504",
-      "name": "Falling Leaves Anticipation Questions",
-      "course": "English Language A (AP) - Kane, K"
-    },
-    {
-      "type": "changed",
-      "id": "2187907",
-      "name": "Nutrition Notes",
-      "course": "Health - semester course - Klamberg, K"
-    },
-    {
-      "type": "changed",
-      "id": "2187899",
-      "name": "Food Labels",
-      "course": "Health - semester course - Klamberg, K"
-    },
-    {
-      "type": "changed",
-      "id": "2201669",
-      "name": "Ideal Gas law Lab",
-      "course": "Physics 2A (AP) - Elmasri, J"
-    },
-    {
-      "type": "changed",
-      "id": "2187888",
-      "name": "AI Nutrition ",
-      "course": "Health - semester course - Klamberg, K"
-    }
-  ],
-  "summary": "10 assignments are past due. Next due: 1.7 APIs and Libraries for Computer Science A (AP) - Sakallah, F on Sat, Sep 12, 11:59 PM. 13 new or changed assignments in this check.",
-  "error": ""
+  "changes": [],
+  "summary": "10 assignments are past due. Next due: 1.7 APIs and Libraries for Computer Science A (AP) - Sakallah, F on Sat, Sep 12, 11:59 PM.",
+  "error": "leaf.view.render is not a function"
 }

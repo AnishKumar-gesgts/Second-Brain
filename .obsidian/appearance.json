@@ -4,9 +4,10 @@
   "interfaceFontFamily": "Segoe UI Variable, Segoe UI",
   "textFontFamily": "Aptos, Segoe UI Variable, Segoe UI",
   "monospaceFontFamily": "Cascadia Code, Cascadia Mono, Consolas",
-  "enabledCssSnippets": [
-    "second-brain-studio"
-  ],
+  "enabledCssSnippets": [],
   "showViewHeader": true,
-  "translucency": false
+  "translucency": false,
+  "baseFontSizeAction": true,
+  "cssTheme": "Ukiyo",
+  "theme": "obsidian"
 }

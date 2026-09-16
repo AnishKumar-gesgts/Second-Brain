@@ -139,6 +139,7 @@ After the French and Indian War, Britain tried to pay for and administer its enl
 - **Lord Dunmore:** Virginia governor whose offer of freedom to enslaved people who joined Britain radicalized southern Patriots.
 - **Thomas Paine:** Author of Common Sense, the widely read argument for republican independence.
 - **Thomas Jefferson:** Principal author of the Declaration of Independence.
+- **Scioto Confederacy**: An alliance created native tribes west of the Appalachians like the Shawnees and Delawares(Ohio Valley) to resist westward expansion
 
 ## Likely quiz comparisons
 
