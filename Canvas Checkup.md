@@ -5,11 +5,11 @@ cssclasses:
 
 # Canvas Checkup
 
-> [!info] Last checked Tue, Sep 15, 6:26 PM. Obsidian checks Canvas hourly from 8 AM through 11 PM and resets its change tracker at 6 AM.
+> [!info] Last checked Wed, Sep 23, 10:13 PM. Obsidian checks Canvas hourly from 8 AM through 11 PM and resets its change tracker at 6 AM.
 
 ## Check status
 
-12 assignments are past due. Next due: 1.9 Method Signature for Computer Science A (AP) - Sakallah, F on Sat, Sep 19, 11:59 PM. 9 new or changed assignments in this check.
+18 assignments are past due. Next due: Crying in H Mart Questions for English Language A (AP) - Kane, K on Thu, Sep 24, 11:59 PM. 18 new or changed assignments in this check.
 
 ## Pending assignments
 
@@ -162,7 +162,7 @@ No written directions were included on Canvas.
 - **Class:** Computer Science A (AP) - Sakallah, F
 - **Due:** Sat, Sep 19, 11:59 PM
 - **Points:** 18
-- **Status:** Not submitted
+- **Status:** Past due
 - **Canvas:** https://iusd.instructure.com/courses/153566/assignments/2184342
 
 **Directions**
@@ -174,7 +174,7 @@ No written directions were included on Canvas.
 - **Class:** Computer Science A (AP) - Sakallah, F
 - **Due:** Sat, Sep 19, 11:59 PM
 - **Points:** 16
-- **Status:** Not submitted
+- **Status:** Past due
 - **Canvas:** https://iusd.instructure.com/courses/153566/assignments/2184320
 
 **Directions**
@@ -186,8 +186,32 @@ No written directions were included on Canvas.
 - **Class:** Computer Science A (AP) - Sakallah, F
 - **Due:** Sat, Sep 19, 11:59 PM
 - **Points:** 23
-- **Status:** Not submitted
+- **Status:** Past due
 - **Canvas:** https://iusd.instructure.com/courses/153566/assignments/2184322
+
+**Directions**
+
+No written directions were included on Canvas.
+
+### 1.12 Objects
+
+- **Class:** Computer Science A (AP) - Sakallah, F
+- **Due:** Sat, Sep 19, 11:59 PM
+- **Points:** 23
+- **Status:** Past due
+- **Canvas:** https://iusd.instructure.com/courses/153566/assignments/2184323
+
+**Directions**
+
+No written directions were included on Canvas.
+
+### 1.13 Constructors
+
+- **Class:** Computer Science A (AP) - Sakallah, F
+- **Due:** Sat, Sep 19, 11:59 PM
+- **Points:** 22
+- **Status:** Past due
+- **Canvas:** https://iusd.instructure.com/courses/153566/assignments/2184324
 
 **Directions**
 
@@ -198,14 +222,110 @@ No written directions were included on Canvas.
 - **Class:** Computer Science A (AP) - Sakallah, F
 - **Due:** Sat, Sep 19, 11:59 PM
 - **Points:** 5
-- **Status:** Not submitted
+- **Status:** Past due
 - **Canvas:** https://iusd.instructure.com/courses/153566/assignments/2184470
 
 **Directions**
 
 Go to AP Classroom and complete Unit 1 Progress Checks Part B
 
+### Crying in H Mart Questions
+
+- **Class:** English Language A (AP) - Kane, K
+- **Due:** Thu, Sep 24, 11:59 PM
+- **Points:** 7
+- **Status:** Not submitted
+- **Canvas:** https://iusd.instructure.com/courses/153470/assignments/2207449
+
+**Directions**
+
+Crying in H Mart Questions
+
+### Presentation 
+
+- **Class:** Health - semester course - Klamberg, K
+- **Due:** Fri, Sep 25, 2:00 PM
+- **Points:** 4
+- **Status:** Not submitted
+- **Canvas:** https://iusd.instructure.com/courses/153422/assignments/2187912
+
+**Directions**
+
+Mental Health Presentation In this activity, you will use what you have learned from the lectures and readings regarding mental health disorders to create a presentation. Select one mental health disorder you have studied in this unit. Possible topics include depression, mood disorders, anxiety disorders, or personality disorders. Create a PowerPoint presentation. Your presentation should include the following: Title slide-containing your name, class period, teacher, and date Four to five informational slides-containing the name of the disorder, the classification (type) of disorder, facts, symptoms, and characteristics of the disorder. Describe possible treatments, help, and resources available. Include research on the racial and socioeconomical disparities for treatment facilities/access to doctors and medication. Include ways to help defeat any stigmas associated with this disorder, and why people with this disorder need to be treated with respect and dignity. Add images, charts, graphs, or designs to enhance your presentation. Conclusion slide-containing a summary of the information. Make sure to cite sources for any resources or images used in your presentation. Be sure to use reliable resources with valid health information.
+
+### 1.14 Calling Instance Methods
+
+- **Class:** Computer Science A (AP) - Sakallah, F
+- **Due:** Sat, Sep 26, 11:59 PM
+- **Points:** 26
+- **Status:** Not submitted
+- **Canvas:** https://iusd.instructure.com/courses/153566/assignments/2184326
+
+**Directions**
+
+No written directions were included on Canvas.
+
+### 1.15 Strings
+
+- **Class:** Computer Science A (AP) - Sakallah, F
+- **Due:** Sat, Sep 26, 11:59 PM
+- **Points:** 29
+- **Status:** Not submitted
+- **Canvas:** https://iusd.instructure.com/courses/153566/assignments/2184327
+
+**Directions**
+
+No written directions were included on Canvas.
+
+### Unit 1 Progress Checks Part C
+
+- **Class:** Computer Science A (AP) - Sakallah, F
+- **Due:** Sat, Sep 26, 11:59 PM
+- **Points:** 18
+- **Status:** Not submitted
+- **Canvas:** https://iusd.instructure.com/courses/153566/assignments/2184471
+
+**Directions**
+
+Go to AP Classroom and complete Unit 1 Progress Checks Part B
+
+### Unit 1B Review
+
+- **Class:** Computer Science A (AP) - Sakallah, F
+- **Due:** Sat, Sep 26, 11:59 PM
+- **Points:** 59
+- **Status:** Not submitted
+- **Canvas:** https://iusd.instructure.com/courses/153566/assignments/2184474
+
+**Directions**
+
+No written directions were included on Canvas.
+
 ## Submitted assignments
+
+### Unit 1B Quiz
+
+- **Class:** Computer Science A (AP) - Sakallah, F
+- **Due:** Mon, Sep 21, 11:59 PM
+- **Points:** 38
+- **Status:** Submitted; awaiting grade
+- **Canvas:** https://iusd.instructure.com/courses/153566/assignments/2207188
+
+**Directions**
+
+No written directions were included on Canvas.
+
+### FRQ (Progress Report #1)
+
+- **Class:** English Language A (AP) - Kane, K
+- **Due:** Wed, Sep 16, 11:30 AM
+- **Points:** 25
+- **Status:** Submitted; awaiting grade
+- **Canvas:** https://iusd.instructure.com/courses/153470/assignments/2205757
+
+**Directions**
+
+FRQ (Progress Report #1)
 
 ### Math Methods Activity
 
@@ -219,18 +339,6 @@ Go to AP Classroom and complete Unit 1 Progress Checks Part B
 
 Make your own copy of the Math Methods Activity worksheet and save it on your AP Comp Sci 2627 folder. You may work on this activity with your seated partner, but each person should complete and upload the activity for a grade. Make sure once you complete the WS, save it as a pdf and upload it to the Canvas assignment
 
-### Essay Revisions
-
-- **Class:** English Language A (AP) - Kane, K
-- **Due:** Tue, Sep 15, 11:59 PM
-- **Points:** 15
-- **Status:** Submitted; awaiting grade
-- **Canvas:** https://iusd.instructure.com/courses/153470/assignments/2205004
-
-**Directions**
-
-No written directions were included on Canvas.
-
 ### Practice Timed Write: JFK
 
 - **Class:** English Language A (AP) - Kane, K
@@ -242,18 +350,6 @@ No written directions were included on Canvas.
 **Directions**
 
 Practice Timed Write: JFK
-
-### Unit 1 Study Guide
-
-- **Class:** Health - semester course - Klamberg, K
-- **Due:** Tue, Sep 15, 2:00 PM
-- **Points:** 4
-- **Status:** Submitted; awaiting grade
-- **Canvas:** https://iusd.instructure.com/courses/153422/assignments/2187919
-
-**Directions**
-
-https://docs.google.com/document/d/1yC5XUqO5ef48N5PqExL1r_uYowR_SkvT0LZaltG2jj0/edit?usp=sharing
 
 ### Unit 1B Digital Notes 
 
@@ -279,34 +375,10 @@ Make a Copy of the Unit 1B Digital Notes only once. Save the copy into the folde
 
 Sophomore Year Reflection
 
-### Falling Leaves Anticipation Questions
-
-- **Class:** English Language A (AP) - Kane, K
-- **Due:** Wed, Sep 9, 11:59 PM
-- **Points:** 7
-- **Status:** Submitted; awaiting grade
-- **Canvas:** https://iusd.instructure.com/courses/153470/assignments/2204504
-
-**Directions**
-
-Falling Leaves Anticipation Questions
-
-### Fitness Plan 
-
-- **Class:** Health - semester course - Klamberg, K
-- **Due:** Mon, Sep 16, 11:59 PM
-- **Points:** 4
-- **Status:** Submitted; awaiting grade
-- **Canvas:** https://iusd.instructure.com/courses/153422/assignments/2187898
-
-**Directions**
-
-Create 1 complete exercise routines incorporating all 4 recommended components (Warm Up (Flexibility), Cardio, Muscular Strength/Endurance/, Cool Down ( Flexibility)
-
 ### Unit 1A Test - (1.1-1.6)
 
 - **Class:** Computer Science A (AP) - Sakallah, F
-- **Due:** Tue, Sep 8, 11:35 AM
+- **Due:** Thu, Sep 17, 11:35 AM
 - **Points:** 68
 - **Status:** Submitted; awaiting grade
 - **Canvas:** https://iusd.instructure.com/courses/153566/assignments/2184313
@@ -326,18 +398,6 @@ No written directions were included on Canvas.
 **Directions**
 
 Practice Timed Write: Patrick Henry
-
-### Patrick Henry’s Speech to VA Convention Questions
-
-- **Class:** English Language A (AP) - Kane, K
-- **Due:** Thu, Sep 3, 11:59 PM
-- **Points:** 6
-- **Status:** Submitted; awaiting grade
-- **Canvas:** https://iusd.instructure.com/courses/153470/assignments/2203008
-
-**Directions**
-
-Patrick Henry’s Speech to VA Convention Questions
 
 ### Practice Timed Write: Abigail Adams Letter to Her Son
 
@@ -401,6 +461,42 @@ After reviewing the Non-District Adopted Software with your parent / guardian, p
 
 ## Graded assignments
 
+### Essay Revisions
+
+- **Class:** English Language A (AP) - Kane, K
+- **Due:** Tue, Sep 15, 11:59 PM
+- **Points:** 15
+- **Status:** Graded
+- **Canvas:** https://iusd.instructure.com/courses/153470/assignments/2205004
+
+**Directions**
+
+No written directions were included on Canvas.
+
+### Unit 1 Study Guide
+
+- **Class:** Health - semester course - Klamberg, K
+- **Due:** Tue, Sep 15, 2:00 PM
+- **Points:** 4
+- **Status:** Graded
+- **Canvas:** https://iusd.instructure.com/courses/153422/assignments/2187919
+
+**Directions**
+
+https://docs.google.com/document/d/1yC5XUqO5ef48N5PqExL1r_uYowR_SkvT0LZaltG2jj0/edit?usp=sharing
+
+### Falling Leaves Anticipation Questions
+
+- **Class:** English Language A (AP) - Kane, K
+- **Due:** Wed, Sep 9, 11:59 PM
+- **Points:** 7
+- **Status:** Graded
+- **Canvas:** https://iusd.instructure.com/courses/153470/assignments/2204504
+
+**Directions**
+
+Falling Leaves Anticipation Questions
+
 ### Food Pyramid 
 
 - **Class:** Health - semester course - Klamberg, K
@@ -412,6 +508,30 @@ After reviewing the Non-District Adopted Software with your parent / guardian, p
 **Directions**
 
 https://docs.google.com/presentation/d/1Dgrk6x6gW3Vl38PS9RU77uGBdx3ycbJx27zTdhSlpU8/edit?usp=sharing
+
+### Fitness Plan 
+
+- **Class:** Health - semester course - Klamberg, K
+- **Due:** Mon, Sep 16, 11:59 PM
+- **Points:** 4
+- **Status:** Graded
+- **Canvas:** https://iusd.instructure.com/courses/153422/assignments/2187898
+
+**Directions**
+
+Create 1 complete exercise routines incorporating all 4 recommended components (Warm Up (Flexibility), Cardio, Muscular Strength/Endurance/, Cool Down ( Flexibility)
+
+### Patrick Henry’s Speech to VA Convention Questions
+
+- **Class:** English Language A (AP) - Kane, K
+- **Due:** Thu, Sep 3, 11:59 PM
+- **Points:** 6
+- **Status:** Graded
+- **Canvas:** https://iusd.instructure.com/courses/153470/assignments/2203008
+
+**Directions**
+
+Patrick Henry’s Speech to VA Convention Questions
 
 ### Nutrition Notes
 

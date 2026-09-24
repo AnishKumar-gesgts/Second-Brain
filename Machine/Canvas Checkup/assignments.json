@@ -1,5 +1,5 @@
 {
-  "updatedAt": "2026-09-16T01:26:53.214Z",
+  "updatedAt": "2026-09-24T05:13:36.041Z",
   "assignments": [
     {
       "id": "2184319",
@@ -159,7 +159,7 @@
       "dueAt": "2026-09-13T06:59:59Z",
       "points": 16,
       "bucket": "pending",
-      "status": "Not submitted",
+      "status": "Past due",
       "submittedAt": null,
       "gradedAt": null,
       "directions": "",
@@ -174,12 +174,147 @@
       "dueAt": "2026-09-13T06:59:59Z",
       "points": 12,
       "bucket": "pending",
-      "status": "Not submitted",
+      "status": "Past due",
       "submittedAt": null,
       "gradedAt": null,
       "directions": "",
       "url": "https://iusd.instructure.com/courses/153566/assignments/2184340",
       "updatedAt": "2026-09-10T16:25:15Z"
+    },
+    {
+      "id": "2184342",
+      "courseId": "153566",
+      "name": "1.9 Method Signature",
+      "course": "Computer Science A (AP) - Sakallah, F",
+      "dueAt": "2026-09-20T06:59:59Z",
+      "points": 18,
+      "bucket": "pending",
+      "status": "Not submitted",
+      "submittedAt": null,
+      "gradedAt": null,
+      "directions": "",
+      "url": "https://iusd.instructure.com/courses/153566/assignments/2184342",
+      "updatedAt": "2026-09-14T15:41:50Z"
+    },
+    {
+      "id": "2184320",
+      "courseId": "153566",
+      "name": "1.10 Calling Class Methods",
+      "course": "Computer Science A (AP) - Sakallah, F",
+      "dueAt": "2026-09-20T06:59:59Z",
+      "points": 16,
+      "bucket": "pending",
+      "status": "Not submitted",
+      "submittedAt": null,
+      "gradedAt": null,
+      "directions": "",
+      "url": "https://iusd.instructure.com/courses/153566/assignments/2184320",
+      "updatedAt": "2026-09-15T16:50:23Z"
+    },
+    {
+      "id": "2184322",
+      "courseId": "153566",
+      "name": "1.11 Math Class",
+      "course": "Computer Science A (AP) - Sakallah, F",
+      "dueAt": "2026-09-20T06:59:59Z",
+      "points": 23,
+      "bucket": "pending",
+      "status": "Not submitted",
+      "submittedAt": null,
+      "gradedAt": null,
+      "directions": "",
+      "url": "https://iusd.instructure.com/courses/153566/assignments/2184322",
+      "updatedAt": "2026-09-15T16:50:59Z"
+    },
+    {
+      "id": "2184323",
+      "courseId": "153566",
+      "name": "1.12 Objects",
+      "course": "Computer Science A (AP) - Sakallah, F",
+      "dueAt": "2026-09-20T06:59:59Z",
+      "points": 23,
+      "bucket": "pending",
+      "status": "Not submitted",
+      "submittedAt": null,
+      "gradedAt": null,
+      "directions": "",
+      "url": "https://iusd.instructure.com/courses/153566/assignments/2184323",
+      "updatedAt": "2026-09-17T16:00:59Z"
+    },
+    {
+      "id": "2184324",
+      "courseId": "153566",
+      "name": "1.13 Constructors",
+      "course": "Computer Science A (AP) - Sakallah, F",
+      "dueAt": "2026-09-20T06:59:59Z",
+      "points": 22,
+      "bucket": "pending",
+      "status": "Not submitted",
+      "submittedAt": null,
+      "gradedAt": null,
+      "directions": "",
+      "url": "https://iusd.instructure.com/courses/153566/assignments/2184324",
+      "updatedAt": "2026-09-17T16:01:37Z"
+    },
+    {
+      "id": "2184470",
+      "courseId": "153566",
+      "name": "Unit 1 Progress Checks Part B",
+      "course": "Computer Science A (AP) - Sakallah, F",
+      "dueAt": "2026-09-20T06:59:59Z",
+      "points": 5,
+      "bucket": "pending",
+      "status": "Not submitted",
+      "submittedAt": null,
+      "gradedAt": null,
+      "directions": "Go to AP Classroom and complete Unit 1 Progress Checks Part B",
+      "url": "https://iusd.instructure.com/courses/153566/assignments/2184470",
+      "updatedAt": "2026-09-15T20:00:02Z"
+    },
+    {
+      "id": "2184326",
+      "courseId": "153566",
+      "name": "1.14 Calling Instance Methods",
+      "course": "Computer Science A (AP) - Sakallah, F",
+      "dueAt": "2026-09-27T06:59:59Z",
+      "points": 26,
+      "bucket": "pending",
+      "status": "Not submitted",
+      "submittedAt": null,
+      "gradedAt": null,
+      "directions": "",
+      "url": "https://iusd.instructure.com/courses/153566/assignments/2184326",
+      "updatedAt": "2026-09-17T16:02:12Z"
+    },
+    {
+      "id": "2205757",
+      "courseId": "153470",
+      "name": "FRQ (Progress Report #1)",
+      "course": "English Language A (AP) - Kane, K",
+      "dueAt": "2026-09-16T18:30:00Z",
+      "points": 25,
+      "bucket": "submitted",
+      "status": "Submitted; awaiting grade",
+      "submittedAt": "2026-09-16T18:29:00Z",
+      "gradedAt": null,
+      "directions": "FRQ (Progress Report #1)",
+      "url": "https://iusd.instructure.com/courses/153470/assignments/2205757",
+      "updatedAt": "2026-09-16T17:21:08Z"
+    },
+    {
+      "id": "2205995",
+      "courseId": "153566",
+      "name": "Math Methods Activity",
+      "course": "Computer Science A (AP) - Sakallah, F",
+      "dueAt": "2026-09-16T06:59:59Z",
+      "points": 4,
+      "bucket": "submitted",
+      "status": "Submitted; awaiting grade",
+      "submittedAt": "2026-09-15T17:51:45Z",
+      "gradedAt": null,
+      "directions": "Make your own copy of the Math Methods Activity worksheet and save it on your AP Comp Sci 2627 folder. You may work on this activity with your seated partner, but each person should complete and upload the activity for a grade. Make sure once you complete the WS, save it as a pdf and upload it to the Canvas assignment",
+      "url": "https://iusd.instructure.com/courses/153566/assignments/2205995",
+      "updatedAt": "2026-09-15T16:06:52Z"
     },
     {
       "id": "2205004",
@@ -188,9 +323,9 @@
       "course": "English Language A (AP) - Kane, K",
       "dueAt": "2026-09-16T06:59:59Z",
       "points": 15,
-      "bucket": "pending",
-      "status": "Not submitted",
-      "submittedAt": null,
+      "bucket": "submitted",
+      "status": "Submitted; awaiting grade",
+      "submittedAt": "2026-09-15T04:45:47Z",
       "gradedAt": null,
       "directions": "",
       "url": "https://iusd.instructure.com/courses/153470/assignments/2205004",
@@ -209,7 +344,7 @@
       "gradedAt": null,
       "directions": "Practice Timed Write: JFK",
       "url": "https://iusd.instructure.com/courses/153470/assignments/2204613",
-      "updatedAt": "2026-09-08T18:06:57Z"
+      "updatedAt": "2026-09-15T18:20:27Z"
     },
     {
       "id": "2187919",
@@ -239,7 +374,7 @@
       "gradedAt": null,
       "directions": "Make a Copy of the Unit 1B Digital Notes only once. Save the copy into the folder named AP Comp Sci 2627 on your IUSD google drive Hit the share button on the top right Change general access to anyone with the link Push the copy link button and past it below",
       "url": "https://iusd.instructure.com/courses/153566/assignments/2205021",
-      "updatedAt": "2026-09-10T15:51:53Z"
+      "updatedAt": "2026-09-17T18:19:44Z"
     },
     {
       "id": "2157529",
@@ -269,7 +404,7 @@
       "gradedAt": null,
       "directions": "Falling Leaves Anticipation Questions",
       "url": "https://iusd.instructure.com/courses/153470/assignments/2204504",
-      "updatedAt": "2026-09-09T07:00:22Z"
+      "updatedAt": "2026-09-15T18:19:58Z"
     },
     {
       "id": "2187898",
@@ -291,7 +426,7 @@
       "courseId": "153566",
       "name": "Unit 1A Test - (1.1-1.6)",
       "course": "Computer Science A (AP) - Sakallah, F",
-      "dueAt": "2026-09-08T18:35:00Z",
+      "dueAt": "2026-09-17T18:35:00Z",
       "points": 68,
       "bucket": "submitted",
       "status": "Submitted; awaiting grade",
@@ -299,7 +434,7 @@
       "gradedAt": "2026-09-08T17:54:45Z",
       "directions": "",
       "url": "https://iusd.instructure.com/courses/153566/assignments/2184313",
-      "updatedAt": "2026-09-09T17:00:03Z"
+      "updatedAt": "2026-09-17T17:14:02Z"
     },
     {
       "id": "2203758",
@@ -471,7 +606,7 @@
       "courseId": "153566",
       "name": "Unit 1A Quiz - (1.1-1.4)",
       "course": "Computer Science A (AP) - Sakallah, F",
-      "dueAt": "2026-09-02T06:59:59Z",
+      "dueAt": "2026-09-16T06:59:59Z",
       "points": 33,
       "bucket": "graded",
       "status": "Graded",
@@ -479,7 +614,7 @@
       "gradedAt": "2026-09-03T21:35:53Z",
       "directions": "",
       "url": "https://iusd.instructure.com/courses/153566/assignments/2184285",
-      "updatedAt": "2026-09-04T17:41:09Z"
+      "updatedAt": "2026-09-15T14:41:48Z"
     },
     {
       "id": "2201753",
@@ -632,7 +767,129 @@
       "updatedAt": "2026-08-18T21:25:20Z"
     }
   ],
+  "announcements": [
+    {
+      "id": "997515",
+      "courseId": "153470",
+      "course": "English Language A (AP) - Kane, K",
+      "name": "Join Codes/Falling Leaves",
+      "directions": "Some of you still haven't up for AP Classroom. If you haven't, you need to ASAP! Here are the codes: Period 2: 63DMJV Period 3: YD46VD Period 4: RRNL4J Also, bring your copy of Falling Leaves to class this Thurs/Fri. You will have another opportunity to get ahead on your reading.",
+      "url": "https://iusd.instructure.com/courses/153470/discussion_topics/997515",
+      "postedAt": "2026-09-16T22:57:34Z",
+      "updatedAt": "2026-09-16T22:57:34Z"
+    },
+    {
+      "id": "996945",
+      "courseId": "153470",
+      "course": "English Language A (AP) - Kane, K",
+      "name": "MCQ/FRQ Practice",
+      "directions": "I just released some practice for you on AP Classroom that will help you prepare for next week's assessments. If you would like additional MCQ practice, go to www.commonlit.org/enroll and enter the code 4QME96PH to join my class. There you will find additional reading passages with comprehension questions.",
+      "url": "https://iusd.instructure.com/courses/153470/discussion_topics/996945",
+      "postedAt": "2026-09-11T18:48:04Z",
+      "updatedAt": "2026-09-11T18:48:04Z"
+    },
+    {
+      "id": "997714",
+      "courseId": "153638",
+      "course": "Irvine High - Rosser, M",
+      "name": "No Way HoCo : DON’T MISS HOMECOMING — Prices Go Up 9/30!",
+      "directions": "VAQUEROS, THE MASK IS CALLING… 🕷️ Homecoming is almost here, and if you haven’t bought your ticket yet, WHAT ARE YOU WAITING FOR?! Head to the Spur Shop or Webstore Get ready for a night of dancing, music, lights, photo ops, food, gaming stations and unforgettable memories with your friends! IMPORTANT: Buy your ticket by SEPTEMBER 30 before ticket prices GO UP! Don’t wait until the last minute and pay more. Dance Details: Saturday, October 107:00–10:00 PM at Irvine High And remember… you can’t experience the night if you don’t have a ticket. Don’t be the person watching everyone’s stories wishing you had been there.",
+      "url": "https://iusd.instructure.com/courses/153638/discussion_topics/997714",
+      "postedAt": "2026-09-18T17:00:03Z",
+      "updatedAt": "2026-09-18T17:00:03Z"
+    },
+    {
+      "id": "997677",
+      "courseId": "153638",
+      "course": "Irvine High - Rosser, M",
+      "name": "Club Information 2026-2027",
+      "directions": "We hope you had a chance to visit Club Fair, but if you were not able to see all the clubs you wanted to see, please review the current clublist. To join a club or get more information, email the Club President and Advisor listed.",
+      "url": "https://iusd.instructure.com/courses/153638/discussion_topics/997677",
+      "postedAt": "2026-09-18T00:13:35Z",
+      "updatedAt": "2026-09-18T00:13:35Z"
+    },
+    {
+      "id": "997366",
+      "courseId": "153638",
+      "course": "Irvine High - Rosser, M",
+      "name": "Club Fair 9/16 and 9/17 in Front of Practice Gym",
+      "directions": "Head to the practice gym quad area during lunch tomorrow and Thursday to check out all the clubs on campus you could join! Each day will feature new clubs--the list of clubs will be sent out this evening.",
+      "url": "https://iusd.instructure.com/courses/153638/discussion_topics/997366",
+      "postedAt": "2026-09-15T20:30:12Z",
+      "updatedAt": "2026-09-15T20:30:12Z"
+    },
+    {
+      "id": "996570",
+      "courseId": "153638",
+      "course": "Irvine High - Rosser, M",
+      "name": "ICC 9/8 Club Meeting Slides",
+      "directions": "Club Presidents: Review Slides HERE",
+      "url": "https://iusd.instructure.com/courses/153638/discussion_topics/996570",
+      "postedAt": "2026-09-08T21:29:59Z",
+      "updatedAt": "2026-09-08T21:29:59Z"
+    },
+    {
+      "id": "996347",
+      "courseId": "153638",
+      "course": "Irvine High - Rosser, M",
+      "name": "9/8 Club Presidents Meeting --All New and Returning Clubs Meet in HLG at Lunch ",
+      "directions": "Must attend for final club approval.",
+      "url": "https://iusd.instructure.com/courses/153638/discussion_topics/996347",
+      "postedAt": "2026-09-07T23:00:04Z",
+      "updatedAt": "2026-09-07T23:00:04Z"
+    },
+    {
+      "id": "996624",
+      "courseId": "153624",
+      "course": "Physics 2A (AP) - Elmasri, J",
+      "name": "Special flex session today 9/9",
+      "directions": "Good morning all, During today’s flex, I’ll be doing a focused session deriving the three kinematic equations for physics 1. if you’ve already made a flex appointment for my class, you are welcome to stay if you can quietly work to allow others to focus. If you cannot quietly work but already made an appointment to my flex, consider going to a different teacher’s class instead. Pretty much, if you’re coming to my flex today, plan to be working quietly. Thanks for your consideration! mr. E",
+      "url": "https://iusd.instructure.com/courses/153624/discussion_topics/996624",
+      "postedAt": "2026-09-09T13:15:28Z",
+      "updatedAt": "2026-09-09T13:15:28Z"
+    },
+    {
+      "id": "997183",
+      "courseId": "88742",
+      "course": "Science Fair",
+      "name": "Ask a Scientist Night - September 16th",
+      "directions": "Hi all, Are you interested in participating in the IUSD Science Fair? Would you like to ask questions and get advice from an expert? Ask a Scientist Night is coming up! Where: Creekside Education Center (3387 Barranca Parkway) When: September 16th from 6:00 - 7:00 pm Why: Meet with experts one-on-one, ask questions, share ideas, get feedback, and more! Want more information? Here are the Flyer | Slides | Video.",
+      "url": "https://iusd.instructure.com/courses/88742/discussion_topics/997183",
+      "postedAt": "2026-09-14T20:38:19Z",
+      "updatedAt": "2026-09-14T20:38:19Z"
+    },
+    {
+      "id": "997706",
+      "courseId": "153647",
+      "course": "U.S. History A (AP) - Harrington, J",
+      "name": "NHD Silent Heroes Project Sign-Up (Local Veterans Research) ",
+      "directions": "If you are interested in being part of an NHD veterans research/community service project, which could count as your 10 point fall project, here is a video and slides you can watch another day to see if it is the right fit for you for an extracurricular/enrichment opportunity. https://drive.google.com/file/d/17I7pneV4VqG3Q_hWQZ-bIQm4XxLZ0iVD/viewLinks to an external site. https://drive.google.com/file/d/1AOoZsiAEyDdvy5dLIYo_tyXJTGifPmqp/viewLinks to an external site. If this is something you would like to do, have your parents complete this permission slip/form online, and let me know through an email that you plan to participate. I will let you know when we are meeting, probably once a month at lunch in my classroom. The workload is light, but the experience and impact for you and the community is great! The two local heroes that we have selected are Melvin Kealoha Bell Sr. and Edward Moran Mowbray, who served in the Coast Guard and Navy respectively during WWII, and are buried at Riverside National Cemetery.",
+      "url": "https://iusd.instructure.com/courses/153647/discussion_topics/997706",
+      "postedAt": "2026-09-18T15:33:17Z",
+      "updatedAt": "2026-09-18T15:33:17Z"
+    },
+    {
+      "id": "997621",
+      "courseId": "153647",
+      "course": "U.S. History A (AP) - Harrington, J",
+      "name": "APUSH LEQ Practice (and The Presidents videos) Tuesday and Wednesday 9/22-23, Unit 3 MCQs (after review session) Thursday and Friday 9/24-25",
+      "directions": "Here is another APUSH DBQ that you may want to use for practice. But, remember, for unit 3, your summative writing assessment is an LEQ. https://shshistory.com/extra%20pages/APAmericanHistory/ap%20essay%20guidelines/ap%20amhist%20essay%20guidelines.pdf LEQ Rubric- 1 point for background/context, 1 point for a thesis (with an argument and reasons), 2 points for evidence (6 strong examples in two or three body paragraphs), and 2 points for analysis (explanation and historical significance) Your class period will be assigned one of these three prompts (so study for both because you won't have a choice) for your first LEQ/traditional four or five-paragraph essay (40 minutes in class) on Tuesday or Wednesday, September 29th or 30th (odd/even day). Evaluate the relative importance of the following as factors prompting Americans to rebel in 1776: Parliamentary taxation, British military measures, restriction of civil liberties, the legacy of the colonial religious and political ideas. (1992 FRQ) Between 1783 and 1800, the new government of the United States faced the same political and economic issues that troubled the British government’s relations with the colonies prior to the Revolution. Assess the validity of this generalization. (1980 FRQ) Analyze the extent to which the American Revolution represented a radical alteration in American political ideas and institutions. (from AP Classroom) *Reminders: Be clear about who, what, when, where, and why as you integrate and analyze evidence. Maintain your argument, specificity (related key terms), citation (Doc 1), and chronological order throughout your essay. Review this unit 3 timeline. 1765 Stamp Act 1770 Boston Massacre 1773 Boston Tea Party 1776 Declaration of Independence 1783 Treaty of Paris 1786 Shays’ Rebellion 1787 Constitutional Convention 1790 Compromise/’Dinner Table’ Bargain 1794 Whiskey Rebellion 1798 Alien and Sedition Acts/XYZ Affair",
+      "url": "https://iusd.instructure.com/courses/153647/discussion_topics/997621",
+      "postedAt": "2026-09-17T20:34:40Z",
+      "updatedAt": "2026-09-17T20:34:40Z"
+    },
+    {
+      "id": "997290",
+      "courseId": "153647",
+      "course": "U.S. History A (AP) - Harrington, J",
+      "name": "Read Ch. 6 for the quiz on Monday, 9/21",
+      "directions": "https://www.biknotes.com/_files/ugd/b8b6dc_efd3e074261f4d03ac05afafbcec72e5.pdf",
+      "url": "https://iusd.instructure.com/courses/153647/discussion_topics/997290",
+      "postedAt": "2026-09-15T16:05:52Z",
+      "updatedAt": "2026-09-15T16:05:52Z"
+    }
+  ],
   "changes": [],
-  "summary": "10 assignments are past due. Next due: 1.7 APIs and Libraries for Computer Science A (AP) - Sakallah, F on Sat, Sep 12, 11:59 PM.",
+  "summary": "12 assignments are past due. Next due: 1.9 Method Signature for Computer Science A (AP) - Sakallah, F on Sat, Sep 19, 11:59 PM. 14 new or changed assignments in this check.",
   "error": "leaf.view.render is not a function"
 }
