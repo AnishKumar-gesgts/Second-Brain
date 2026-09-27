@@ -5,11 +5,11 @@ cssclasses:
 
 # Canvas Checkup
 
-> [!info] Last checked Sat, Sep 26, 9:18 AM. Obsidian checks Canvas hourly from 8 AM through 11 PM and resets its change tracker at 6 AM.
+> [!info] Last checked Sun, Sep 27, 9:40 AM. Obsidian checks Canvas hourly from 8 AM through 11 PM and resets its change tracker at 6 AM.
 
 ## Check status
 
-20 assignments are past due. Next due: 1.14 Calling Instance Methods for Computer Science A (AP) - Sakallah, F on Sat, Sep 26, 11:59 PM. 29 new or changed assignments in this check.
+24 assignments are past due. Next due: Practice Test for Objects for Computer Science A (AP) - Sakallah, F on Mon, Sep 28, 11:59 PM. 30 new or changed assignments in this check.
 
 ## Pending assignments
 
@@ -258,7 +258,7 @@ Practice Timed Write
 - **Class:** Computer Science A (AP) - Sakallah, F
 - **Due:** Sat, Sep 26, 11:59 PM
 - **Points:** 26
-- **Status:** Not submitted
+- **Status:** Past due
 - **Canvas:** https://iusd.instructure.com/courses/153566/assignments/2184326
 
 **Directions**
@@ -270,7 +270,7 @@ No written directions were included on Canvas.
 - **Class:** Computer Science A (AP) - Sakallah, F
 - **Due:** Sat, Sep 26, 11:59 PM
 - **Points:** 29
-- **Status:** Not submitted
+- **Status:** Past due
 - **Canvas:** https://iusd.instructure.com/courses/153566/assignments/2184327
 
 **Directions**
@@ -282,7 +282,7 @@ No written directions were included on Canvas.
 - **Class:** Computer Science A (AP) - Sakallah, F
 - **Due:** Sat, Sep 26, 11:59 PM
 - **Points:** 18
-- **Status:** Not submitted
+- **Status:** Past due
 - **Canvas:** https://iusd.instructure.com/courses/153566/assignments/2184471
 
 **Directions**
@@ -294,7 +294,7 @@ Go to AP Classroom and complete Unit 1 Progress Checks Part B
 - **Class:** Computer Science A (AP) - Sakallah, F
 - **Due:** Sat, Sep 26, 11:59 PM
 - **Points:** 59
-- **Status:** Not submitted
+- **Status:** Past due
 - **Canvas:** https://iusd.instructure.com/courses/153566/assignments/2184474
 
 **Directions**
@@ -434,18 +434,6 @@ Mental Health Presentation In this activity, you will use what you have learned 
 **Directions**
 
 Crying in H Mart Questions
-
-### Unit 1B Quiz
-
-- **Class:** Computer Science A (AP) - Sakallah, F
-- **Due:** Mon, Sep 21, 11:59 PM
-- **Points:** 38
-- **Status:** Submitted; awaiting grade
-- **Canvas:** https://iusd.instructure.com/courses/153566/assignments/2207188
-
-**Directions**
-
-No written directions were included on Canvas.
 
 ### FRQ (Progress Report #1)
 
@@ -592,6 +580,18 @@ After reviewing the syllabus with your parent / guardian, please complete the si
 After reviewing the Non-District Adopted Software with your parent / guardian, please sign it, scan as a pdf and upload to this assignment.
 
 ## Graded assignments
+
+### Unit 1B Quiz
+
+- **Class:** Computer Science A (AP) - Sakallah, F
+- **Due:** Mon, Sep 21, 11:59 PM
+- **Points:** 38
+- **Status:** Graded
+- **Canvas:** https://iusd.instructure.com/courses/153566/assignments/2207188
+
+**Directions**
+
+No written directions were included on Canvas.
 
 ### Essay Revisions
 

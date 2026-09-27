@@ -6,7 +6,7 @@
 
 After the French and Indian War, Britain tried to pay for and administer its enlarged empire. Colonial resistance moved from objections to particular taxes toward a dispute over **sovereignty**: Parliament claimed complete authority over the colonies, while Patriots claimed that colonial assemblies had equal authority over internal affairs. British coercion, western land conflicts, and new Patriot organizations turned that constitutional crisis into independence by 1776.
 
-- The Great War for Empire left Britain with a huge debt, a larger North American territory, and a permanent military presence to fund.
+- The Seven Years' War left Britain with a huge debt, a larger North American territory, and a permanent military presence to fund.
 - Colonists resisted new taxes, customs enforcement, and troop deployments because they believed these threatened English liberties, local self-government, and economic opportunity.
 - Boycotts and crowd action forced Britain to retreat more than once, but each new assertion of parliamentary supremacy hardened Patriot resistance.
 - The Tea Act and Coercive Acts made a Massachusetts dispute continental; the Continental Congress created intercolonial cooperation, and fighting at Lexington and Concord made compromise much harder.
@@ -16,7 +16,7 @@ After the French and Indian War, Britain tried to pay for and administer its enl
 
 ### The costs of empire
 
-- The 1756-1763 Great War for Empire raised Britain’s national debt from about £75 million to £133 million; interest consumed about 60% of the national budget.
+- The 1756-1763 Seven Years' War raised Britain’s national debt from about £75 million to £133 million; interest consumed about 60% of the national budget.
 - British ministers believed the colonies should help pay for the army and administration needed to defend Canada, frontier forts, and the expanded empire.
 - The ministry sent about 7,500 regular troops to North America in peacetime. Colonists saw a standing army as costly and potentially tyrannical, while officials saw it as necessary against French Canadians, Native resistance, and westward settlers.
 - British leaders increasingly treated Americans as colonial dependents rather than equal Britons. Colonists such as **John Dickinson** answered that they were British subjects “born to liberty.”
@@ -93,7 +93,7 @@ After the French and Indian War, Britain tried to pay for and administer its enl
 
 ## Essential chronology
 
-- **1763:** Treaty of Paris ends the Great War for Empire; Proclamation of 1763 limits settlement west of the Appalachians.
+- **1763:** Treaty of Paris ends the Seven Years' War; Proclamation of 1763 limits settlement west of the Appalachians.
 - **1764:** Sugar Act and Currency Act.
 - **1765:** Stamp Act, Quartering Act, Stamp Act Congress, and Sons of Liberty resistance.
 - **1766:** Stamp Act repealed; Declaratory Act passed.
