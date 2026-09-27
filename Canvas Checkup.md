@@ -5,11 +5,11 @@ cssclasses:
 
 # Canvas Checkup
 
-> [!info] Last checked Wed, Sep 23, 10:13 PM. Obsidian checks Canvas hourly from 8 AM through 11 PM and resets its change tracker at 6 AM.
+> [!info] Last checked Sat, Sep 26, 9:18 AM. Obsidian checks Canvas hourly from 8 AM through 11 PM and resets its change tracker at 6 AM.
 
 ## Check status
 
-18 assignments are past due. Next due: Crying in H Mart Questions for English Language A (AP) - Kane, K on Thu, Sep 24, 11:59 PM. 18 new or changed assignments in this check.
+20 assignments are past due. Next due: 1.14 Calling Instance Methods for Computer Science A (AP) - Sakallah, F on Sat, Sep 26, 11:59 PM. 29 new or changed assignments in this check.
 
 ## Pending assignments
 
@@ -24,6 +24,18 @@ cssclasses:
 **Directions**
 
 No written directions were included on Canvas.
+
+### Submit Your Course Contract 
+
+- **Class:** AP Physics C: Mechanics& Ele - Elmasri, J
+- **Due:** Wed, Aug 19, 11:59 PM
+- **Points:** 0
+- **Status:** Past due
+- **Canvas:** https://iusd.instructure.com/courses/156270/assignments/2143482
+
+**Directions**
+
+Submit Your Course Contract Please review and sign the course contract/syllabus for this course. Upload the contract to this assignment page. The course contract must be signed and dated the first day of the academic term (or if the student enrolled later, the first day of attendance at IVA). Click Here for the Course Contract
 
 ### 1.2 Variables and Data Types
 
@@ -229,29 +241,17 @@ No written directions were included on Canvas.
 
 Go to AP Classroom and complete Unit 1 Progress Checks Part B
 
-### Crying in H Mart Questions
+### Practice Timed Write
 
 - **Class:** English Language A (AP) - Kane, K
-- **Due:** Thu, Sep 24, 11:59 PM
-- **Points:** 7
-- **Status:** Not submitted
-- **Canvas:** https://iusd.instructure.com/courses/153470/assignments/2207449
+- **Due:** Fri, Sep 25, 11:59 PM
+- **Points:** 0
+- **Status:** Past due
+- **Canvas:** https://iusd.instructure.com/courses/153470/assignments/2208561
 
 **Directions**
 
-Crying in H Mart Questions
-
-### Presentation 
-
-- **Class:** Health - semester course - Klamberg, K
-- **Due:** Fri, Sep 25, 2:00 PM
-- **Points:** 4
-- **Status:** Not submitted
-- **Canvas:** https://iusd.instructure.com/courses/153422/assignments/2187912
-
-**Directions**
-
-Mental Health Presentation In this activity, you will use what you have learned from the lectures and readings regarding mental health disorders to create a presentation. Select one mental health disorder you have studied in this unit. Possible topics include depression, mood disorders, anxiety disorders, or personality disorders. Create a PowerPoint presentation. Your presentation should include the following: Title slide-containing your name, class period, teacher, and date Four to five informational slides-containing the name of the disorder, the classification (type) of disorder, facts, symptoms, and characteristics of the disorder. Describe possible treatments, help, and resources available. Include research on the racial and socioeconomical disparities for treatment facilities/access to doctors and medication. Include ways to help defeat any stigmas associated with this disorder, and why people with this disorder need to be treated with respect and dignity. Add images, charts, graphs, or designs to enhance your presentation. Conclusion slide-containing a summary of the information. Make sure to cite sources for any resources or images used in your presentation. Be sure to use reliable resources with valid health information.
+Practice Timed Write
 
 ### 1.14 Calling Instance Methods
 
@@ -301,7 +301,139 @@ Go to AP Classroom and complete Unit 1 Progress Checks Part B
 
 No written directions were included on Canvas.
 
+### Practice Test for Objects
+
+- **Class:** Computer Science A (AP) - Sakallah, F
+- **Due:** Mon, Sep 28, 11:59 PM
+- **Points:** 10
+- **Status:** Not submitted
+- **Canvas:** https://iusd.instructure.com/courses/153566/assignments/2184448
+
+**Directions**
+
+You will complete the Practice Test for Objects during class on Monday. Make sure you have the Chromebook fully charged
+
+### Unit 1B AP Review
+
+- **Class:** Computer Science A (AP) - Sakallah, F
+- **Due:** Tue, Sep 29, 11:35 AM
+- **Points:** 25
+- **Status:** Not submitted
+- **Canvas:** https://iusd.instructure.com/courses/153566/assignments/2208832
+
+**Directions**
+
+No written directions were included on Canvas.
+
+### Unit 1B Project
+
+- **Class:** Computer Science A (AP) - Sakallah, F
+- **Due:** Wed, Sep 30, 11:59 PM
+- **Points:** 30
+- **Status:** Not submitted
+- **Canvas:** https://iusd.instructure.com/courses/153566/assignments/2184473
+
+**Directions**
+
+Follow the directions on the project assignment to create 3 Java programs in CSAwesome: MyShape RoundThings StringProgram
+
+### Unit 1B Exam
+
+- **Class:** Computer Science A (AP) - Sakallah, F
+- **Due:** Thu, Oct 1, 11:35 AM
+- **Points:** 50
+- **Status:** Not submitted
+- **Canvas:** https://iusd.instructure.com/courses/153566/assignments/2208633
+
+**Directions**
+
+No written directions were included on Canvas.
+
+### AP Physics C: Mechanics -- Workbook Work Unit 1
+
+- **Class:** AP Physics C: Mechanics& Ele - Elmasri, J
+- **Due:** No due date
+- **Points:** 4
+- **Status:** Not submitted
+- **Canvas:** https://iusd.instructure.com/courses/156270/assignments/2143385
+
+**Directions**
+
+AP Physics C Workbook Book 1: Chapter 1 (pg. 9 – 19). All MC Questions.
+
+### AP Physics C: Mechanics -- Workbook Work Unit 2
+
+- **Class:** AP Physics C: Mechanics& Ele - Elmasri, J
+- **Due:** No due date
+- **Points:** 4
+- **Status:** Not submitted
+- **Canvas:** https://iusd.instructure.com/courses/156270/assignments/2143386
+
+**Directions**
+
+AP Physics C Workbook Workbook – Book 1: Chapter 2, All multiple-choice questions except number 30; FRQs 1975M1, 1981M1, 1986M1, 1984M1, 1988M1.
+
+### AP Physics C: Mechanics -- Workbook Work Unit 3
+
+- **Class:** AP Physics C: Mechanics& Ele - Elmasri, J
+- **Due:** No due date
+- **Points:** 4
+- **Status:** Not submitted
+- **Canvas:** https://iusd.instructure.com/courses/156270/assignments/2143387
+
+**Directions**
+
+AP Physics C Workbook AP Physics C Workbook – Book 1: Chapter 3 (pages 63 – 100), All MC questions, FRQs 1989M1, 1995M2, 2003M1, 2006M2, 2008M3, 2009M3
+
+### AP Physics C: Mechanics -- Workbook Work Unit 7
+
+- **Class:** AP Physics C: Mechanics& Ele - Elmasri, J
+- **Due:** No due date
+- **Points:** 4
+- **Status:** Not submitted
+- **Canvas:** https://iusd.instructure.com/courses/156270/assignments/2143391
+
+**Directions**
+
+AP Physics C Workbook AP Physics C Workbook – Book 1: Chapter 6 (pages 181 – 201), all MC questions. FRQs 1994M3, 1995M3, 2001M2, 2005M2, 2007M2
+
 ## Submitted assignments
+
+### Falling Leaves Self-Generated Question
+
+- **Class:** English Language A (AP) - Kane, K
+- **Due:** Fri, Sep 25, 11:59 PM
+- **Points:** 5
+- **Status:** Submitted; awaiting grade
+- **Canvas:** https://iusd.instructure.com/courses/153470/assignments/2208526
+
+**Directions**
+
+Falling Leaves Self-Generated Question
+
+### Presentation 
+
+- **Class:** Health - semester course - Klamberg, K
+- **Due:** Fri, Sep 25, 2:00 PM
+- **Points:** 4
+- **Status:** Submitted; awaiting grade
+- **Canvas:** https://iusd.instructure.com/courses/153422/assignments/2187912
+
+**Directions**
+
+Mental Health Presentation In this activity, you will use what you have learned from the lectures and readings regarding mental health disorders to create a presentation. Select one mental health disorder you have studied in this unit. Possible topics include depression, mood disorders, anxiety disorders, or personality disorders. Create a PowerPoint presentation. Your presentation should include the following: Title slide-containing your name, class period, teacher, and date Four to five informational slides-containing the name of the disorder, the classification (type) of disorder, facts, symptoms, and characteristics of the disorder. Describe possible treatments, help, and resources available. Include research on the racial and socioeconomical disparities for treatment facilities/access to doctors and medication. Include ways to help defeat any stigmas associated with this disorder, and why people with this disorder need to be treated with respect and dignity. Add images, charts, graphs, or designs to enhance your presentation. Conclusion slide-containing a summary of the information. Make sure to cite sources for any resources or images used in your presentation. Be sure to use reliable resources with valid health information.
+
+### Crying in H Mart Questions
+
+- **Class:** English Language A (AP) - Kane, K
+- **Due:** Thu, Sep 24, 11:59 PM
+- **Points:** 7
+- **Status:** Submitted; awaiting grade
+- **Canvas:** https://iusd.instructure.com/courses/153470/assignments/2207449
+
+**Directions**
+
+Crying in H Mart Questions
 
 ### Unit 1B Quiz
 
