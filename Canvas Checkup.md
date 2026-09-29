@@ -5,11 +5,11 @@ cssclasses:
 
 # Canvas Checkup
 
-> [!info] Last checked Sun, Sep 27, 9:40 AM. Obsidian checks Canvas hourly from 8 AM through 11 PM and resets its change tracker at 6 AM.
+> [!info] Last checked Tue, Sep 29, 9:07 AM. Obsidian checks Canvas hourly from 8 AM through 11 PM and resets its change tracker at 6 AM.
 
 ## Check status
 
-24 assignments are past due. Next due: Practice Test for Objects for Computer Science A (AP) - Sakallah, F on Mon, Sep 28, 11:59 PM. 30 new or changed assignments in this check.
+26 assignments are past due. Next due: Unit 1B AP Review for Computer Science A (AP) - Sakallah, F on Tue, Sep 29, 11:35 AM. 2 new or changed assignments in this check.
 
 ## Pending assignments
 
@@ -306,12 +306,24 @@ No written directions were included on Canvas.
 - **Class:** Computer Science A (AP) - Sakallah, F
 - **Due:** Mon, Sep 28, 11:59 PM
 - **Points:** 10
-- **Status:** Not submitted
+- **Status:** Past due
 - **Canvas:** https://iusd.instructure.com/courses/153566/assignments/2184448
 
 **Directions**
 
 You will complete the Practice Test for Objects during class on Monday. Make sure you have the Chromebook fully charged
+
+### E Fields Simulation
+
+- **Class:** Physics 2A (AP) - Elmasri, J
+- **Due:** Mon, Sep 28, 11:59 PM
+- **Points:** 0
+- **Status:** Past due
+- **Canvas:** https://iusd.instructure.com/courses/153624/assignments/2209144
+
+**Directions**
+
+Sorry for the delay
 
 ### Unit 1B AP Review
 
@@ -325,18 +337,6 @@ You will complete the Practice Test for Objects during class on Monday. Make sur
 
 No written directions were included on Canvas.
 
-### Unit 1B Project
-
-- **Class:** Computer Science A (AP) - Sakallah, F
-- **Due:** Wed, Sep 30, 11:59 PM
-- **Points:** 30
-- **Status:** Not submitted
-- **Canvas:** https://iusd.instructure.com/courses/153566/assignments/2184473
-
-**Directions**
-
-Follow the directions on the project assignment to create 3 Java programs in CSAwesome: MyShape RoundThings StringProgram
-
 ### Unit 1B Exam
 
 - **Class:** Computer Science A (AP) - Sakallah, F
@@ -348,6 +348,18 @@ Follow the directions on the project assignment to create 3 Java programs in CSA
 **Directions**
 
 No written directions were included on Canvas.
+
+### Unit 1B Project
+
+- **Class:** Computer Science A (AP) - Sakallah, F
+- **Due:** Fri, Oct 2, 11:59 PM
+- **Points:** 30
+- **Status:** Not submitted
+- **Canvas:** https://iusd.instructure.com/courses/153566/assignments/2184473
+
+**Directions**
+
+Follow the directions on the project assignment to create 3 Java programs in CSAwesome: MyShape RoundThings StringProgram
 
 ### AP Physics C: Mechanics -- Workbook Work Unit 1
 
