@@ -1,0 +1,90 @@
+{
+  "scope": "synthetic fixed-click distributions; counterexample to extrapolation, not Jiuzhang data",
+  "modes": 20,
+  "clicks_per_sample": 10,
+  "sample_count": 100000,
+  "ground_truth": "uniform among all 20-mode strings with 10 clicks",
+  "synthetic_experiment": "uniform among fixed-click strings with even click parity in modes 1-10",
+  "mockup": "80% parity-conditioned distribution plus 20% one fixed-click string",
+  "score_convention": "mean log[ground_truth_probability / mockup_probability] under synthetic experiment; positive favors ground truth",
+  "rows": [
+    {
+      "subsystem_modes": 1,
+      "expected_log_bayes_score_per_sample": 0.020410997260075087,
+      "sample_mean_log_bayes_score": 0.020751587950872473,
+      "sample_standard_error": 0.0006410989274606525
+    },
+    {
+      "subsystem_modes": 2,
+      "expected_log_bayes_score_per_sample": 0.05240401103639293,
+      "sample_mean_log_bayes_score": 0.05221610248315525,
+      "sample_standard_error": 0.0009714643426592839
+    },
+    {
+      "subsystem_modes": 3,
+      "expected_log_bayes_score_per_sample": 0.09479134186596966,
+      "sample_mean_log_bayes_score": 0.0949112572893442,
+      "sample_standard_error": 0.001185247939250178
+    },
+    {
+      "subsystem_modes": 4,
+      "expected_log_bayes_score_per_sample": 0.13982060020117432,
+      "sample_mean_log_bayes_score": 0.13937636369275885,
+      "sample_standard_error": 0.0012411683778885195
+    },
+    {
+      "subsystem_modes": 5,
+      "expected_log_bayes_score_per_sample": 0.17762569399178074,
+      "sample_mean_log_bayes_score": 0.1768320596809308,
+      "sample_standard_error": 0.0011291101539628236
+    },
+    {
+      "subsystem_modes": 6,
+      "expected_log_bayes_score_per_sample": 0.20272437050697875,
+      "sample_mean_log_bayes_score": 0.20194745742059858,
+      "sample_standard_error": 0.0008966302592998878
+    },
+    {
+      "subsystem_modes": 7,
+      "expected_log_bayes_score_per_sample": 0.21504111269943862,
+      "sample_mean_log_bayes_score": 0.21580477386515587,
+      "sample_standard_error": 0.000595549604289592
+    },
+    {
+      "subsystem_modes": 8,
+      "expected_log_bayes_score_per_sample": 0.21722896790236976,
+      "sample_mean_log_bayes_score": 0.2166868732260964,
+      "sample_standard_error": 0.0005546614692271348
+    },
+    {
+      "subsystem_modes": 9,
+      "expected_log_bayes_score_per_sample": 0.2011173712636346,
+      "sample_mean_log_bayes_score": 0.2004338660866192,
+      "sample_standard_error": 0.0006584921195655346
+    },
+    {
+      "subsystem_modes": 10,
+      "expected_log_bayes_score_per_sample": -0.47147741907786656,
+      "sample_mean_log_bayes_score": -0.4715694419684625,
+      "sample_standard_error": 0.0001420715834699208
+    },
+    {
+      "subsystem_modes": 12,
+      "expected_log_bayes_score_per_sample": -0.4714774190778711,
+      "sample_mean_log_bayes_score": -0.4715694419684679,
+      "sample_standard_error": 0.00014207158346992072
+    },
+    {
+      "subsystem_modes": 16,
+      "expected_log_bayes_score_per_sample": -0.47147741907787055,
+      "sample_mean_log_bayes_score": -0.47156944196846756,
+      "sample_standard_error": 0.0001420715834699207
+    },
+    {
+      "subsystem_modes": 20,
+      "expected_log_bayes_score_per_sample": -0.4714774190778706,
+      "sample_mean_log_bayes_score": -0.47156944196846756,
+      "sample_standard_error": 0.0001420715834699207
+    }
+  ]
+}

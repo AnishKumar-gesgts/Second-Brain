@@ -1,0 +1,150 @@
+{
+  "scope": "explicit dense table of all click cumulants, one 32-bit float per term",
+  "limitation": "other structures, sparse terms, on-demand computation, or a different algorithm could use less memory",
+  "rows": [
+    {
+      "instance": "Jiuzhang 2/3 example",
+      "modes": 144,
+      "max_cumulant_order": 2,
+      "stored_terms": 10440,
+      "minimum_float32_bytes": 41760,
+      "minimum_float32_terabytes": 4.176e-08,
+      "minimum_float32_exabytes": 4.176e-14
+    },
+    {
+      "instance": "Jiuzhang 2/3 example",
+      "modes": 144,
+      "max_cumulant_order": 3,
+      "stored_terms": 497784,
+      "minimum_float32_bytes": 1991136,
+      "minimum_float32_terabytes": 1.991136e-06,
+      "minimum_float32_exabytes": 1.991136e-12
+    },
+    {
+      "instance": "Jiuzhang 2/3 example",
+      "modes": 144,
+      "max_cumulant_order": 4,
+      "stored_terms": 17676660,
+      "minimum_float32_bytes": 70706640,
+      "minimum_float32_terabytes": 7.070664e-05,
+      "minimum_float32_exabytes": 7.070664e-11
+    },
+    {
+      "instance": "Jiuzhang 2/3 example",
+      "modes": 144,
+      "max_cumulant_order": 5,
+      "stored_terms": 498685188,
+      "minimum_float32_bytes": 1994740752,
+      "minimum_float32_terabytes": 0.001994740752,
+      "minimum_float32_exabytes": 1.994740752e-09
+    },
+    {
+      "instance": "Jiuzhang 4 S64",
+      "modes": 4336,
+      "max_cumulant_order": 2,
+      "stored_terms": 9402616,
+      "minimum_float32_bytes": 37610464,
+      "minimum_float32_terabytes": 3.7610464e-05,
+      "minimum_float32_exabytes": 3.7610464e-11
+    },
+    {
+      "instance": "Jiuzhang 4 S64",
+      "modes": 4336,
+      "max_cumulant_order": 3,
+      "stored_terms": 13586784456,
+      "minimum_float32_bytes": 54347137824,
+      "minimum_float32_terabytes": 0.054347137824,
+      "minimum_float32_exabytes": 5.4347137824e-08
+    },
+    {
+      "instance": "Jiuzhang 4 S64",
+      "modes": 4336,
+      "max_cumulant_order": 4,
+      "stored_terms": 14721285662636,
+      "minimum_float32_bytes": 58885142650544,
+      "minimum_float32_terabytes": 58.885142650544,
+      "minimum_float32_exabytes": 5.8885142650544e-05
+    },
+    {
+      "instance": "Jiuzhang 4 S64",
+      "modes": 4336,
+      "max_cumulant_order": 5,
+      "stored_terms": 12757471593717788,
+      "minimum_float32_bytes": 51029886374871152,
+      "minimum_float32_terabytes": 51029.88637487115,
+      "minimum_float32_exabytes": 0.05102988637487115
+    },
+    {
+      "instance": "Jiuzhang 4 M256",
+      "modes": 5104,
+      "max_cumulant_order": 2,
+      "stored_terms": 13027960,
+      "minimum_float32_bytes": 52111840,
+      "minimum_float32_terabytes": 5.211184e-05,
+      "minimum_float32_exabytes": 5.211184e-11
+    },
+    {
+      "instance": "Jiuzhang 4 M256",
+      "modes": 5104,
+      "max_cumulant_order": 3,
+      "stored_terms": 22160565064,
+      "minimum_float32_bytes": 88642260256,
+      "minimum_float32_terabytes": 0.088642260256,
+      "minimum_float32_exabytes": 8.8642260256e-08
+    },
+    {
+      "instance": "Jiuzhang 4 M256",
+      "modes": 5104,
+      "max_cumulant_order": 4,
+      "stored_terms": 28265807256940,
+      "minimum_float32_bytes": 113063229027760,
+      "minimum_float32_terabytes": 113.06322902776,
+      "minimum_float32_exabytes": 0.00011306322902776
+    },
+    {
+      "instance": "Jiuzhang 4 M256",
+      "modes": 5104,
+      "max_cumulant_order": 5,
+      "stored_terms": 28836785432970460,
+      "minimum_float32_bytes": 115347141731881840,
+      "minimum_float32_terabytes": 115347.14173188184,
+      "minimum_float32_exabytes": 0.11534714173188183
+    },
+    {
+      "instance": "Jiuzhang 4 L1024",
+      "modes": 8176,
+      "max_cumulant_order": 2,
+      "stored_terms": 33427576,
+      "minimum_float32_bytes": 133710304,
+      "minimum_float32_terabytes": 0.000133710304,
+      "minimum_float32_exabytes": 1.33710304e-10
+    },
+    {
+      "instance": "Jiuzhang 4 L1024",
+      "modes": 8176,
+      "max_cumulant_order": 3,
+      "stored_terms": 91090152776,
+      "minimum_float32_bytes": 364360611104,
+      "minimum_float32_terabytes": 0.364360611104,
+      "minimum_float32_exabytes": 3.64360611104e-07
+    },
+    {
+      "instance": "Jiuzhang 4 L1024",
+      "modes": 8176,
+      "max_cumulant_order": 4,
+      "stored_terms": 186142743917676,
+      "minimum_float32_bytes": 744570975670704,
+      "minimum_float32_terabytes": 744.570975670704,
+      "minimum_float32_exabytes": 0.000744570975670704
+    },
+    {
+      "instance": "Jiuzhang 4 L1024",
+      "modes": 8176,
+      "max_cumulant_order": 5,
+      "stored_terms": 304268965657270236,
+      "minimum_float32_bytes": 1217075862629080944,
+      "minimum_float32_terabytes": 1217075.862629081,
+      "minimum_float32_exabytes": 1.2170758626290807
+    }
+  ]
+}
