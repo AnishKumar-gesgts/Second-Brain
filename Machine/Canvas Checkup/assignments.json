@@ -1,5 +1,5 @@
 {
-  "updatedAt": "2026-09-29T16:07:03.062Z",
+  "updatedAt": "2026-10-02T01:00:09.392Z",
   "assignments": [
     {
       "id": "2184319",
@@ -377,21 +377,6 @@
       "updatedAt": "2026-09-24T15:55:05Z"
     },
     {
-      "id": "2209144",
-      "courseId": "153624",
-      "name": "E Fields Simulation",
-      "course": "Physics 2A (AP) - Elmasri, J",
-      "dueAt": "2026-09-29T06:59:59Z",
-      "points": 0,
-      "bucket": "pending",
-      "status": "Past due",
-      "submittedAt": null,
-      "gradedAt": null,
-      "directions": "Sorry for the delay",
-      "url": "https://iusd.instructure.com/courses/153624/assignments/2209144",
-      "updatedAt": "2026-09-28T16:45:11Z"
-    },
-    {
       "id": "2208832",
       "courseId": "153566",
       "name": "Unit 1B AP Review",
@@ -399,27 +384,27 @@
       "dueAt": "2026-09-29T18:35:00Z",
       "points": 25,
       "bucket": "pending",
-      "status": "Not submitted",
+      "status": "Past due",
       "submittedAt": null,
       "gradedAt": null,
-      "directions": "",
+      "directions": "Go to AP Classroom and complete Unit 1B AP Review",
       "url": "https://iusd.instructure.com/courses/153566/assignments/2208832",
-      "updatedAt": "2026-09-25T15:57:59Z"
+      "updatedAt": "2026-09-30T17:00:08Z"
     },
     {
-      "id": "2208633",
-      "courseId": "153566",
-      "name": "Unit 1B Exam",
-      "course": "Computer Science A (AP) - Sakallah, F",
-      "dueAt": "2026-10-01T18:35:00Z",
-      "points": 50,
+      "id": "2209422",
+      "courseId": "153470",
+      "name": "IGMMD Questions",
+      "course": "English Language A (AP) - Kane, K",
+      "dueAt": "2026-10-02T06:59:59Z",
+      "points": 5,
       "bucket": "pending",
       "status": "Not submitted",
       "submittedAt": null,
       "gradedAt": null,
-      "directions": "",
-      "url": "https://iusd.instructure.com/courses/153566/assignments/2208633",
-      "updatedAt": "2026-09-28T23:10:01Z"
+      "directions": "IGMMD Questions",
+      "url": "https://iusd.instructure.com/courses/153470/assignments/2209422",
+      "updatedAt": "2026-09-30T07:00:03Z"
     },
     {
       "id": "2184473",
@@ -435,6 +420,21 @@
       "directions": "Follow the directions on the project assignment to create 3 Java programs in CSAwesome: MyShape RoundThings StringProgram",
       "url": "https://iusd.instructure.com/courses/153566/assignments/2184473",
       "updatedAt": "2026-09-28T17:40:27Z"
+    },
+    {
+      "id": "2187915",
+      "courseId": "153422",
+      "name": "Social Media",
+      "course": "Health - semester course - Klamberg, K",
+      "dueAt": "2026-10-07T06:59:59Z",
+      "points": 4,
+      "bucket": "pending",
+      "status": "Not submitted",
+      "submittedAt": null,
+      "gradedAt": null,
+      "directions": "https://docs.google.com/document/d/1lDvQx5-cuAKkCXDUXvkc1RtqxGbZRYRQoA_qK9DVGak/edit?usp=sharing",
+      "url": "https://iusd.instructure.com/courses/153422/assignments/2187915",
+      "updatedAt": "2026-10-01T22:16:36Z"
     },
     {
       "id": "2143385",
@@ -497,6 +497,51 @@
       "updatedAt": "2026-09-10T21:59:12Z"
     },
     {
+      "id": "2208633",
+      "courseId": "153566",
+      "name": "Unit 1B Exam",
+      "course": "Computer Science A (AP) - Sakallah, F",
+      "dueAt": "2026-10-01T18:35:00Z",
+      "points": 50,
+      "bucket": "submitted",
+      "status": "Submitted; awaiting grade",
+      "submittedAt": "2026-10-01T18:11:47Z",
+      "gradedAt": "2026-10-01T18:11:47Z",
+      "directions": "",
+      "url": "https://iusd.instructure.com/courses/153566/assignments/2208633",
+      "updatedAt": "2026-10-01T17:00:04Z"
+    },
+    {
+      "id": "2209144",
+      "courseId": "153624",
+      "name": "E Fields Simulation",
+      "course": "Physics 2A (AP) - Elmasri, J",
+      "dueAt": "2026-09-29T06:59:59Z",
+      "points": 0,
+      "bucket": "submitted",
+      "status": "Submitted; awaiting grade",
+      "submittedAt": "2026-09-30T15:34:12Z",
+      "gradedAt": null,
+      "directions": "Sorry for the delay",
+      "url": "https://iusd.instructure.com/courses/153624/assignments/2209144",
+      "updatedAt": "2026-09-28T16:45:11Z"
+    },
+    {
+      "id": "2187916",
+      "courseId": "153422",
+      "name": "Stress",
+      "course": "Health - semester course - Klamberg, K",
+      "dueAt": "2026-09-30T06:59:59Z",
+      "points": 4,
+      "bucket": "submitted",
+      "status": "Submitted; awaiting grade",
+      "submittedAt": "2026-09-29T21:32:48Z",
+      "gradedAt": null,
+      "directions": "Article 1 https://docs.google.com/document/d/1QkyjL-xLIow4ad_onuJ25zblDC-VW2rormcf_Z_CzFM/edit?usp=sharing Article 2 https://docs.google.com/document/d/1EdevRbFqxxQBmQgk5rbVMbtp8apFu-ANKulTibnSabg/edit?usp=sharing Stress Worksheet https://docs.google.com/document/d/18zRpJkkg2cDmMr6XyeQ2ZvHdqEiZ4k7V9GuaF8ctPcM/edit?usp=sharing",
+      "url": "https://iusd.instructure.com/courses/153422/assignments/2187916",
+      "updatedAt": "2026-09-29T21:19:50Z"
+    },
+    {
       "id": "2208526",
       "courseId": "153470",
       "name": "Falling Leaves Self-Generated Question",
@@ -509,7 +554,7 @@
       "gradedAt": null,
       "directions": "Falling Leaves Self-Generated Question",
       "url": "https://iusd.instructure.com/courses/153470/assignments/2208526",
-      "updatedAt": "2026-09-25T07:00:02Z"
+      "updatedAt": "2026-09-30T18:05:59Z"
     },
     {
       "id": "2187912",
@@ -525,21 +570,6 @@
       "directions": "Mental Health Presentation In this activity, you will use what you have learned from the lectures and readings regarding mental health disorders to create a presentation. Select one mental health disorder you have studied in this unit. Possible topics include depression, mood disorders, anxiety disorders, or personality disorders. Create a PowerPoint presentation. Your presentation should include the following: Title slide-containing your name, class period, teacher, and date Four to five informational slides-containing the name of the disorder, the classification (type) of disorder, facts, symptoms, and characteristics of the disorder. Describe possible treatments, help, and resources available. Include research on the racial and socioeconomical disparities for treatment facilities/access to doctors and medication. Include ways to help defeat any stigmas associated with this disorder, and why people with this disorder need to be treated with respect and dignity. Add images, charts, graphs, or designs to enhance your presentation. Conclusion slide-containing a summary of the information. Make sure to cite sources for any resources or images used in your presentation. Be sure to use reliable resources with valid health information.",
       "url": "https://iusd.instructure.com/courses/153422/assignments/2187912",
       "updatedAt": "2026-09-22T21:50:16Z"
-    },
-    {
-      "id": "2207449",
-      "courseId": "153470",
-      "name": "Crying in H Mart Questions",
-      "course": "English Language A (AP) - Kane, K",
-      "dueAt": "2026-09-25T06:59:59Z",
-      "points": 7,
-      "bucket": "submitted",
-      "status": "Submitted; awaiting grade",
-      "submittedAt": "2026-09-25T05:54:50Z",
-      "gradedAt": null,
-      "directions": "Crying in H Mart Questions",
-      "url": "https://iusd.instructure.com/courses/153470/assignments/2207449",
-      "updatedAt": "2026-09-23T15:30:09Z"
     },
     {
       "id": "2205757",
@@ -722,6 +752,21 @@
       "updatedAt": "2026-08-18T14:30:20Z"
     },
     {
+      "id": "2207449",
+      "courseId": "153470",
+      "name": "Crying in H Mart Questions",
+      "course": "English Language A (AP) - Kane, K",
+      "dueAt": "2026-09-25T06:59:59Z",
+      "points": 7,
+      "bucket": "graded",
+      "status": "Graded",
+      "submittedAt": "2026-09-25T05:54:50Z",
+      "gradedAt": "2026-09-30T16:50:21Z",
+      "directions": "Crying in H Mart Questions",
+      "url": "https://iusd.instructure.com/courses/153470/assignments/2207449",
+      "updatedAt": "2026-09-30T17:50:34Z"
+    },
+    {
       "id": "2207188",
       "courseId": "153566",
       "name": "Unit 1B Quiz",
@@ -731,7 +776,7 @@
       "bucket": "graded",
       "status": "Graded",
       "submittedAt": "2026-09-21T18:08:12Z",
-      "gradedAt": "2026-09-28T19:05:25Z",
+      "gradedAt": "2026-09-29T16:40:41Z",
       "directions": "",
       "url": "https://iusd.instructure.com/courses/153566/assignments/2207188",
       "updatedAt": "2026-09-28T19:05:18Z"
@@ -1059,6 +1104,16 @@
       "updatedAt": "2026-09-23T18:15:54Z"
     },
     {
+      "id": "999101",
+      "courseId": "153638",
+      "course": "Irvine High - Rosser, M",
+      "name": "Homecoming Dance Tickets--Price Goes Up Tomorrow!",
+      "directions": "Hey Vaqueros! Two reminders about the October 10th Homecoming Dance: 1) You may still go to Hoco even if you have detentions. It's the one dance where detentions don't count against going. 2) Ticket prices go up tomorrow so be sure to buy on the webstore by tonight! The Spur Shop will also be open for purchases until 3:00. At the dance your ticket includes: video game stations, french fry bar, dessert truck, dancing, DJ, lightshow, photo ops. lawn and table games and unlimited memories!!",
+      "url": "https://iusd.instructure.com/courses/153638/discussion_topics/999101",
+      "postedAt": "2026-09-29T21:06:24Z",
+      "updatedAt": "2026-09-29T21:06:24Z"
+    },
+    {
       "id": "997895",
       "courseId": "153638",
       "course": "Irvine High - Rosser, M",
@@ -1087,16 +1142,6 @@
       "url": "https://iusd.instructure.com/courses/153638/discussion_topics/997677",
       "postedAt": "2026-09-18T00:13:35Z",
       "updatedAt": "2026-09-18T00:13:35Z"
-    },
-    {
-      "id": "997366",
-      "courseId": "153638",
-      "course": "Irvine High - Rosser, M",
-      "name": "Club Fair 9/16 and 9/17 in Front of Practice Gym",
-      "directions": "Head to the practice gym quad area during lunch tomorrow and Thursday to check out all the clubs on campus you could join! Each day will feature new clubs--the list of clubs will be sent out this evening.",
-      "url": "https://iusd.instructure.com/courses/153638/discussion_topics/997366",
-      "postedAt": "2026-09-15T20:30:12Z",
-      "updatedAt": "2026-09-15T20:30:12Z"
     },
     {
       "id": "998728",
@@ -1159,20 +1204,7 @@
       "updatedAt": "2026-09-17T20:34:40Z"
     }
   ],
-  "changes": [
-    {
-      "type": "changed",
-      "id": "2184448",
-      "name": "Practice Test for Objects",
-      "course": "Computer Science A (AP) - Sakallah, F"
-    },
-    {
-      "type": "changed",
-      "id": "2209144",
-      "name": "E Fields Simulation",
-      "course": "Physics 2A (AP) - Elmasri, J"
-    }
-  ],
-  "summary": "26 assignments are past due. Next due: Unit 1B AP Review for Computer Science A (AP) - Sakallah, F on Tue, Sep 29, 11:35 AM. 2 new or changed assignments in this check.",
+  "changes": [],
+  "summary": "26 assignments are past due. Next due: IGMMD Questions for English Language A (AP) - Kane, K on Thu, Oct 1, 11:59 PM.",
   "error": ""
 }
