@@ -16,12 +16,7 @@ This hub connects the vault’s quantum-information, quantum-algorithm, quantum-
 - [[Anish's Second Brain/Projects/Quantum/Active Research Projects/Co-Design Program/Phase 4 Notes - Learned Decoder Integration and Evaluation|Phase 4 Notes - Learned Decoder Integration and Evaluation]]
 - [[Anish's Second Brain/Projects/Quantum/Active Research Projects/Co-Design Program/Phase 5 Notes - Differentiable Logical-Error Surrogate and Allocation Optimization|Phase 5 Notes - Differentiable Logical-Error Surrogate and Allocation Optimization]]
 - [[Quantum Error Correction Research]]
-- [[Anish's Second Brain/Projects/Quantum/Quantum Research/Quantum Research|Quantum Research]]
-- [[Anish's Second Brain/Projects/Quantum/Quantum Research/GBS Classical Simulation Project Description|GBS Classical Simulation Project Description]]
-- [[Anish's Second Brain/Projects/Quantum/Quantum Research/Correlation-Based Classical Simulation of GBS|Correlation-Based Classical Simulation of GBS]]
 - [[QEC-Aware Photonic Quantum Circuit Optimization]]
-- [[Hybrid MCMC Correlated Random-Walk Decoder]]
-- [[Hybrid Monte Carlo-Randomness Decoders in Scalable Qubit Architecture]]
 - [[Loss-Aware Hardware-Ancilla Decoder]]
 - [[Revised Project Summary]]
 
