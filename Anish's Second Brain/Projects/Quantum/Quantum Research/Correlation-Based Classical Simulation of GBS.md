@@ -2,6 +2,8 @@
 
 **Status:** research direction for a science-fair proposal; the exact algorithm, target experiment, and final claim are undecided. This note distinguishes established literature, preliminary local tests, and hypotheses. See [[Anish's Second Brain/Projects/Quantum/Quantum Research/Quantum Research|Quantum Research]].
 
+For a fuller explanation with technical and plain-language sections, see [[Anish's Second Brain/Projects/Quantum/Quantum Research/GBS Classical Simulation Project Description|GBS Classical Simulation Project Description]].
+
 ## The idea in plain language
 
 A Gaussian boson sampling (GBS) experiment sends specially prepared light through a network and records a pattern of detector clicks. A classical computer can predict the complete pattern distribution for small experiments, but exact calculation becomes expensive as the number of modes and clicks grows. Some faster classical programs therefore reproduce selected features, such as how often pairs or small groups of detectors click together.
