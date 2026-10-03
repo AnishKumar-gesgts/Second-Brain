@@ -5,11 +5,11 @@ cssclasses:
 
 # Canvas Checkup
 
-> [!info] Last checked Thu, Oct 1, 6:00 PM. Obsidian checks Canvas hourly from 8 AM through 11 PM and resets its change tracker at 6 AM.
+> [!info] Last checked Fri, Oct 2, 9:00 PM. Obsidian checks Canvas hourly from 8 AM through 11 PM and resets its change tracker at 6 AM.
 
 ## Check status
 
-26 assignments are past due. Next due: IGMMD Questions for English Language A (AP) - Kane, K on Thu, Oct 1, 11:59 PM.
+26 assignments are past due. Next due: Unit 1B Project for Computer Science A (AP) - Sakallah, F on Fri, Oct 2, 11:59 PM.
 
 ## Pending assignments
 
@@ -325,18 +325,6 @@ You will complete the Practice Test for Objects during class on Monday. Make sur
 
 Go to AP Classroom and complete Unit 1B AP Review
 
-### IGMMD Questions
-
-- **Class:** English Language A (AP) - Kane, K
-- **Due:** Thu, Oct 1, 11:59 PM
-- **Points:** 5
-- **Status:** Not submitted
-- **Canvas:** https://iusd.instructure.com/courses/153470/assignments/2209422
-
-**Directions**
-
-IGMMD Questions
-
 ### Unit 1B Project
 
 - **Class:** Computer Science A (AP) - Sakallah, F
@@ -348,6 +336,18 @@ IGMMD Questions
 **Directions**
 
 Follow the directions on the project assignment to create 3 Java programs in CSAwesome: MyShape RoundThings StringProgram
+
+### Potential Simulation
+
+- **Class:** Physics 2A (AP) - Elmasri, J
+- **Due:** Mon, Oct 5, 11:59 PM
+- **Points:** 0
+- **Status:** Not submitted
+- **Canvas:** https://iusd.instructure.com/courses/153624/assignments/2209983
+
+**Directions**
+
+Submit for real
 
 ### Social Media
 
@@ -410,6 +410,18 @@ AP Physics C Workbook AP Physics C Workbook – Book 1: Chapter 3 (pages 63 – 
 AP Physics C Workbook AP Physics C Workbook – Book 1: Chapter 6 (pages 181 – 201), all MC questions. FRQs 1994M3, 1995M3, 2001M2, 2005M2, 2007M2
 
 ## Submitted assignments
+
+### IGMMD Questions
+
+- **Class:** English Language A (AP) - Kane, K
+- **Due:** Thu, Oct 1, 11:59 PM
+- **Points:** 5
+- **Status:** Submitted; awaiting grade
+- **Canvas:** https://iusd.instructure.com/courses/153470/assignments/2209422
+
+**Directions**
+
+IGMMD Questions
 
 ### Unit 1B Exam
 

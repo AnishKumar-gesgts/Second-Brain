@@ -1,5 +1,5 @@
 {
-  "updatedAt": "2026-10-02T01:00:09.392Z",
+  "updatedAt": "2026-10-03T04:00:09.738Z",
   "assignments": [
     {
       "id": "2184319",
@@ -392,21 +392,6 @@
       "updatedAt": "2026-09-30T17:00:08Z"
     },
     {
-      "id": "2209422",
-      "courseId": "153470",
-      "name": "IGMMD Questions",
-      "course": "English Language A (AP) - Kane, K",
-      "dueAt": "2026-10-02T06:59:59Z",
-      "points": 5,
-      "bucket": "pending",
-      "status": "Not submitted",
-      "submittedAt": null,
-      "gradedAt": null,
-      "directions": "IGMMD Questions",
-      "url": "https://iusd.instructure.com/courses/153470/assignments/2209422",
-      "updatedAt": "2026-09-30T07:00:03Z"
-    },
-    {
       "id": "2184473",
       "courseId": "153566",
       "name": "Unit 1B Project",
@@ -420,6 +405,21 @@
       "directions": "Follow the directions on the project assignment to create 3 Java programs in CSAwesome: MyShape RoundThings StringProgram",
       "url": "https://iusd.instructure.com/courses/153566/assignments/2184473",
       "updatedAt": "2026-09-28T17:40:27Z"
+    },
+    {
+      "id": "2209983",
+      "courseId": "153624",
+      "name": "Potential Simulation",
+      "course": "Physics 2A (AP) - Elmasri, J",
+      "dueAt": "2026-10-06T06:59:59Z",
+      "points": 0,
+      "bucket": "pending",
+      "status": "Not submitted",
+      "submittedAt": null,
+      "gradedAt": null,
+      "directions": "Submit for real",
+      "url": "https://iusd.instructure.com/courses/153624/assignments/2209983",
+      "updatedAt": "2026-10-02T16:12:25Z"
     },
     {
       "id": "2187915",
@@ -497,6 +497,21 @@
       "updatedAt": "2026-09-10T21:59:12Z"
     },
     {
+      "id": "2209422",
+      "courseId": "153470",
+      "name": "IGMMD Questions",
+      "course": "English Language A (AP) - Kane, K",
+      "dueAt": "2026-10-02T06:59:59Z",
+      "points": 5,
+      "bucket": "submitted",
+      "status": "Submitted; awaiting grade",
+      "submittedAt": "2026-10-02T06:21:55Z",
+      "gradedAt": null,
+      "directions": "IGMMD Questions",
+      "url": "https://iusd.instructure.com/courses/153470/assignments/2209422",
+      "updatedAt": "2026-09-30T07:00:03Z"
+    },
+    {
       "id": "2208633",
       "courseId": "153566",
       "name": "Unit 1B Exam",
@@ -506,10 +521,10 @@
       "bucket": "submitted",
       "status": "Submitted; awaiting grade",
       "submittedAt": "2026-10-01T18:11:47Z",
-      "gradedAt": "2026-10-01T18:11:47Z",
+      "gradedAt": "2026-10-02T14:42:53Z",
       "directions": "",
       "url": "https://iusd.instructure.com/courses/153566/assignments/2208633",
-      "updatedAt": "2026-10-01T17:00:04Z"
+      "updatedAt": "2026-10-02T17:00:03Z"
     },
     {
       "id": "2209144",
@@ -1104,6 +1119,16 @@
       "updatedAt": "2026-09-23T18:15:54Z"
     },
     {
+      "id": "999428",
+      "courseId": "153638",
+      "course": "Irvine High - Rosser, M",
+      "name": "Homecoming Spirit Week, Neon Out Vests Sale, HoCo Dance",
+      "directions": "Hey Vaqueros!! Monday kicks off the first Spirit Week of the Year! Be sure to dress out and go to the quad at lunch for LTAs! Monday--Twin Day and Donuts Tuesday--Tourist Day and Pie Eating Contest in the Quad Wednesday--Toes Out (Flip Flops) and Water Balloon Toss and Popsicles Thursday--PJ Day and TA Door Judging Friday--Super Hero Day--Red, Blue, or a Super Hero Costume--NO MASKS. Homecoming Rally Day! All week at lunch Neon Vest Sales will be in the quad for 3.00. Get one before they run out to wear to the Homecoming Game on 10/9! Homecoming Dance Ticket Sales End Soon!! Don't miss out on your First High School Dance or Your Last Homecoming Dance! The time for making memories is NOW!",
+      "url": "https://iusd.instructure.com/courses/153638/discussion_topics/999428",
+      "postedAt": "2026-10-02T21:48:11Z",
+      "updatedAt": "2026-10-02T21:48:11Z"
+    },
+    {
       "id": "999101",
       "courseId": "153638",
       "course": "Irvine High - Rosser, M",
@@ -1132,16 +1157,6 @@
       "url": "https://iusd.instructure.com/courses/153638/discussion_topics/997714",
       "postedAt": "2026-09-18T17:00:03Z",
       "updatedAt": "2026-09-18T17:00:03Z"
-    },
-    {
-      "id": "997677",
-      "courseId": "153638",
-      "course": "Irvine High - Rosser, M",
-      "name": "Club Information 2026-2027",
-      "directions": "We hope you had a chance to visit Club Fair, but if you were not able to see all the clubs you wanted to see, please review the current clublist. To join a club or get more information, email the Club President and Advisor listed.",
-      "url": "https://iusd.instructure.com/courses/153638/discussion_topics/997677",
-      "postedAt": "2026-09-18T00:13:35Z",
-      "updatedAt": "2026-09-18T00:13:35Z"
     },
     {
       "id": "998728",
@@ -1192,19 +1207,9 @@
       "url": "https://iusd.instructure.com/courses/153647/discussion_topics/997706",
       "postedAt": "2026-09-18T15:33:17Z",
       "updatedAt": "2026-09-18T15:33:17Z"
-    },
-    {
-      "id": "997621",
-      "courseId": "153647",
-      "course": "U.S. History A (AP) - Harrington, J",
-      "name": "APUSH LEQ Practice (and The Presidents videos) Tuesday and Wednesday 9/22-23, Unit 3 MCQs (after review session) Thursday and Friday 9/24-25",
-      "directions": "Here is another APUSH DBQ that you may want to use for practice. But, remember, for unit 3, your summative writing assessment is an LEQ. https://shshistory.com/extra%20pages/APAmericanHistory/ap%20essay%20guidelines/ap%20amhist%20essay%20guidelines.pdf LEQ Rubric- 1 point for background/context, 1 point for a thesis (with an argument and reasons), 2 points for evidence (6 strong examples in two or three body paragraphs), and 2 points for analysis (explanation and historical significance) Your class period will be assigned one of these three prompts (so study for all because you won't have a choice) for your first LEQ/traditional four or five-paragraph essay (40 minutes in class) on Tuesday or Wednesday, September 29th or 30th (odd/even day). Evaluate the relative importance of the following as factors prompting Americans to rebel in 1776: Parliamentary taxation, British military measures, restriction of civil liberties, the legacy of the colonial religious and political ideas. (1992 FRQ) Between 1783 and 1800, the new government of the United States faced the same political and economic issues that troubled the British government’s relations with the colonies prior to the Revolution. Assess the validity of this generalization. (1980 FRQ) Analyze the extent to which the American Revolution represented a radical alteration in American political ideas and institutions. (from AP Classroom) *Reminders: Be clear about who, what, when, where, and why as you integrate and analyze evidence. Maintain your argument, specificity (related key terms), citation (Doc 1), and chronological order throughout your essay. Review this unit 3 timeline. 1765 Stamp Act 1770 Boston Massacre 1773 Boston Tea Party 1776 Declaration of Independence 1783 Treaty of Paris 1786 Shays’ Rebellion 1787 Constitutional Convention 1790 Compromise/’Dinner Table’ Bargain 1794 Whiskey Rebellion 1798 Alien and Sedition Acts/XYZ Affair",
-      "url": "https://iusd.instructure.com/courses/153647/discussion_topics/997621",
-      "postedAt": "2026-09-17T20:34:40Z",
-      "updatedAt": "2026-09-17T20:34:40Z"
     }
   ],
   "changes": [],
-  "summary": "26 assignments are past due. Next due: IGMMD Questions for English Language A (AP) - Kane, K on Thu, Oct 1, 11:59 PM.",
+  "summary": "26 assignments are past due. Next due: Unit 1B Project for Computer Science A (AP) - Sakallah, F on Fri, Oct 2, 11:59 PM.",
   "error": ""
 }

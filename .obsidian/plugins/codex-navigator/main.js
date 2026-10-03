@@ -11,7 +11,7 @@ const CANVAS_NOTE_PATH = "Canvas Checkup.md";
 const DEFAULT_SETTINGS = {
   provider: "codex",
   codexPath: "codex",
-  model: "gpt-5.6-luna",
+  model: "gpt-6.1-sol",
   reasoningEffort: "low",
   openHomeOnStartup: true,
   defaultPermission: "workspace-write",
@@ -23,7 +23,7 @@ const DEFAULT_SETTINGS = {
   notionLastSync: "",
   notionPanelWidth: 34,
   notionEmbedUrl: "https://schedulemgmt.notion.site/ebd//15163c0b69ed805085d1df7f4207ac0a?v=15163c0b69ed81729f38000c5bf2c2b6",
-  homeRequestModel: "gpt-5.6-luna",
+  homeRequestModel: "gpt-6.1-sol",
   homeRequestProvider: "codex",
   ollamaBaseUrl: "http://127.0.0.1:11434",
   ollamaModel: "",
@@ -37,9 +37,10 @@ const DEFAULT_SETTINGS = {
 };
 
 const MODEL_OPTIONS = [
-  { value: "gpt-5.6-luna", label: "GPT-5.6 Luna", detail: "Fast" },
-  { value: "gpt-5.6-terra", label: "GPT-5.6 Terra", detail: "Balanced" },
-  { value: "gpt-5.6-sol", label: "GPT-5.6 Sol", detail: "Deep" }
+  { value: "gpt-6.1-sol", label: "GPT-6.1 Sol", detail: "Deep" },
+  { value: "gpt-6-sol", label: "GPT-6 Sol", detail: "Balanced" },
+  { value: "gpt-6-luna", label: "GPT-6 Luna", detail: "Fast" },
+  { value: "gpt-5.6-terra", label: "GPT-5.6 Terra", detail: "Balanced" }
 ];
 
 const PROVIDER_OPTIONS = [
@@ -1122,7 +1123,7 @@ module.exports = class CodexWorkspacePlugin extends Plugin {
       this.chats = {};
     }
     if (this.settings.homeRequestModel === "o4-mini") {
-      this.settings.homeRequestModel = "gpt-5.6-luna";
+      this.settings.homeRequestModel = "gpt-6.1-sol";
       await this.savePluginData();
     }
     if ((this.settings.permissionMigrationVersion || 0) < 1) {
@@ -1181,7 +1182,7 @@ module.exports = class CodexWorkspacePlugin extends Plugin {
         threadId: null,
         permission: this.settings.defaultPermission || "workspace-write",
         provider: this.settings.provider || "codex",
-        model: (this.settings.provider || "codex") === "ultimate" ? ULTIMATE_MODEL : (this.settings.provider || "codex") === "ollama" ? (this.settings.ollamaModel || "") : (this.settings.model || "gpt-5.6-luna"),
+        model: (this.settings.provider || "codex") === "ultimate" ? ULTIMATE_MODEL : (this.settings.provider || "codex") === "ollama" ? (this.settings.ollamaModel || "") : (this.settings.model || "gpt-6.1-sol"),
         reasoningEffort: this.settings.reasoningEffort || "low",
         messages: [],
         createdAt: Date.now()
@@ -1233,7 +1234,7 @@ module.exports = class CodexWorkspacePlugin extends Plugin {
   runCodexRequest(prompt) {
     return new Promise((resolve, reject) => {
       const executable = this.settings.codexPath || "codex";
-      const args = ["exec", "--json", "--skip-git-repo-check", "--color", "never", "--cd", this.getVaultPath(), "--sandbox", "read-only", "--model", this.settings.model || "gpt-5.6-luna", "-c", `model_reasoning_effort=\"${this.settings.reasoningEffort || "low"}\"`, "-"];
+      const args = ["exec", "--json", "--skip-git-repo-check", "--color", "never", "--cd", this.getVaultPath(), "--sandbox", "read-only", "--model", this.settings.model || "gpt-6.1-sol", "-c", `model_reasoning_effort=\"${this.settings.reasoningEffort || "low"}\"`, "-"];
       const child = spawn(executable, args, { cwd: this.getVaultPath(), windowsHide: true, shell: false, env: { ...process.env, NO_COLOR: "1" } });
       let output = "", buffer = "", stderr = "", finalAnswer = "";
       child.stdout.setEncoding("utf8"); child.stderr.setEncoding("utf8");
@@ -1698,7 +1699,7 @@ module.exports = class CodexWorkspacePlugin extends Plugin {
         return;
       }
       const executable = this.settings.codexPath || "codex";
-      const child = spawn(executable, ["exec", "--json", "--skip-git-repo-check", "--color", "never", "--cd", this.getVaultPath(), "--sandbox", "workspace-write", "--model", this.settings.homeRequestModel || "gpt-5.6-luna", "-c", "model_reasoning_effort=low", "-"], { cwd: this.getVaultPath(), windowsHide: true, shell: false, env: { ...process.env, NO_COLOR: "1" } });
+      const child = spawn(executable, ["exec", "--json", "--skip-git-repo-check", "--color", "never", "--cd", this.getVaultPath(), "--sandbox", "workspace-write", "--model", this.settings.homeRequestModel || "gpt-6.1-sol", "-c", "model_reasoning_effort=low", "-"], { cwd: this.getVaultPath(), windowsHide: true, shell: false, env: { ...process.env, NO_COLOR: "1" } });
       let output = "", jsonBuffer = "", errorOutput = "", finalAnswer = "";
       child.stdout.setEncoding("utf8"); child.stderr.setEncoding("utf8");
       child.stdout.on("data", (chunk) => { output += chunk; jsonBuffer += chunk; const lines = jsonBuffer.split(/\r?\n/); jsonBuffer = lines.pop() || ""; for (const line of lines) { try { const event = JSON.parse(line); if (event.type === "item.completed" && event.item?.type === "agent_message") finalAnswer = event.item.text || finalAnswer; } catch (_) {} } });
