@@ -5,11 +5,11 @@ cssclasses:
 
 # Canvas Checkup
 
-> [!info] Last checked Fri, Oct 2, 10:00 PM. Obsidian checks Canvas hourly from 8 AM through 11 PM and resets its change tracker at 6 AM.
+> [!info] Last checked Sun, Oct 4, 5:00 PM. Obsidian checks Canvas hourly from 8 AM through 11 PM and resets its change tracker at 6 AM.
 
 ## Check status
 
-26 assignments are past due. Next due: Unit 1B Project for Computer Science A (AP) - Sakallah, F on Fri, Oct 2, 11:59 PM.
+27 assignments are past due. Next due: Potential Simulation for Physics 2A (AP) - Elmasri, J on Mon, Oct 5, 11:59 PM.
 
 ## Pending assignments
 
@@ -330,7 +330,7 @@ Go to AP Classroom and complete Unit 1B AP Review
 - **Class:** Computer Science A (AP) - Sakallah, F
 - **Due:** Fri, Oct 2, 11:59 PM
 - **Points:** 30
-- **Status:** Not submitted
+- **Status:** Past due
 - **Canvas:** https://iusd.instructure.com/courses/153566/assignments/2184473
 
 **Directions**

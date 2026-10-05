@@ -1,5 +1,5 @@
 {
-  "updatedAt": "2026-10-03T05:00:11.220Z",
+  "updatedAt": "2026-10-05T00:00:10.999Z",
   "assignments": [
     {
       "id": "2184319",
@@ -399,7 +399,7 @@
       "dueAt": "2026-10-03T06:59:59Z",
       "points": 30,
       "bucket": "pending",
-      "status": "Not submitted",
+      "status": "Past due",
       "submittedAt": null,
       "gradedAt": null,
       "directions": "Follow the directions on the project assignment to create 3 Java programs in CSAwesome: MyShape RoundThings StringProgram",
@@ -1149,16 +1149,6 @@
       "updatedAt": "2026-09-21T23:00:05Z"
     },
     {
-      "id": "997714",
-      "courseId": "153638",
-      "course": "Irvine High - Rosser, M",
-      "name": "No Way HoCo : DON’T MISS HOMECOMING — Prices Go Up 9/30!",
-      "directions": "VAQUEROS, THE MASK IS CALLING… 🕷️ Homecoming is almost here, and if you haven’t bought your ticket yet, WHAT ARE YOU WAITING FOR?! Head to the Spur Shop or Webstore Get ready for a night of dancing, music, lights, photo ops, food, gaming stations and unforgettable memories with your friends! IMPORTANT: Buy your ticket by SEPTEMBER 30 before ticket prices GO UP! Don’t wait until the last minute and pay more. Dance Details: Saturday, October 107:00–10:00 PM at Irvine High And remember… you can’t experience the night if you don’t have a ticket. Don’t be the person watching everyone’s stories wishing you had been there.",
-      "url": "https://iusd.instructure.com/courses/153638/discussion_topics/997714",
-      "postedAt": "2026-09-18T17:00:03Z",
-      "updatedAt": "2026-09-18T17:00:03Z"
-    },
-    {
       "id": "998728",
       "courseId": "88742",
       "course": "Science Fair",
@@ -1197,19 +1187,9 @@
       "url": "https://iusd.instructure.com/courses/153647/discussion_topics/998691",
       "postedAt": "2026-09-25T18:23:50Z",
       "updatedAt": "2026-09-25T18:23:50Z"
-    },
-    {
-      "id": "997706",
-      "courseId": "153647",
-      "course": "U.S. History A (AP) - Harrington, J",
-      "name": "NHD Silent Heroes Project Sign-Up (Local Veterans Research) ",
-      "directions": "If you are interested in being part of an NHD veterans research/community service project, which could count as your 10 point fall project, here is a video and slides you can watch another day to see if it is the right fit for you for an extracurricular/enrichment opportunity. https://drive.google.com/file/d/17I7pneV4VqG3Q_hWQZ-bIQm4XxLZ0iVD/viewLinks to an external site. https://drive.google.com/file/d/1AOoZsiAEyDdvy5dLIYo_tyXJTGifPmqp/viewLinks to an external site. If this is something you would like to do, have your parents complete this permission slip/form online, and let me know through an email that you plan to participate. I will let you know when we are meeting, probably once a month at lunch in my classroom. The workload is light, but the experience and impact for you and the community is great! The two local heroes that we have selected are Melvin Kealoha Bell Sr. and Edward Moran Mowbray, who served in the Coast Guard and Navy respectively during WWII, and are buried at Riverside National Cemetery.",
-      "url": "https://iusd.instructure.com/courses/153647/discussion_topics/997706",
-      "postedAt": "2026-09-18T15:33:17Z",
-      "updatedAt": "2026-09-18T15:33:17Z"
     }
   ],
   "changes": [],
-  "summary": "26 assignments are past due. Next due: Unit 1B Project for Computer Science A (AP) - Sakallah, F on Fri, Oct 2, 11:59 PM.",
+  "summary": "27 assignments are past due. Next due: Potential Simulation for Physics 2A (AP) - Elmasri, J on Mon, Oct 5, 11:59 PM.",
   "error": ""
 }

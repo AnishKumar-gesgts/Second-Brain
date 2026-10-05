@@ -21,9 +21,7 @@ Every new conversation starts with **Allow vault edits** so Codex can act on req
 
 ## Workflow commands
 
-- `/today` builds a daily plan from current notes, projects, and tasks.
-- `/new` captures and routes a task or note.
-- `/closeday` reviews the day and proposes what should carry forward.
+- 
 
 ## Search
 
